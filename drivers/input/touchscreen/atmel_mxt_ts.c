@@ -1711,8 +1711,10 @@ static int mxt_parse_object_table(struct mxt_data *data,
 
 	data->msg_buf = kcalloc(data->max_reportid,
 				data->T5_msg_size, GFP_KERNEL);
-	if (!data->msg_buf)
+	if (!data->msg_buf) {
+		dev_err(&client->dev, "Failed to allocate message buffer\n");
 		return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -1728,18 +1730,22 @@ static int mxt_read_info_block(struct mxt_data *data)
 	u8 *crc_ptr;
 
 	/* If info block already allocated, free it */
-	if (data->raw_info_block)
+	if (data->raw_info_block != NULL)
 		mxt_free_object_table(data);
 
 	/* Read 7-byte ID information block starting at address 0 */
 	size = sizeof(struct mxt_info);
 	id_buf = kzalloc(size, GFP_KERNEL);
-	if (!id_buf)
+	if (!id_buf) {
+		dev_err(&client->dev, "Failed to allocate memory\n");
 		return -ENOMEM;
+	}
 
 	error = __mxt_read_reg(client, 0, size, id_buf);
-	if (error)
-		goto err_free_mem;
+	if (error) {
+		kfree(id_buf);
+		return error;
+	}
 
 	/* Resize buffer to give space for rest of info block */
 	num_objects = ((struct mxt_info *)id_buf)->object_num;
@@ -1747,24 +1753,25 @@ static int mxt_read_info_block(struct mxt_data *data)
 		+ MXT_INFO_CHECKSUM_SIZE;
 
 	buf = krealloc(id_buf, size, GFP_KERNEL);
+	id_buf = buf;
 	if (!buf) {
+		dev_err(&client->dev, "Failed to allocate memory\n");
 		error = -ENOMEM;
 		goto err_free_mem;
 	}
-	id_buf = buf;
 
 	/* Read rest of info block */
 	error = __mxt_read_reg(client, MXT_OBJECT_START,
 			       size - MXT_OBJECT_START,
-			       id_buf + MXT_OBJECT_START);
+			       buf + MXT_OBJECT_START);
 	if (error)
 		goto err_free_mem;
 
 	/* Extract & calculate checksum */
-	crc_ptr = id_buf + size - MXT_INFO_CHECKSUM_SIZE;
+	crc_ptr = buf + size - MXT_INFO_CHECKSUM_SIZE;
 	data->info_crc = crc_ptr[0] | (crc_ptr[1] << 8) | (crc_ptr[2] << 16);
 
-	calculated_crc = mxt_calculate_crc(id_buf, 0,
+	calculated_crc = mxt_calculate_crc(buf, 0,
 					   size - MXT_INFO_CHECKSUM_SIZE);
 
 	/*
@@ -1774,13 +1781,13 @@ static int mxt_read_info_block(struct mxt_data *data)
 	if ((data->info_crc == 0) || (data->info_crc != calculated_crc)) {
 		dev_err(&client->dev,
 			"Info Block CRC error calculated=0x%06X read=0x%06X\n",
-			calculated_crc, data->info_crc);
+			data->info_crc, calculated_crc);
 		error = -EIO;
 		goto err_free_mem;
 	}
 
-	data->raw_info_block = id_buf;
-	data->info = (struct mxt_info *)id_buf;
+	data->raw_info_block = buf;
+	data->info = (struct mxt_info *)buf;
 
 	dev_info(&client->dev,
 		 "Family: %u Variant: %u Firmware V%u.%u.%02X Objects: %u\n",
@@ -1789,19 +1796,19 @@ static int mxt_read_info_block(struct mxt_data *data)
 		 data->info->build, data->info->object_num);
 
 	/* Parse object table information */
-	error = mxt_parse_object_table(data, id_buf + MXT_OBJECT_START);
+	error = mxt_parse_object_table(data, buf + MXT_OBJECT_START);
 	if (error) {
 		dev_err(&client->dev, "Error %d parsing object table\n", error);
 		mxt_free_object_table(data);
-		goto err_free_mem;
+		return error;
 	}
 
-	data->object_table = (struct mxt_object *)(id_buf + MXT_OBJECT_START);
+	data->object_table = (struct mxt_object *)(buf + MXT_OBJECT_START);
 
 	return 0;
 
 err_free_mem:
-	kfree(id_buf);
+	kfree(buf);
 	return error;
 }
 
@@ -2745,9 +2752,9 @@ static ssize_t mxt_fw_version_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
-	struct mxt_info *info = data->info;
 	return scnprintf(buf, PAGE_SIZE, "%u.%u.%02X\n",
-			 info->version >> 4, info->version & 0xf, info->build);
+			 data->info->version >> 4, data->info->version & 0xf,
+			 data->info->build);
 }
 
 /* Hardware Version is returned as FamilyID.VariantID */
@@ -2755,9 +2762,8 @@ static ssize_t mxt_hw_version_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
-	struct mxt_info *info = data->info;
 	return scnprintf(buf, PAGE_SIZE, "%u.%u\n",
-			 info->family_id, info->variant_id);
+			data->info->family_id, data->info->variant_id);
 }
 
 static ssize_t mxt_show_instance(char *buf, int count,
