@@ -325,14 +325,14 @@ struct mxt_data {
 	u8 T100_reportid_min;
 	u8 T100_reportid_max;
 
-	/* for fw update in bootloader */
-	struct completion bl_completion;
-
 	/* for reset handling */
 	struct completion reset_completion;
 
 	/* for config update handling */
 	struct completion crc_completion;
+
+	/* for power up handling */
+	struct completion chg_completion;
 
 	/* Indicates whether device is in suspend */
 	bool suspended;
@@ -551,7 +551,7 @@ recheck:
 		 * CHG assertion before reading the status byte.
 		 * Once the status byte has been read, the line is deasserted.
 		 */
-		ret = mxt_wait_for_completion(data, &data->bl_completion,
+		ret = mxt_wait_for_completion(data, &data->chg_completion,
 					      MXT_FW_CHG_TIMEOUT);
 		if (ret) {
 			/*
@@ -1133,11 +1133,10 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 {
 	struct mxt_data *data = dev_id;
 
-	if (data->in_bootloader) {
-		/* bootloader state transition completion */
-		complete(&data->bl_completion);
+	complete(&data->chg_completion);
+
+	if (data->in_bootloader)
 		return IRQ_HANDLED;
-	}
 
 	if (!data->object_table)
 		return IRQ_HANDLED;
@@ -2118,9 +2117,9 @@ static void mxt_regulator_enable(struct mxt_data *data)
 	msleep(MXT_CHG_DELAY);
 
 retry_wait:
-	reinit_completion(&data->bl_completion);
+	reinit_completion(&data->chg_completion);
 	data->in_bootloader = true;
-	error = mxt_wait_for_completion(data, &data->bl_completion,
+	error = mxt_wait_for_completion(data, &data->chg_completion,
 					MXT_POWERON_DELAY);
 	if (error == -EINTR)
 		goto retry_wait;
@@ -2882,7 +2881,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 		enable_irq(data->irq);
 	}
 
-	reinit_completion(&data->bl_completion);
+	reinit_completion(&data->chg_completion);
 
 	ret = mxt_check_bootloader(data, MXT_WAITING_BOOTLOAD_CMD, false);
 	if (ret) {
@@ -2937,7 +2936,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 	}
 
 	/* Wait for flash. */
-	ret = mxt_wait_for_completion(data, &data->bl_completion,
+	ret = mxt_wait_for_completion(data, &data->chg_completion,
 				      MXT_FW_RESET_TIME);
 	if (ret)
 		goto disable_irq;
@@ -2949,7 +2948,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 	 * the CHG line after bootloading has finished, so ignore potential
 	 * errors.
 	 */
-	mxt_wait_for_completion(data, &data->bl_completion, MXT_FW_RESET_TIME);
+	mxt_wait_for_completion(data, &data->chg_completion, MXT_FW_RESET_TIME);
 
 	data->in_bootloader = false;
 
@@ -3326,7 +3325,7 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	data->irq = client->irq;
 	i2c_set_clientdata(client, data);
 
-	init_completion(&data->bl_completion);
+	init_completion(&data->chg_completion);
 	init_completion(&data->reset_completion);
 	init_completion(&data->crc_completion);
 
@@ -3350,9 +3349,9 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (data->reset_gpio) {
 		data->in_bootloader = true;
 		msleep(MXT_RESET_TIME);
-		reinit_completion(&data->bl_completion);
+		reinit_completion(&data->chg_completion);
 		gpiod_set_value(data->reset_gpio, 1);
-		error = mxt_wait_for_completion(data, &data->bl_completion,
+		error = mxt_wait_for_completion(data, &data->chg_completion,
 						MXT_RESET_TIMEOUT);
 		if (error)
 			return error;
