@@ -1184,11 +1184,27 @@ static int mxt_acquire_irq(struct mxt_data *data)
 {
 	int error;
 
-	enable_irq(data->irq);
+	if (!data->irq) {
+		error = request_threaded_irq(data->client->irq, NULL,
+				mxt_interrupt,
+				data->pdata->irqflags | IRQF_ONESHOT,
+				data->client->name, data);
+		if (error) {
+			dev_err(&data->client->dev, "Error requesting irq\n");
+			return error;
+		}
 
-	error = mxt_process_messages_until_invalid(data);
-	if (error)
-		return error;
+		/* Presence of data->irq means IRQ initialised */
+		data->irq = data->client->irq;
+	} else {
+		enable_irq(data->irq);
+	}
+
+	if (data->object_table) {
+		error = mxt_process_messages_until_invalid(data);
+		if (error)
+			return error;
+	}
 
 	return 0;
 }
@@ -2878,7 +2894,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 		mxt_free_input_device(data);
 		mxt_free_object_table(data);
 	} else {
-		enable_irq(data->irq);
+		mxt_acquire_irq(data);
 	}
 
 	reinit_completion(&data->chg_completion);
@@ -3322,7 +3338,6 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	data->client = client;
 	data->pdata = pdata;
-	data->irq = client->irq;
 	i2c_set_clientdata(client, data);
 
 	init_completion(&data->chg_completion);
@@ -3359,14 +3374,16 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	if (pdata->suspend_mode == MXT_SUSPEND_REGULATOR) {
+		error = mxt_acquire_irq(data);
+		if (error)
+			return error;
+
 		error = mxt_probe_regulators(data);
 		if (error)
 			return error;
 
 		disable_irq(data->irq);
 	}
-
-	disable_irq(data->irq);
 
 	error = mxt_initialize(data);
 	if (error) {
