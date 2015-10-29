@@ -153,6 +153,14 @@
 				};
 			};
 
+			pmc: pmc@f0014000 {
+				pmc_fast_restart {
+					compatible = "atmel,sama5d2-pmc-fast-startup";
+					atmel,fast-startup-wake-up;
+					atmel,fast-startup-rtc-alarm;
+				};
+			};
+
 			qspi0: qspi@f0020000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_qspi0_default>;
