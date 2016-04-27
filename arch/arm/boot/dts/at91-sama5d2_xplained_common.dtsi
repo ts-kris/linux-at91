@@ -158,6 +158,7 @@
 					compatible = "atmel,sama5d2-pmc-fast-startup";
 					atmel,fast-startup-wake-up;
 					atmel,fast-startup-rtc-alarm;
+					atmel,fast-startup-sdmmc-cd;
 				};
 			};
 
