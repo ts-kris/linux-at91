@@ -162,7 +162,8 @@ struct atmel_uart_port {
 	dma_cookie_t			cookie_rx;
 	struct scatterlist		sg_tx;
 	struct scatterlist		sg_rx;
-	struct tasklet_struct	tasklet;
+	struct tasklet_struct	tasklet_rx;
+	struct tasklet_struct	tasklet_tx;
 	unsigned int		irq_status_prev;
 
 	struct circ_buf		rx_ring;
@@ -684,7 +685,7 @@ static void atmel_rx_chars(struct uart_port *port)
 		status = UART_GET_CSR(port);
 	}
 
-	tasklet_schedule(&atmel_port->tasklet);
+	tasklet_schedule(&atmel_port->tasklet_rx);
 }
 
 /*
@@ -752,7 +753,7 @@ static void atmel_complete_tx_dma(void *arg)
 	 * remaining data from the beginning of xmit->buf to xmit->head.
 	 */
 	if (!uart_circ_empty(xmit))
-		tasklet_schedule(&atmel_port->tasklet);
+		tasklet_schedule(&atmel_port->tasklet_tx);
 
 	spin_unlock_irqrestore(&port->lock, flags);
 }
@@ -905,7 +906,7 @@ static void atmel_complete_rx_dma(void *arg)
 	struct uart_port *port = arg;
 	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
 
-	tasklet_schedule(&atmel_port->tasklet);
+	tasklet_schedule(&atmel_port->tasklet_rx);
 }
 
 static void atmel_release_rx_dma(struct uart_port *port)
@@ -945,7 +946,7 @@ static void atmel_rx_from_dma(struct uart_port *port)
 	if (dmastat == DMA_ERROR) {
 		dev_dbg(port->dev, "Get residue error, restart tasklet\n");
 		UART_PUT_IER(port, ATMEL_US_TIMEOUT);
-		tasklet_schedule(&atmel_port->tasklet);
+		tasklet_schedule(&atmel_port->tasklet_rx);
 		return;
 	}
 
@@ -1099,7 +1100,7 @@ static void atmel_uart_timer_callback(unsigned long data)
 	struct uart_port *port = (void *)data;
 	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
 
-	tasklet_schedule(&atmel_port->tasklet);
+	tasklet_schedule(&atmel_port->tasklet_rx);
 	mod_timer(&atmel_port->uart_timer, jiffies + uart_poll_timeout(port));
 }
 
@@ -1122,7 +1123,7 @@ atmel_handle_receive(struct uart_port *port, unsigned int pending)
 		if (pending & (ATMEL_US_ENDRX | ATMEL_US_TIMEOUT)) {
 			UART_PUT_IDR(port, (ATMEL_US_ENDRX
 						| ATMEL_US_TIMEOUT));
-			tasklet_schedule(&atmel_port->tasklet);
+			tasklet_schedule(&atmel_port->tasklet_rx);
 		}
 
 		if (pending & (ATMEL_US_RXBRK | ATMEL_US_OVRE |
@@ -1133,7 +1134,7 @@ atmel_handle_receive(struct uart_port *port, unsigned int pending)
 	if (atmel_use_dma_rx(port)) {
 		if (pending & ATMEL_US_TIMEOUT) {
 			UART_PUT_IDR(port, ATMEL_US_TIMEOUT);
-			tasklet_schedule(&atmel_port->tasklet);
+			tasklet_schedule(&atmel_port->tasklet_rx);
 		}
 	}
 
@@ -1162,7 +1163,7 @@ atmel_handle_transmit(struct uart_port *port, unsigned int pending)
 	if (pending & atmel_port->tx_done_mask) {
 		/* Either PDC or interrupt transmission */
 		UART_PUT_IDR(port, atmel_port->tx_done_mask);
-		tasklet_schedule(&atmel_port->tasklet);
+		tasklet_schedule(&atmel_port->tasklet_tx);
 	}
 }
 
@@ -1536,18 +1537,25 @@ static int atmel_prepare_rx_pdc(struct uart_port *port)
 /*
  * tasklet handling tty stuff outside the interrupt handler.
  */
-static void atmel_tasklet_func(unsigned long data)
+static void atmel_tasklet_rx_func(unsigned long data)
 {
 	struct uart_port *port = (struct uart_port *)data;
 	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
 
 	/* The interrupt handler does not take the lock */
 	spin_lock(&port->lock);
-
-	atmel_port->schedule_tx(port);
-
 	atmel_port->schedule_rx(port);
+	spin_unlock(&port->lock);
+}
 
+static void atmel_tasklet_tx_func(unsigned long data)
+{
+	struct uart_port *port = (struct uart_port *)data;
+	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
+
+	/* The interrupt handler does not take the lock */
+	spin_lock(&port->lock);
+	atmel_port->schedule_tx(port);
 	spin_unlock(&port->lock);
 }
 
@@ -1774,7 +1782,8 @@ static int atmel_startup(struct uart_port *port)
 	if (retval)
 		goto free_irq;
 
-	tasklet_enable(&atmel_port->tasklet);
+	tasklet_enable(&atmel_port->tasklet_rx);
+	tasklet_enable(&atmel_port->tasklet_tx);
 
 	/*
 	 * Initialize DMA (if necessary)
@@ -1878,8 +1887,10 @@ static void atmel_shutdown(struct uart_port *port)
 	 * Clear out any scheduled tasklets before
 	 * we destroy the buffers
 	 */
-	tasklet_disable(&atmel_port->tasklet);
-	tasklet_kill(&atmel_port->tasklet);
+	tasklet_disable(&atmel_port->tasklet_rx);
+	tasklet_disable(&atmel_port->tasklet_tx);
+	tasklet_kill(&atmel_port->tasklet_rx);
+	tasklet_kill(&atmel_port->tasklet_tx);
 
 	/*
 	 * Ensure everything is stopped and
@@ -2294,9 +2305,12 @@ static int atmel_init_port(struct atmel_uart_port *atmel_port,
 	port->mapbase	= pdev->resource[0].start;
 	port->irq	= pdev->resource[1].start;
 
-	tasklet_init(&atmel_port->tasklet, atmel_tasklet_func,
+	tasklet_init(&atmel_port->tasklet_rx, atmel_tasklet_rx_func,
 			(unsigned long)port);
-	tasklet_disable(&atmel_port->tasklet);
+	tasklet_init(&atmel_port->tasklet_tx, atmel_tasklet_tx_func,
+			(unsigned long)port);
+	tasklet_disable(&atmel_port->tasklet_rx);
+	tasklet_disable(&atmel_port->tasklet_tx);
 
 	memset(&atmel_port->rx_ring, 0, sizeof(atmel_port->rx_ring));
 
@@ -2739,7 +2753,8 @@ static int atmel_serial_remove(struct platform_device *pdev)
 	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
 	int ret = 0;
 
-	tasklet_kill(&atmel_port->tasklet);
+	tasklet_kill(&atmel_port->tasklet_rx);
+	tasklet_kill(&atmel_port->tasklet_tx);
 
 	device_init_wakeup(&pdev->dev, 0);
 
