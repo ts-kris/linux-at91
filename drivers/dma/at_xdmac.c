@@ -250,7 +250,7 @@ struct at_xdmac_desc {
 	unsigned int			xfer_size;
 	struct list_head		descs_list;
 	struct list_head		xfer_node;
-};
+}__aligned(sizeof(u64));
 
 static inline void __iomem *at_xdmac_chan_reg_base(struct at_xdmac *atxdmac, unsigned int chan_nb)
 {
