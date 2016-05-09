@@ -42,15 +42,6 @@
 
 #define SAMA5D2_PMC_VERSION	0x20540
 
-#define SFR_OHCIICR	0x10
-#define SFR_OHCIICR_SUSPEND_A		BIT(8)
-#define SFR_OHCIICR_SUSPEND_B		BIT(9)
-#define SFR_OHCIICR_SUSPEND_C		BIT(10)
-
-#define SFR_OHCIICR_USB_SUSPEND		(SFR_OHCIICR_SUSPEND_A | \
-					 SFR_OHCIICR_SUSPEND_B | \
-					 SFR_OHCIICR_SUSPEND_C)
-
 void __iomem *pmc;
 
 /*
@@ -69,49 +60,6 @@ static struct {
 } at91_pm_data;
 
 void __iomem *at91_ramc_base[2];
-
-static struct regmap *sfr_regmap;
-
-static int at91_dt_syscon_sfr(void)
-{
-	sfr_regmap = syscon_regmap_lookup_by_compatible("atmel,sama5d2-sfr");
-	if (IS_ERR(sfr_regmap))
-		return PTR_ERR(sfr_regmap);
-
-	return 0;
-}
-
-static int at91_usb_transceiver(bool enable)
-{
-	u32 regval;
-	int ret;
-
-	if (IS_ERR(sfr_regmap))
-		return PTR_ERR(sfr_regmap);
-
-	ret = regmap_read(sfr_regmap, SFR_OHCIICR, &regval);
-	if (ret)
-		return ret;
-
-	if (enable)
-		regval &= ~SFR_OHCIICR_USB_SUSPEND;
-	else
-		regval |= SFR_OHCIICR_USB_SUSPEND;
-
-	regmap_write(sfr_regmap, SFR_OHCIICR, regval);
-
-	return 0;
-}
-
-static int at91_enable_usb_transceiver(void)
-{
-	return at91_usb_transceiver(true);
-}
-
-static int at91_disable_usb_transceiver(void)
-{
-	return at91_usb_transceiver(false);
-}
 
 static int at91_pm_valid_state(suspend_state_t state)
 {
@@ -217,8 +165,6 @@ static int at91_pm_enter(suspend_state_t state)
 {
 	at91_pinctrl_gpio_suspend();
 
-	at91_disable_usb_transceiver();
-
 	switch (state) {
 	/*
 	 * Suspend-to-RAM is like STANDBY plus slow clock mode, so
@@ -257,8 +203,6 @@ static int at91_pm_enter(suspend_state_t state)
 
 error:
 	target_state = PM_SUSPEND_ON;
-
-	at91_enable_usb_transceiver();
 
 	at91_pinctrl_gpio_resume();
 	return 0;
@@ -621,8 +565,6 @@ void __init at91sam9g45_pm_init(void)
 void __init at91sam9x5_pm_init(void)
 {
 	at91_dt_ramc();
-	at91_dt_syscon_sfr();
-
 	at91_pm_data.uhp_udp_mask = AT91SAM926x_PMC_UHP | AT91SAM926x_PMC_UDP;
 	at91_pm_data.memctrl = AT91_MEMCTRL_DDRSDR;
 	at91_pm_init();
