@@ -923,7 +923,8 @@ at_xdmac_tx_status(struct dma_chan *chan, dma_cookie_t cookie,
 	residue = desc->xfer_size;
 	/*
 	 * Flush FIFO: only relevant when the transfer is source peripheral
-	 * synchronized.
+	 * synchronized. It is needed before reading CUBC because data in
+	 * the FIFO are not reported by CUBC.
 	 */
 	mask = AT_XDMAC_CC_TYPE | AT_XDMAC_CC_DSYNC;
 	value = AT_XDMAC_CC_TYPE_PER_TRAN | AT_XDMAC_CC_DSYNC_PER2MEM;
@@ -976,6 +977,12 @@ at_xdmac_tx_status(struct dma_chan *chan, dma_cookie_t cookie,
 	if (unlikely(retry >= AT_XDMAC_RESIDUE_MAX_RETRIES)) {
 		ret = DMA_ERROR;
 		goto spin_unlock;
+	}
+
+	if ((desc->lld.mbr_cfg & mask) == value) {
+		at_xdmac_write(atxdmac, AT_XDMAC_GSWF, atchan->mask);
+		while (!(at_xdmac_chan_read(atchan, AT_XDMAC_CIS) & AT_XDMAC_CIS_FIS))
+			cpu_relax();
 	}
 
 	/*
