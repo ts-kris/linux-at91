@@ -946,7 +946,8 @@ static void wait_barrier(struct r10conf *conf)
 				    !conf->barrier ||
 				    (conf->nr_pending &&
 				     current->bio_list &&
-				     !bio_list_empty(current->bio_list)),
+				     (!bio_list_empty(&current->bio_list[0]) ||
+				      !bio_list_empty(&current->bio_list[1]))),
 				    conf->resync_lock);
 		conf->nr_waiting--;
 	}
@@ -1071,6 +1072,8 @@ static void __make_request(struct mddev *mddev, struct bio *bio)
 	int sectors_handled;
 	int max_sectors;
 	int sectors;
+
+	md_write_start(mddev, bio);
 
 	/*
 	 * Register the new request and wait if the reconstruction
@@ -1454,8 +1457,6 @@ static void make_request(struct mddev *mddev, struct bio *bio)
 		md_flush_request(mddev, bio);
 		return;
 	}
-
-	md_write_start(mddev, bio);
 
 	do {
 
