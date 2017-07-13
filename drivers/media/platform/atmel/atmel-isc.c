@@ -1822,6 +1822,10 @@ static int isc_formats_init(struct isc_device *isc)
 	       NULL, &mbus_code)) {
 		mbus_code.index++;
 
+		/* ISC doesn't support RGB formats from sensor */
+		if ((mbus_code.code & 0xf000) == 0x1000)
+			continue;
+
 		fmt = find_format_by_code(mbus_code.code, &i);
 		if ((!fmt) || (!(fmt->flags & FMT_FLAG_FROM_SENSOR)))
 			continue;
