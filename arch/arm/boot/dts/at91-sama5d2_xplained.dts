@@ -49,7 +49,7 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	model = "Atmel SAMA5D2 Xplained";
+	model = "Atmel SAMA5D2 Xplained B+S-R tests";
 	compatible = "atmel,sama5d2-xplained", "atmel,sama5d2", "atmel,sama5";
 
 	chosen {
