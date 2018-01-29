@@ -2241,8 +2241,17 @@ static void __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
 		sdhci_send_tuning(host, opcode);
 
 		if (!host->tuning_done) {
-			pr_info("%s: Tuning timeout, falling back to fixed sampling clock\n",
-				mmc_hostname(host->mmc));
+			/*
+			 * Tuning for DDR50 mode appeared in the SD 3.0.1
+			 * specification. If the card is only compliant with
+			 * SD 3.0 and not SD 3.0.1 (as most of the SD cards),
+			 * CMD19 will fail. In this case, the failure is not
+			 * an error. It's useless to display that we fall back
+			 * to fixed sampling clock at each tuning procedure.
+			 */
+			if (host->timing != MMC_TIMING_UHS_DDR50)
+				pr_info("%s: Tuning timeout, falling back to fixed sampling clock\n",
+					mmc_hostname(host->mmc));
 			sdhci_abort_tuning(host, opcode);
 			return;
 		}
