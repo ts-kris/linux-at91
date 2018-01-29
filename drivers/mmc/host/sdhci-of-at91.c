@@ -403,6 +403,8 @@ static int sdhci_at91_probe(struct platform_device *pdev)
 	if (host->mmc->caps & MMC_CAP_NONREMOVABLE)
 		sdhci_at91_set_force_card_detect(host);
 
+	device_init_wakeup(&pdev->dev, true);
+
 	pm_runtime_put_autosuspend(&pdev->dev);
 
 	return 0;
