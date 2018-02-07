@@ -286,10 +286,6 @@
 				};
 			};
 
-			watchdog@f8048040 {
-				status = "okay";
-			};
-
 			can0: can@f8054000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_can0_default>;
