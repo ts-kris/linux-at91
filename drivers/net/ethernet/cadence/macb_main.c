@@ -1884,23 +1884,14 @@ static void macb_reset_hw(struct macb *bp)
 {
 	struct macb_queue *queue;
 	unsigned int q;
-	unsigned long ctrl;
-
-	/*
-	 * Be careful to not disable port management, it seems that some
-	 * PHYs don't like it.
-	 */
-	ctrl = macb_readl(bp, NCR);
 
 	/* Disable RX and TX (XXX: Should we halt the transmission
 	 * more gracefully?)
 	 */
-	ctrl &= ~(MACB_BIT(RE) | MACB_BIT(TE));
-	macb_writel(bp, NCR, ctrl);
+	macb_writel(bp, NCR, 0);
 
 	/* Clear the stats registers (XXX: Update stats first?) */
-	ctrl |= MACB_BIT(CLRSTAT);
-	macb_writel(bp, NCR, ctrl);
+	macb_writel(bp, NCR, MACB_BIT(CLRSTAT));
 
 	/* Clear all status flags */
 	macb_writel(bp, TSR, -1);
@@ -3659,7 +3650,6 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		macb_writel(bp, WOL, MACB_BIT(MAG));
 		enable_irq_wake(bp->queues[0].irq);
 	} else {
-		bp->suspend.ncfgr = macb_readl(bp, NCFGR);
 		if (netif_running(netdev)) {
 			macb_close(netdev);
 		}
