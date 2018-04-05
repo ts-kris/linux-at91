@@ -982,11 +982,6 @@ struct macb_queue {
 #endif
 };
 
-struct macb_suspend_ctx {
-	u32 usrio;
-	u32 ncfgr;
-};
-
 struct macb {
 	void __iomem		*regs;
 	bool			native_io;
@@ -1062,9 +1057,6 @@ struct macb {
 	struct ptp_clock_info ptp_clock_info;
 	struct tsu_incr tsu_incr;
 	struct hwtstamp_config tstamp_config;
-
-	/* Suspend context. */
-	struct macb_suspend_ctx suspend;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
