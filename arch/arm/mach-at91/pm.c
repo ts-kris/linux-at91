@@ -149,6 +149,12 @@ int at91_suspend_entering_slow_clock(void)
 }
 EXPORT_SYMBOL(at91_suspend_entering_slow_clock);
 
+int at91_suspend_entering_backup(void)
+{
+	return (pm_data.mode == AT91_PM_BACKUP);
+}
+EXPORT_SYMBOL(at91_suspend_entering_backup);
+
 static void (*at91_suspend_sram_fn)(struct at91_pm_data *);
 extern void at91_pm_suspend_in_sram(struct at91_pm_data *pm_data);
 extern u32 at91_pm_suspend_in_sram_sz;

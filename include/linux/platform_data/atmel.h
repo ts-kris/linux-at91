@@ -22,8 +22,13 @@ struct at91_cf_data {
 /* FIXME: this needs a better location, but gets stuff building again */
 #ifdef CONFIG_ATMEL_PM
 extern int at91_suspend_entering_slow_clock(void);
+extern int at91_suspend_entering_backup(void);
 #else
 static inline int at91_suspend_entering_slow_clock(void)
+{
+	return 0;
+}
+static inline int at91_suspend_entering_backup(void)
 {
 	return 0;
 }
