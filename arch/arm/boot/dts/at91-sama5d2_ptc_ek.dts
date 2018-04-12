@@ -11,6 +11,7 @@
 #include "sama5d2-pinfunc.h"
 #include <dt-bindings/mfd/atmel-flexcom.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/at91.h>
 
 / {
 	model = "Atmel SAMA5D2 PTC EK";
@@ -124,8 +125,6 @@
 			bus-width = <8>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc0_default>;
-			non-removable;
-			mmc-ddr-1_8v;
 			status = "okay";
 		};
 
@@ -299,6 +298,7 @@
 							 <PIN_PA30__NWE_NANDWE>,
 							 <PIN_PB2__NRD_NANDOE>;
 						bias-pull-up;
+						drive-strength = <ATMEL_PIO_DRVSTR_ME>;
 					};
 
 					ale_cle_rdy_cs {
