@@ -173,10 +173,23 @@ static void __init of_at91sam9x5_clk_utmi_setup(struct device_node *np)
 	if (IS_ERR(regmap_pmc))
 		return;
 
-	/* SFR node missing is not necessarily an issue. */
-	regmap_sfr = syscon_regmap_lookup_by_compatible("atmel,sama5d2-sfr");
-	if (IS_ERR(regmap_sfr))
-		regmap_sfr = NULL;
+	/*
+	 * If the device supports different mainck rates, this value has to be
+	 * set in the UTMI Clock Trimming register.
+	 * - 9x5: mainck supports several rates but it is indicated that a
+	 *   12 MHz is needed in case of USB.
+	 * - sama5d3 and sama5d2: mainck supports several rates. Configuring
+	 *   the FREQ field of the UTMI Clock Trimming register is mandatory.
+	 * - sama5d4: mainck is at 12 MHz.
+	 *
+	 * We only need to retrieve sama5d3 or sama5d2 sfr regmap.
+	 */
+	regmap_sfr = syscon_regmap_lookup_by_compatible("atmel,sama5d3-sfr");
+	if (IS_ERR(regmap_sfr)) {
+		regmap_sfr = syscon_regmap_lookup_by_compatible("atmel,sama5d2-sfr");
+		if (IS_ERR(regmap_sfr))
+			regmap_sfr = NULL;
+	}
 
 	hw = at91_clk_register_utmi(regmap_pmc, regmap_sfr, name, parent_name);
 	if (IS_ERR(hw))
