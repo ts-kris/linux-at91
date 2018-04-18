@@ -19,6 +19,8 @@
 #include <linux/suspend.h>
 
 #include <linux/clk/at91_pmc.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
 
 #include <asm/cacheflush.h>
 #include <asm/fncpy.h>
@@ -40,15 +42,16 @@ extern void at91_pinctrl_gpio_resume(void);
 #endif
 
 static const match_table_t pm_modes __initconst = {
-	{ 0, "standby" },
-	{ AT91_PM_SLOW_CLOCK, "ulp0" },
+	{ AT91_PM_STANDBY, "standby" },
+	{ AT91_PM_ULP0, "ulp0" },
+	{ AT91_PM_ULP1, "ulp1" },
 	{ AT91_PM_BACKUP, "backup" },
 	{ -1, NULL },
 };
 
 static struct at91_pm_data pm_data = {
-	.standby_mode = 0,
-	.suspend_mode = AT91_PM_SLOW_CLOCK,
+	.standby_mode = AT91_PM_STANDBY,
+	.suspend_mode = AT91_PM_ULP0,
 };
 
 #define at91_ramc_read(id, field) \
@@ -145,7 +148,7 @@ static int at91_pm_verify_clocks(void)
  */
 int at91_suspend_entering_slow_clock(void)
 {
-	return (pm_data.mode >= AT91_PM_SLOW_CLOCK);
+	return (pm_data.mode >= AT91_PM_ULP0);
 }
 EXPORT_SYMBOL(at91_suspend_entering_slow_clock);
 
@@ -186,7 +189,7 @@ static void at91_pm_suspend(suspend_state_t state)
  * event sources; and reduces DRAM power.  But otherwise it's identical to
  * PM_SUSPEND_ON: cpu idle, and nothing fancy done with main or cpu clocks.
  *
- * AT91_PM_SLOW_CLOCK is like STANDBY plus slow clock mode, so drivers must
+ * AT91_PM_ULP0 is like STANDBY plus slow clock mode, so drivers must
  * suspend more deeply, the master clock switches to the clk32k and turns off
  * the main oscillator
  *
@@ -204,7 +207,7 @@ static int at91_pm_enter(suspend_state_t state)
 		/*
 		 * Ensure that clocks are in a valid state.
 		 */
-		if ((pm_data.mode >= AT91_PM_SLOW_CLOCK) &&
+		if (pm_data.mode >= AT91_PM_ULP0 &&
 		    !at91_pm_verify_clocks())
 			goto error;
 
@@ -546,9 +549,9 @@ securam_fail:
 	pm_data.sfrbu = NULL;
 
 	if (pm_data.standby_mode == AT91_PM_BACKUP)
-		pm_data.standby_mode = AT91_PM_SLOW_CLOCK;
+		pm_data.standby_mode = AT91_PM_ULP0;
 	if (pm_data.suspend_mode == AT91_PM_BACKUP)
-		pm_data.suspend_mode = AT91_PM_SLOW_CLOCK;
+		pm_data.suspend_mode = AT91_PM_ULP0;
 }
 
 struct pmc_info {
@@ -606,6 +609,68 @@ static void __init at91_pm_init(void (*pm_idle)(void))
 	}
 }
 
+static int __init at91_pmc_fast_startup_init(void)
+{
+	struct device_node *np, *cnp;
+	struct regmap *regmap;
+	u32 input, input_mask;
+	u32 mode = 0, polarity = 0;
+
+	np = of_find_compatible_node(NULL, NULL,
+				     "atmel,sama5d2-pmc-fast-startup");
+	if (!np)
+		return -ENODEV;
+
+	regmap = syscon_node_to_regmap(of_get_parent(np));
+	if (IS_ERR(regmap)) {
+		pr_info("AT91: failed to find PMC fast startup node\n");
+		return PTR_ERR(regmap);
+	}
+
+	for_each_child_of_node(np, cnp) {
+		if (of_property_read_u32(cnp, "reg", &input)) {
+			pr_warn("AT91: reg property is missing for %s\n",
+				cnp->full_name);
+			continue;
+		}
+
+		input_mask = 1 << input;
+		if (!(input_mask & AT91_PMC_FS_INPUT_MASK)) {
+			pr_warn("AT91: wake-up input %d out of range\n", input);
+			continue;
+		}
+		mode |= input_mask;
+
+		if (of_property_read_bool(cnp, "atmel,wakeup-active-high"))
+			polarity |= input_mask;
+	}
+
+	if (of_property_read_bool(np, "atmel,wakeup-rtc-timer"))
+		mode |= AT91_PMC_RTCAL;
+
+	if (of_property_read_bool(np, "atmel,wakeup-usb-resume"))
+		mode |= AT91_PMC_USBAL;
+
+	if (of_property_read_bool(np, "atmel,wakeup-sdmmc-cd"))
+		mode |= AT91_PMC_SDMMC_CD;
+
+	if (of_property_read_bool(np, "atmel,wakeup-rxlp-match"))
+		mode |= AT91_PMC_RXLP_MCE;
+
+	if (of_property_read_bool(np, "atmel,wakeup-acc-comparison"))
+		mode |= AT91_PMC_ACC_CE;
+
+	pr_debug("AT91: mode = 0x%x, ploarity = 0%x\n", mode, polarity);
+
+	regmap_write(regmap, AT91_PMC_FSMR, mode);
+
+	regmap_write(regmap, AT91_PMC_FSPR, polarity);
+
+	of_node_put(np);
+
+	return 0;
+}
+
 void __init at91rm9200_pm_init(void)
 {
 	if (!IS_ENABLED(CONFIG_SOC_AT91RM9200))
@@ -646,6 +711,7 @@ void __init sama5d2_pm_init(void)
 
 	at91_pm_backup_init();
 	sama5_pm_init();
+	at91_pmc_fast_startup_init();
 }
 
 static int __init at91_pm_modes_select(char *str)
