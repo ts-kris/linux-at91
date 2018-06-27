@@ -54,7 +54,7 @@ static const struct of_device_id at91_usart_mode_of_match[] = {
 	{ /* sentinel */ }
 };
 
-MODULE_DEVICE_TABLE(of, at91_flexcom_of_match);
+MODULE_DEVICE_TABLE(of, at91_usart_mode_of_match);
 
 static struct platform_driver at91_usart_mfd = {
 	.probe	= at91_usart_mode_probe,
