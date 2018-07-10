@@ -39,7 +39,7 @@
 						compatible = "qt1070";
 						reg = <0x1b>;
 						interrupt-parent = <&pioA>;
-						interrupts = <98 0x0>;
+						interrupts = <PIN_PD2 IRQ_TYPE_NONE>;
 						pinctrl-names = "default";
 						pinctrl-0 = <&pinctrl_qt1070_irq>;
 						wakeup-source;
@@ -49,7 +49,7 @@
 						compatible = "atmel,atmel_mxt_ts";
 						reg = <0x4a>;
 						interrupt-parent = <&pioA>;
-						interrupts = <73 0x0>;
+						interrupts = <PIN_PC9 IRQ_TYPE_NONE>;
 						pinctrl-names = "default";
 						pinctrl-0 = <&pinctrl_mxt_irq>;
 					};
