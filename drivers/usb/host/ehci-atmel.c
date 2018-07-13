@@ -21,6 +21,8 @@
 #include <linux/platform_device.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/phy.h>
+#include <linux/usb/of.h>
 
 #include "ehci.h"
 
@@ -154,6 +156,10 @@ static int ehci_atmel_drv_probe(struct platform_device *pdev)
 	ehci->caps = hcd->regs;
 
 	atmel_start_ehci(pdev);
+
+	if (of_usb_get_phy_mode(pdev->dev.of_node) ==
+	    USBPHY_INTERFACE_MODE_HSIC)
+		writel_relaxed(0x4, hcd->regs + 0xb0);
 
 	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (retval)
