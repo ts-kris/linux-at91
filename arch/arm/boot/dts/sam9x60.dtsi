@@ -476,6 +476,16 @@
 				};
 			};
 
+			gpu: gfx2d@f0018000 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "atmel,gfx2d";
+				reg = <0xf0018000 0x4000>;
+				interrupts = <36 IRQ_TYPE_LEVEL_HIGH 0>;
+				clocks = <&gfx2d_clk>;
+				clock-names = "periph_clk";
+			};
+
 			usb2: gadget@f803c000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
