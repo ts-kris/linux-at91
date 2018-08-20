@@ -1077,6 +1077,37 @@ struct macb_ptp_info {
 			 struct ifreq *ifr, int cmd);
 };
 
+struct macb_sama5d2_pm_data {
+	u32 etht;
+	u32 usrio;
+};
+
+struct macb_pm_ops {
+	int (*suspend)(struct macb *bp);
+	int (*resume)(struct macb *bp);
+};
+
+struct macb_pm {
+	bool				(*can_wol)(void);
+	const struct macb_pm_ops	*ops;
+	const u32			data_size;
+};
+
+#ifdef CONFIG_PM
+#define MACB_CONFIG_PM(name, can_wol_fn, suspend_fn, resume_fn, data_sz) \
+static const struct macb_pm_ops name##_ops = { \
+	.suspend = suspend_fn, \
+	.resume = resume_fn, \
+}; \
+static const struct macb_pm name = { \
+	.can_wol = can_wol_fn, \
+	.ops = &name##_ops, \
+	.data_size = data_sz, \
+}
+#else
+#define MACB_CONFIG_PM(name, can_wol_fn, suspend_fn, resume_fn, data_sz)
+#endif
+
 struct macb_config {
 	u32			caps;
 	unsigned int		dma_burst_length;
@@ -1084,6 +1115,7 @@ struct macb_config {
 			    struct clk **hclk, struct clk **tx_clk,
 			    struct clk **rx_clk);
 	int	(*init)(struct platform_device *pdev);
+	const struct macb_pm	*pm;
 	int	jumbo_max_len;
 };
 
@@ -1177,7 +1209,6 @@ struct macb {
 	int 			duplex;
 
 	u32			caps;
-	unsigned int		dma_burst_length;
 
 	phy_interface_t		phy_interface;
 
@@ -1190,7 +1221,6 @@ struct macb {
 	u64			ethtool_stats[GEM_STATS_LEN + QUEUE_STATS_LEN * MACB_MAX_QUEUES];
 
 	unsigned int		rx_frm_len_mask;
-	unsigned int		jumbo_max_len;
 
 	u32			wol;
 
@@ -1214,6 +1244,10 @@ struct macb {
 
 	int	rx_bd_rd_prefetch;
 	int	tx_bd_rd_prefetch;
+
+	const struct macb_config *config;
+
+	void *pm_data;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
