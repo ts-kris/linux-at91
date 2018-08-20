@@ -38,6 +38,10 @@ Required properties:
  - clock-names: Should contain two strings
 		"ehci_clk" for the peripheral clock
 		"usb_clk" for the UTMI clock
+Optional properties:
+ - phy_type: Enables HSIC port. If the device linked on HSIC needs vbus,
+	     a atmel,vbus-gpio property must be specified in ohci node.
+             Must be "hsic"
 
 usb1: ehci@00800000 {
 	compatible = "atmel,at91sam9g45-ehci", "usb-ehci";
