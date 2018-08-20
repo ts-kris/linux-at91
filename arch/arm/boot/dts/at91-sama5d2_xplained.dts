@@ -49,7 +49,7 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	model = "Atmel SAMA5D2 Xplained";
+	model = "Atmel SAMA5D2 Xplained B+S-R tests";
 	compatible = "atmel,sama5d2-xplained", "atmel,sama5d2", "atmel,sama5";
 
 	chosen {
@@ -246,6 +246,14 @@
 							regulator-min-microvolt = <1350000>;
 							regulator-max-microvolt = <1350000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-on-in-suspend;
+								regulator-suspend-microvolt = <1400000>;
+								/* Power saving mode. */
+								regulator-mode = <0>;
+								regulator-allow-changes-at-runtime;
+							};
 						};
 
 						vdd_1v2_reg: REG_DCDC2 {
@@ -253,6 +261,10 @@
 							regulator-min-microvolt = <1100000>;
 							regulator-max-microvolt = <1300000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 
 						vdd_3v3_reg: REG_DCDC3 {
@@ -260,6 +272,10 @@
 							regulator-min-microvolt = <3300000>;
 							regulator-max-microvolt = <3300000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 
 						vdd_fuse_reg: REG_LDO1 {
@@ -267,6 +283,10 @@
 							regulator-min-microvolt = <2500000>;
 							regulator-max-microvolt = <2500000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 
 						vdd_3v3_lp_reg: REG_LDO2 {
@@ -274,6 +294,10 @@
 							regulator-min-microvolt = <3300000>;
 							regulator-max-microvolt = <3300000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 
 						vdd_led_reg: REG_LDO3 {
@@ -281,6 +305,10 @@
 							regulator-min-microvolt = <3300000>;
 							regulator-max-microvolt = <3300000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 
 						vdd_sdhc_1v8_reg: REG_LDO4 {
@@ -288,6 +316,10 @@
 							regulator-min-microvolt = <1800000>;
 							regulator-max-microvolt = <1800000>;
 							regulator-always-on;
+
+							regulator-state-mem {
+								regulator-off-in-suspend;
+							};
 						};
 					};
 

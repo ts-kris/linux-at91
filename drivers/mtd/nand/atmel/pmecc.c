@@ -148,18 +148,6 @@ struct atmel_pmecc_caps {
 	bool correct_erased_chunks;
 };
 
-struct atmel_pmecc {
-	struct device *dev;
-	const struct atmel_pmecc_caps *caps;
-
-	struct {
-		void __iomem *base;
-		void __iomem *errloc;
-	} regs;
-
-	struct mutex lock;
-};
-
 struct atmel_pmecc_user_conf_cache {
 	u32 cfg;
 	u32 sarea;
@@ -833,7 +821,8 @@ EXPORT_SYMBOL_GPL(atmel_pmecc_wait_rdy);
 
 static struct atmel_pmecc *atmel_pmecc_create(struct platform_device *pdev,
 					const struct atmel_pmecc_caps *caps,
-					int pmecc_res_idx, int errloc_res_idx)
+					int pmecc_res_idx, int errloc_res_idx,
+					int timing_res_idx)
 {
 	struct device *dev = &pdev->dev;
 	struct atmel_pmecc *pmecc;
@@ -856,6 +845,15 @@ static struct atmel_pmecc *atmel_pmecc_create(struct platform_device *pdev,
 	pmecc->regs.errloc = devm_ioremap_resource(dev, res);
 	if (IS_ERR(pmecc->regs.errloc))
 		return ERR_CAST(pmecc->regs.errloc);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, timing_res_idx);
+	if (!res) {
+		pmecc->regs.timing = NULL;
+	} else {
+		pmecc->regs.timing = devm_ioremap_resource(dev, res);
+		if (IS_ERR(pmecc->regs.timing))
+			return ERR_CAST(pmecc->regs.timing);
+	}
 
 	/* Disable all interrupts before registering the PMECC handler. */
 	writel(0xffffffff, pmecc->regs.base + ATMEL_PMECC_IDR);
@@ -961,7 +959,7 @@ struct atmel_pmecc *devm_atmel_pmecc_get(struct device *userdev)
 		if (match && match->data)
 			caps = match->data;
 
-		pmecc = atmel_pmecc_create(pdev, caps, 1, 2);
+		pmecc = atmel_pmecc_create(pdev, caps, 1, 2, 4);
 	}
 
 	return pmecc;
@@ -988,7 +986,7 @@ static int atmel_pmecc_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	pmecc = atmel_pmecc_create(pdev, caps, 0, 1);
+	pmecc = atmel_pmecc_create(pdev, caps, 0, 1, 2);
 	if (IS_ERR(pmecc))
 		return PTR_ERR(pmecc);
 

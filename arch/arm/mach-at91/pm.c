@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/parser.h>
+#include <linux/regulator/machine.h>
 #include <linux/suspend.h>
 
 #include <linux/clk/at91_pmc.h>
@@ -100,7 +101,7 @@ static int at91_pm_begin(suspend_state_t state)
 		pm_data.mode = -1;
 	}
 
-	return 0;
+	return regulator_suspend_begin(state);
 }
 
 /*
@@ -236,6 +237,7 @@ error:
  */
 static void at91_pm_end(void)
 {
+	regulator_suspend_end();
 }
 
 
