@@ -2144,8 +2144,9 @@ static void macb_configure_dma(struct macb *bp)
 			else
 				dmacfg |= GEM_BF(RXBS, buffer_size);
 		}
-		if (bp->dma_burst_length)
-			dmacfg = GEM_BFINS(FBLDO, bp->dma_burst_length, dmacfg);
+		if (bp->config->dma_burst_length)
+			dmacfg = GEM_BFINS(FBLDO, bp->config->dma_burst_length,
+					   dmacfg);
 		dmacfg |= GEM_BIT(TXPBMS) | GEM_BF(RXBMS, -1L);
 		dmacfg &= ~GEM_BIT(ENDIA_PKT);
 
@@ -2201,8 +2202,8 @@ static void macb_init_hw(struct macb *bp)
 		config |= MACB_BIT(NBC);	/* No BroadCast */
 	config |= macb_dbw(bp);
 	macb_writel(bp, NCFGR, config);
-	if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
-		gem_writel(bp, JML, bp->jumbo_max_len);
+	if ((bp->caps & MACB_CAPS_JUMBO) && bp->config->jumbo_max_len)
+		gem_writel(bp, JML, bp->config->jumbo_max_len);
 	bp->speed = SPEED_10;
 	bp->duplex = DUPLEX_HALF;
 	bp->rx_frm_len_mask = MACB_RX_FRMLEN_MASK;
@@ -3208,13 +3209,12 @@ static const struct net_device_ops macb_netdev_ops = {
 /* Configure peripheral capabilities according to device tree
  * and integration options used
  */
-static void macb_configure_caps(struct macb *bp,
-				const struct macb_config *dt_conf)
+static void macb_configure_caps(struct macb *bp)
 {
 	u32 dcfg;
 
-	if (dt_conf)
-		bp->caps = dt_conf->caps;
+	if (bp->config)
+		bp->caps = bp->config->caps;
 
 	if (hw_is_gem(bp->regs, bp->native_io)) {
 		bp->caps |= MACB_CAPS_MACB_IS_GEM;
@@ -3926,10 +3926,6 @@ static const struct macb_config default_gem_config = {
 static int macb_probe(struct platform_device *pdev)
 {
 	const struct macb_config *macb_config = &default_gem_config;
-	int (*clk_init)(struct platform_device *, struct clk **,
-			struct clk **, struct clk **,  struct clk **)
-					      = macb_config->clk_init;
-	int (*init)(struct platform_device *) = macb_config->init;
 	struct device_node *np = pdev->dev.of_node;
 	struct clk *pclk, *hclk = NULL, *tx_clk = NULL, *rx_clk = NULL;
 	unsigned int queue_mask, num_queues;
@@ -3952,14 +3948,11 @@ static int macb_probe(struct platform_device *pdev)
 		const struct of_device_id *match;
 
 		match = of_match_node(macb_dt_ids, np);
-		if (match && match->data) {
+		if (match && match->data)
 			macb_config = match->data;
-			clk_init = macb_config->clk_init;
-			init = macb_config->init;
-		}
 	}
 
-	err = clk_init(pdev, &pclk, &hclk, &tx_clk, &rx_clk);
+	err = macb_config->clk_init(pdev, &pclk, &hclk, &tx_clk, &rx_clk);
 	if (err)
 		return err;
 
@@ -3980,6 +3973,7 @@ static int macb_probe(struct platform_device *pdev)
 	bp->pdev = pdev;
 	bp->dev = dev;
 	bp->regs = mem;
+	bp->config = macb_config;
 	bp->native_io = native_io;
 	if (native_io) {
 		bp->macb_reg_readl = hw_readl_native;
@@ -3990,14 +3984,10 @@ static int macb_probe(struct platform_device *pdev)
 	}
 	bp->num_queues = num_queues;
 	bp->queue_mask = queue_mask;
-	if (macb_config)
-		bp->dma_burst_length = macb_config->dma_burst_length;
 	bp->pclk = pclk;
 	bp->hclk = hclk;
 	bp->tx_clk = tx_clk;
 	bp->rx_clk = rx_clk;
-	if (macb_config)
-		bp->jumbo_max_len = macb_config->jumbo_max_len;
 
 	bp->wol = 0;
 	if (of_get_property(np, "magic-packet", NULL))
@@ -4007,7 +3997,7 @@ static int macb_probe(struct platform_device *pdev)
 	spin_lock_init(&bp->lock);
 
 	/* setup capabilities */
-	macb_configure_caps(bp, macb_config);
+	macb_configure_caps(bp);
 
 #ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	if (GEM_BFEXT(DAW64, gem_readl(bp, DCFG6))) {
@@ -4066,7 +4056,7 @@ static int macb_probe(struct platform_device *pdev)
 	}
 
 	/* IP specific init */
-	err = init(pdev);
+	err = bp->config->init(pdev);
 	if (err)
 		goto err_out_free_netdev;
 

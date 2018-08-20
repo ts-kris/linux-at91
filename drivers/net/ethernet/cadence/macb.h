@@ -1177,7 +1177,6 @@ struct macb {
 	int 			duplex;
 
 	u32			caps;
-	unsigned int		dma_burst_length;
 
 	phy_interface_t		phy_interface;
 
@@ -1190,7 +1189,6 @@ struct macb {
 	u64			ethtool_stats[GEM_STATS_LEN + QUEUE_STATS_LEN * MACB_MAX_QUEUES];
 
 	unsigned int		rx_frm_len_mask;
-	unsigned int		jumbo_max_len;
 
 	u32			wol;
 
@@ -1214,6 +1212,8 @@ struct macb {
 
 	int	rx_bd_rd_prefetch;
 	int	tx_bd_rd_prefetch;
+
+	const struct macb_config *config;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
