@@ -561,6 +561,8 @@ void phylink_destroy(struct phylink *pl)
 {
 	if (pl->sfp_bus)
 		sfp_unregister_upstream(pl->sfp_bus);
+	if (!IS_ERR(pl->link_gpio))
+		gpiod_put(pl->link_gpio);
 
 	cancel_work_sync(&pl->resolve);
 	kfree(pl);
@@ -772,6 +774,7 @@ void phylink_stop(struct phylink *pl)
 		sfp_upstream_stop(pl->sfp_bus);
 
 	set_bit(PHYLINK_DISABLE_STOPPED, &pl->phylink_disable_state);
+	queue_work(system_power_efficient_wq, &pl->resolve);
 	flush_work(&pl->resolve);
 }
 EXPORT_SYMBOL_GPL(phylink_stop);
