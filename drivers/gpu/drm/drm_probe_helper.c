@@ -206,7 +206,7 @@ enum drm_mode_status drm_connector_mode_valid(struct drm_connector *connector,
 	return connector_funcs->mode_valid(connector, mode);
 }
 
-#define DRM_OUTPUT_POLL_PERIOD (10*HZ)
+#define DRM_OUTPUT_POLL_PERIOD (4*HZ)
 /**
  * drm_kms_helper_poll_enable - re-enable output polling.
  * @dev: drm_device
