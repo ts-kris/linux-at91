@@ -227,7 +227,6 @@ static int cx24116_writeregN(struct cx24116_state *state, int reg,
 
 	buf = kmalloc(len + 1, GFP_KERNEL);
 	if (buf == NULL) {
-		printk("Unable to kmalloc\n");
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -1127,7 +1126,7 @@ struct dvb_frontend *cx24116_attach(const struct cx24116_config *config,
 	dprintk("%s\n", __func__);
 
 	/* allocate memory for the internal state */
-	state = kzalloc(sizeof(struct cx24116_state), GFP_KERNEL);
+	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (state == NULL)
 		goto error1;
 

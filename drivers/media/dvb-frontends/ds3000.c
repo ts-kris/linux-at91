@@ -277,10 +277,8 @@ static int ds3000_writeFW(struct ds3000_state *state, int reg,
 	u8 *buf;
 
 	buf = kmalloc(33, GFP_KERNEL);
-	if (buf == NULL) {
-		printk(KERN_ERR "Unable to kmalloc\n");
+	if (!buf)
 		return -ENOMEM;
-	}
 
 	*(buf) = reg;
 
@@ -841,11 +839,9 @@ struct dvb_frontend *ds3000_attach(const struct ds3000_config *config,
 	dprintk("%s\n", __func__);
 
 	/* allocate memory for the internal state */
-	state = kzalloc(sizeof(struct ds3000_state), GFP_KERNEL);
-	if (state == NULL) {
-		printk(KERN_ERR "Unable to kmalloc\n");
+	state = kzalloc(sizeof(*state), GFP_KERNEL);
+	if (!state)
 		goto error2;
-	}
 
 	state->config = config;
 	state->i2c = i2c;

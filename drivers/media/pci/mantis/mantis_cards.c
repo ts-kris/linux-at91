@@ -173,11 +173,9 @@ static int mantis_pci_probe(struct pci_dev *pdev,
 	struct mantis_hwconfig *config;
 	int err = 0;
 
-	mantis = kzalloc(sizeof(struct mantis_pci), GFP_KERNEL);
-	if (mantis == NULL) {
-		printk(KERN_ERR "%s ERROR: Out of memory\n", __func__);
+	mantis = kzalloc(sizeof(*mantis), GFP_KERNEL);
+	if (!mantis)
 		return -ENOMEM;
-	}
 
 	drvdata			= (void *)pci_id->driver_data;
 	mantis->num		= devs;
