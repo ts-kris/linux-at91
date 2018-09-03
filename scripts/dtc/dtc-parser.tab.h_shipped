@@ -59,14 +59,15 @@ extern int yydebug;
     DT_BITS = 269,
     DT_DEL_PROP = 270,
     DT_DEL_NODE = 271,
-    DT_PROPNODENAME = 272,
-    DT_LITERAL = 273,
-    DT_CHAR_LITERAL = 274,
-    DT_BYTE = 275,
-    DT_STRING = 276,
-    DT_LABEL = 277,
-    DT_REF = 278,
-    DT_INCBIN = 279
+    DT_OMIT_NO_REF = 272,
+    DT_PROPNODENAME = 273,
+    DT_LITERAL = 274,
+    DT_CHAR_LITERAL = 275,
+    DT_BYTE = 276,
+    DT_STRING = 277,
+    DT_LABEL = 278,
+    DT_REF = 279,
+    DT_INCBIN = 280
   };
 #endif
 
@@ -95,7 +96,7 @@ union YYSTYPE
 	uint64_t integer;
 	unsigned int flags;
 
-#line 99 "dtc-parser.tab.h" /* yacc.c:1909  */
+#line 100 "dtc-parser.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;
