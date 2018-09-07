@@ -298,7 +298,7 @@
 							 <PIN_PA30__NWE_NANDWE>,
 							 <PIN_PB2__NRD_NANDOE>;
 						bias-pull-up;
-						drive-strength = <ATMEL_PIO_DRVSTR_ME>;
+						atmel,drive-strength = <ATMEL_PIO_DRVSTR_ME>;
 					};
 
 					ale_cle_rdy_cs {
