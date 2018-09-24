@@ -2048,22 +2048,16 @@ static void macb_reset_hw(struct macb *bp)
 {
 	struct macb_queue *queue;
 	unsigned int q;
-	unsigned long ctrl;
-
-	/*
-	 * Be careful to not disable port management, it seems that some
-	 * PHYs don't like it.
-	 */
-	ctrl = macb_readl(bp, NCR);
+	u32 ctrl = macb_readl(bp, NCR);
 
 	/* Disable RX and TX (XXX: Should we halt the transmission
 	 * more gracefully?)
 	 */
 	ctrl &= ~(MACB_BIT(RE) | MACB_BIT(TE));
-	macb_writel(bp, NCR, ctrl);
 
 	/* Clear the stats registers (XXX: Update stats first?) */
 	ctrl |= MACB_BIT(CLRSTAT);
+
 	macb_writel(bp, NCR, ctrl);
 
 	/* Clear all status flags */
@@ -2253,7 +2247,7 @@ static void macb_init_hw(struct macb *bp)
 	}
 
 	/* Enable TX and RX */
-	macb_writel(bp, NCR, MACB_BIT(RE) | MACB_BIT(TE) | MACB_BIT(MPE));
+	macb_writel(bp, NCR, macb_readl(bp, NCR) | MACB_BIT(RE) | MACB_BIT(TE));
 }
 
 /* The hash address register is 64 bits long and takes up two

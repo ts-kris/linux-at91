@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 69
-EXTRAVERSION = -linux4sam_6.0-rc2
+SUBLEVEL = 71
+EXTRAVERSION =
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
