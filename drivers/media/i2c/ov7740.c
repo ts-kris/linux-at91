@@ -1136,7 +1136,9 @@ error_init_controls:
 	ov7740_free_controls(ov7740);
 error_detect:
 	ov7740_set_power(ov7740, 0);
+#if defined(CONFIG_MEDIA_CONTROLLER)
 	media_entity_cleanup(&ov7740->subdev.entity);
+#endif
 
 	return ret;
 }
