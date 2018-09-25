@@ -3919,6 +3919,8 @@ static int __maybe_unused macb_sama5d2_suspend(struct macb *bp)
 	if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
 		pm_data->usrio = macb_or_gem_readl(bp, USRIO);
 
+	pm_data->ncr = macb_readl(bp, NCR);
+
 	if (netif_running(netdev))
 		macb_close(netdev);
 
@@ -3932,6 +3934,8 @@ static int __maybe_unused macb_sama5d2_resume(struct macb *bp)
 
 	if (!macb_sama5d2_backup())
 		return -EPERM;
+
+	macb_writel(bp, NCR, pm_data->ncr & MACB_BIT(MPE));
 
 	if (netdev->hw_features & NETIF_F_NTUPLE)
 		gem_writel_n(bp, ETHT, SCRT2_ETHT, pm_data->etht);

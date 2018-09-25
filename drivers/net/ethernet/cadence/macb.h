@@ -1080,6 +1080,7 @@ struct macb_ptp_info {
 struct macb_sama5d2_pm_data {
 	u32 etht;
 	u32 usrio;
+	u32 ncr;
 };
 
 struct macb_pm_ops {
