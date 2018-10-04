@@ -1254,6 +1254,9 @@ drm_atomic_helper_wait_for_vblanks(struct drm_device *dev,
 		if (!new_crtc_state->active || !new_crtc_state->planes_changed)
 			continue;
 
+		if (!drm_atomic_helper_framebuffer_changed(dev,
+                                old_state, crtc))
+			continue;
 		ret = drm_crtc_vblank_get(crtc);
 		if (ret != 0)
 			continue;
