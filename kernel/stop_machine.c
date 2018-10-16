@@ -84,8 +84,8 @@ static bool cpu_stop_queue_work(unsigned int cpu, struct cpu_stop_work *work)
 		__cpu_stop_queue_work(stopper, work);
 	else if (work->done)
 		cpu_stop_signal_done(work->done);
-	raw_spin_unlock_irqrestore(&stopper->lock, flags);
 
+	raw_spin_unlock_irqrestore(&stopper->lock, flags);
 	return enabled;
 }
 
@@ -474,6 +474,8 @@ repeat:
 		void *arg = work->arg;
 		struct cpu_stop_done *done = work->done;
 		int ret;
+
+		/* XXX */
 
 		/* cpu stop callbacks must not sleep, make in_atomic() == T */
 		preempt_count_inc();
