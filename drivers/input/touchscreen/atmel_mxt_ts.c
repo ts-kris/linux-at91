@@ -418,8 +418,10 @@ static void mxt_debug_msg_enable(struct mxt_data *data)
 
 	data->debug_msg_data = kcalloc(DEBUG_MSG_MAX,
 				data->T5_msg_size, GFP_KERNEL);
-	if (!data->debug_msg_data)
+	if (!data->debug_msg_data) {
+		mutex_unlock(&data->debug_msg_lock);
 		return;
+	}
 
 	data->debug_v2_enabled = true;
 	mutex_unlock(&data->debug_msg_lock);
@@ -451,6 +453,7 @@ static void mxt_debug_msg_add(struct mxt_data *data, u8 *msg)
 	mutex_lock(&data->debug_msg_lock);
 
 	if (!data->debug_msg_data) {
+		mutex_unlock(&data->debug_msg_lock);
 		dev_err(dev, "No buffer!\n");
 		return;
 	}
@@ -684,6 +687,9 @@ static int mxt_check_bootloader(struct mxt_data *data)
 	struct mxt_flash *f = data->flash;
 	u8 state;
 	int ret;
+
+	if (!f)
+		return -EINVAL;
 
 	/* Handle interrupt after download/flash process */
 	if (f->pos >= f->fw->size) {
