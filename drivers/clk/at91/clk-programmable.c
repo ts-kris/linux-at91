@@ -229,6 +229,12 @@ static const struct clk_programmable_layout at91sam9x5_programmable_layout = {
 	.have_slck_mck = 0,
 };
 
+static const struct clk_programmable_layout sam9x60_programmable_layout = {
+	.pres_shift = 8,
+	.css_mask = 0x1f,
+	.have_slck_mck = 0,
+};
+
 static void __init
 of_at91_clk_prog_setup(struct device_node *np,
 		       const struct clk_programmable_layout *layout)
@@ -294,3 +300,10 @@ static void __init of_at91sam9x5_clk_prog_setup(struct device_node *np)
 }
 CLK_OF_DECLARE(at91sam9x5_clk_prog, "atmel,at91sam9x5-clk-programmable",
 	       of_at91sam9x5_clk_prog_setup);
+
+static void __init of_sam9x60_clk_prog_setup(struct device_node *np)
+{
+	of_at91_clk_prog_setup(np, &sam9x60_programmable_layout);
+}
+CLK_OF_DECLARE(sam9x60_clk_prog, "microchip,sam9x60-clk-programmable",
+	       of_sam9x60_clk_prog_setup);
