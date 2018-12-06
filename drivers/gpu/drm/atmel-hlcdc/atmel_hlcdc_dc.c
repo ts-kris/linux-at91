@@ -853,9 +853,9 @@ static void atmel_hlcdc_dc_irq_uninstall(struct drm_device *dev)
 DEFINE_DRM_GEM_CMA_FOPS(fops);
 
 /*
-ioctl to export the physical address of GEM to user space for
-video decoder
-*/
+ * ioctl to export the physical address of GEM to user space for
+ * video decoder
+ */
 int atmel_drm_gem_get_ioctl(struct drm_device *drm, void *data,
 				      struct drm_file *file_priv)
 {
@@ -909,7 +909,7 @@ static struct drm_driver atmel_hlcdc_dc_driver = {
 	.gem_prime_mmap = drm_gem_cma_prime_mmap,
 	.dumb_create = drm_gem_cma_dumb_create,
 	.ioctls	= atmel_ioctls,
-	.num_ioctls= ARRAY_SIZE(atmel_ioctls),
+	.num_ioctls = ARRAY_SIZE(atmel_ioctls),
 	.fops = &fops,
 	.name = "atmel-hlcdc",
 	.desc = "Atmel HLCD Controller DRM",
