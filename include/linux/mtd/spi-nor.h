@@ -230,6 +230,7 @@ enum spi_nor_option_flags {
 	SNOR_F_S3AN_ADDR_DEFAULT = BIT(3),
 	SNOR_F_READY_XSR_RDY	= BIT(4),
 	SNOR_F_USE_CLSR		= BIT(5),
+	SNOR_F_HAS_4BAIT	= BIT(6),
 };
 
 /**
