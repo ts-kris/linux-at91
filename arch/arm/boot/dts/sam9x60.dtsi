@@ -751,6 +751,12 @@
 					atmel,clk-divisors = <1 2 4 3>;
 				};
 
+				usb: usbck {
+					compatible = "atmel,at91sam9x5-clk-usb";
+					#clock-cells = <0>;
+					clocks = <&plla>, <&upll>;
+				};
+
 				prog: progck {
 					compatible = "microchip,sam9x60-clk-programmable";
 					#address-cells = <1>;
@@ -827,7 +833,7 @@
 					uhpck: uhpck {
 						#clock-cells = <0>;
 						reg = <6>;
-						clocks = <&mck>;
+						clocks = <&usb>;
 					};
 
 					pck0: pck0 {
