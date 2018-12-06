@@ -65,6 +65,8 @@ static int at91sam9x5_clk_usb_determine_rate(struct clk_hw *hw,
 	int tmp_diff;
 	int i;
 
+	pr_debug("%s: target rate %lu\n", __func__, req->rate);
+
 	for (i = 0; i < clk_hw_get_num_parents(hw); i++) {
 		int div;
 
@@ -72,12 +74,22 @@ static int at91sam9x5_clk_usb_determine_rate(struct clk_hw *hw,
 		if (!parent)
 			continue;
 
+		pr_debug("%s: parent: %s, parent rate %lu\n", __func__, clk_hw_get_name(parent), clk_hw_get_rate(parent));
+
 		for (div = 1; div < SAM9X5_USB_MAX_DIV + 2; div++) {
 			unsigned long tmp_parent_rate;
 
+#if 0
 			tmp_parent_rate = req->rate * div;
 			tmp_parent_rate = clk_hw_round_rate(parent,
 							   tmp_parent_rate);
+#else
+			tmp_parent_rate = clk_hw_get_rate(parent);
+#endif
+			pr_debug("%s: answer from parent: %s, parent rate %lu, tmp_parent_rate %lu, div %d\n",
+				 __func__, clk_hw_get_name(parent), clk_hw_get_rate(parent),
+				 tmp_parent_rate, div);
+
 			tmp_rate = DIV_ROUND_CLOSEST(tmp_parent_rate, div);
 			if (tmp_rate < req->rate)
 				tmp_diff = req->rate - tmp_rate;
@@ -103,6 +115,7 @@ static int at91sam9x5_clk_usb_determine_rate(struct clk_hw *hw,
 		return best_rate;
 
 	req->rate = best_rate;
+	pr_debug("%s: parent rate %lu, rate %lu\n", __func__, req->best_parent_rate, req->rate);
 	return 0;
 }
 
@@ -116,6 +129,7 @@ static int at91sam9x5_clk_usb_set_parent(struct clk_hw *hw, u8 index)
 	regmap_update_bits(usb->regmap, AT91_PMC_USB, AT91_PMC_USBS,
 			   index ? AT91_PMC_USBS : 0);
 
+	pr_debug("%s: parent idx %d\n", __func__, index);
 	return 0;
 }
 
@@ -126,6 +140,7 @@ static u8 at91sam9x5_clk_usb_get_parent(struct clk_hw *hw)
 
 	regmap_read(usb->regmap, AT91_PMC_USB, &usbr);
 
+	pr_debug("%s: parent %u\n", __func__, usbr);
 	return usbr & AT91_PMC_USBS;
 }
 
@@ -135,6 +150,7 @@ static int at91sam9x5_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct at91sam9x5_clk_usb *usb = to_at91sam9x5_clk_usb(hw);
 	unsigned long div;
 
+	pr_debug("%s: In p_rate %lu, rate %lu\n", __func__, parent_rate, rate);
 	if (!rate)
 		return -EINVAL;
 
@@ -145,6 +161,7 @@ static int at91sam9x5_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
 	regmap_update_bits(usb->regmap, AT91_PMC_USB, AT91_PMC_OHCIUSBDIV,
 			   (div - 1) << SAM9X5_USB_DIV_SHIFT);
 
+	pr_debug("%s: Out div %lu\n", __func__, div);
 	return 0;
 }
 
@@ -209,8 +226,12 @@ at91sam9x5_clk_register_usb(struct regmap *regmap, const char *name,
 	init.ops = &at91sam9x5_usb_ops;
 	init.parent_names = parent_names;
 	init.num_parents = num_parents;
+#if 0
 	init.flags = CLK_SET_RATE_GATE | CLK_SET_PARENT_GATE |
 		     CLK_SET_RATE_PARENT;
+#else
+	init.flags = CLK_SET_RATE_GATE | CLK_SET_PARENT_GATE;
+#endif
 
 	usb->hw.init = &init;
 	usb->regmap = regmap;
