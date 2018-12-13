@@ -317,7 +317,8 @@ static struct isc_format formats_list[] = {
 	{
 		.fourcc		= V4L2_PIX_FMT_RGB565,
 		.mbus_code	= MEDIA_BUS_FMT_RGB565_2X8_LE,
-		.flags		= FMT_FLAG_FROM_CONTROLLER,
+		.flags		= FMT_FLAG_FROM_CONTROLLER |
+				  FMT_FLAG_RAW_FROM_SENSOR,
 		.bpp		= 16,
 	},
 	{
@@ -330,7 +331,7 @@ static struct isc_format formats_list[] = {
 		.fourcc		= V4L2_PIX_FMT_YUYV,
 		.mbus_code	= MEDIA_BUS_FMT_YUYV8_2X8,
 		.flags		= FMT_FLAG_FROM_CONTROLLER |
-				  FMT_FLAG_FROM_SENSOR,
+				  FMT_FLAG_RAW_FROM_SENSOR,
 		.bpp		= 16,
 	},
 };
@@ -898,8 +899,8 @@ static int isc_buffer_prepare(struct vb2_buffer *vb)
 
 static inline bool sensor_is_preferred(const struct isc_format *isc_fmt)
 {
-	return (sensor_preferred && isc_fmt->sd_support) ||
-		!isc_fmt->isc_support;
+	return isc_fmt ? (sensor_preferred && isc_fmt->sd_support) ||
+		!isc_fmt->isc_support : 0;
 }
 
 static inline u32 get_preferred_mbus_code(const struct isc_device *isc,
@@ -1229,6 +1230,7 @@ static void isc_stop_streaming(struct vb2_queue *vq)
 	}
 	list_for_each_entry(buf, &isc->dma_queue, list)
 		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+
 	INIT_LIST_HEAD(&isc->dma_queue);
 	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
 }
@@ -1554,8 +1556,10 @@ static int isc_open(struct file *file)
 	if (ret < 0)
 		goto unlock;
 
-	if (!v4l2_fh_is_singular_file(file))
+	if (!v4l2_fh_is_singular_file(file)) {
+		v4l2_fh_release(file);
 		goto unlock;
+	}
 
 	ret = v4l2_subdev_call(sd, core, s_power, 1);
 	if (ret < 0 && ret != -ENOIOCTLCMD) {
@@ -1845,7 +1849,6 @@ static int isc_formats_init(struct isc_device *isc)
 			continue;
 
 		fmt->sd_support = true;
-
 		if (fmt->flags & FMT_FLAG_RAW_FORMAT)
 			isc->raw_fmt = fmt;
 	}
@@ -1890,18 +1893,27 @@ static int isc_formats_init(struct isc_device *isc)
 
 static int isc_set_default_fmt(struct isc_device *isc)
 {
+	int i = 0;
 	struct v4l2_format f = {
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.fmt.pix = {
 			.width		= VGA_WIDTH,
 			.height		= VGA_HEIGHT,
 			.field		= V4L2_FIELD_NONE,
-			.pixelformat	= isc->user_formats[0]->fourcc,
+			.pixelformat	= isc->user_formats[i]->fourcc,
 		},
 	};
-	int ret;
+	int ret = -1;
 
-	ret = isc_try_fmt(isc, &f, NULL, NULL);
+	while(ret) {
+		ret = isc_try_fmt(isc, &f, NULL, NULL);
+			if (!ret) break;
+
+		f.fmt.pix.pixelformat = isc->user_formats[i]->fourcc;
+		i++;
+		if (i == isc->num_user_formats)
+			break;
+	}
 	if (ret)
 		return ret;
 
