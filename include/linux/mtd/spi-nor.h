@@ -296,6 +296,13 @@ struct spi_nor_erase_region {
 #define SNOR_ERASE_FLAGS_MAX	6
 #define SNOR_ERASE_FLAGS_MASK	GENMASK_ULL(SNOR_ERASE_FLAGS_MAX - 1, 0)
 
+#define SNOR_ERASE_FLAGS_OFFSET(_cmd_mask, _last_region, _overlaid_region, \
+				_offset)				\
+	((((u64)(_offset)) & ~SNOR_ERASE_FLAGS_MASK)	|		\
+	 (((u64)(_cmd_mask)) & SNOR_ERASE_TYPE_MASK)	|		\
+	 (((u64)(_last_region)) & SNOR_LAST_REGION)	|		\
+	 (((u64)(_overlaid_region)) & SNOR_OVERLAID_REGION))
+
 /**
  * struct spi_nor_erase_map - Structure to describe the SPI NOR erase map
  * @regions:		array of erase regions. The regions are consecutive in

@@ -2413,9 +2413,8 @@ static inline void
 spi_nor_init_uniform_erase_map(struct spi_nor_erase_map *map,
 			       u8 erase_mask, u64 flash_size)
 {
-	/* Offset 0 with erase_mask and SNOR_LAST_REGION bit set */
-	map->uniform_region.offset = (erase_mask & SNOR_ERASE_TYPE_MASK) |
-				     SNOR_LAST_REGION;
+	map->uniform_region.offset = SNOR_ERASE_FLAGS_OFFSET(erase_mask, 1, 0,
+							     0);
 	map->uniform_region.size = flash_size;
 	map->regions = &map->uniform_region;
 	map->uniform_erase_type = erase_mask;
