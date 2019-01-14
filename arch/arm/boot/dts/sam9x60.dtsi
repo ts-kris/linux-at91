@@ -239,7 +239,7 @@
 			};
 
 			pit64b: timer@f0028000 {
-				compatible = "atmel,pit64";
+				compatible = "microchip,pit64-clkevt";
 				reg = <0xf0028000 0x100>;
 				interrupts = <37 IRQ_TYPE_LEVEL_HIGH 7>;
 				clocks = <&pit64b_clk>;
