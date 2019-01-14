@@ -153,10 +153,9 @@ static int sdhci_at91_set_clks_presets(struct device *dev)
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_at91_priv *priv = sdhci_pltfm_priv(pltfm_host);
-	int ret;
 	unsigned int			caps0, caps1;
 	unsigned int			clk_base, clk_mul;
-	unsigned int			gck_rate, real_gck_rate;
+	unsigned int			gck_rate;
 	unsigned int			preset_div;
 
 	/*
@@ -167,36 +166,40 @@ static int sdhci_at91_set_clks_presets(struct device *dev)
 	clk_prepare_enable(priv->hclock);
 	caps0 = readl(host->ioaddr + SDHCI_CAPABILITIES);
 	caps1 = readl(host->ioaddr + SDHCI_CAPABILITIES_1);
-	clk_base = (caps0 & SDHCI_CLOCK_V3_BASE_MASK) >> SDHCI_CLOCK_BASE_SHIFT;
-	clk_mul = (caps1 & SDHCI_CLOCK_MUL_MASK) >> SDHCI_CLOCK_MUL_SHIFT;
-	gck_rate = clk_base * 1000000 * (clk_mul + 1);
-	ret = clk_set_rate(priv->gck, gck_rate);
-	if (ret < 0) {
-		dev_err(dev, "failed to set gck");
-		clk_disable_unprepare(priv->hclock);
-		return ret;
-	}
+
+	/* Set capabilities in r/w mode. */
+	writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN, host->ioaddr + SDMMC_CACR);
 	/*
-	 * We need to check if we have the requested rate for gck because in
-	 * some cases this rate could be not supported. If it happens, the rate
-	 * is the closest one gck can provide. We have to update the value
-	 * of clk mul.
+	 * We experience some issues with SDR104. If the SD clock is higher
+	 * than 100 MHz, we can get data corruption. With a 100 MHz clock,
+	 * the tuning procedure may fail. For those reasons, it is useless to
+	 * advertise that we can use SDR104 mode, so remove it from
+	 * the capabilities.
 	 */
-	real_gck_rate = clk_get_rate(priv->gck);
-	if (real_gck_rate != gck_rate) {
-		clk_mul = real_gck_rate / (clk_base * 1000000) - 1;
-		caps1 &= (~SDHCI_CLOCK_MUL_MASK);
-		caps1 |= ((clk_mul << SDHCI_CLOCK_MUL_SHIFT) &
-			  SDHCI_CLOCK_MUL_MASK);
-		/* Set capabilities in r/w mode. */
-		writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN,
-		       host->ioaddr + SDMMC_CACR);
-		writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
-		/* Set capabilities in ro mode. */
-		writel(0, host->ioaddr + SDMMC_CACR);
-		dev_info(dev, "update clk mul to %u as gck rate is %u Hz\n",
-			 clk_mul, real_gck_rate);
-	}
+	caps1 &= (~SDHCI_SUPPORT_SDR104);
+	writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
+	writel(0, host->ioaddr + SDMMC_CACR);
+
+	dev_info(dev, "mainck=%lu, gck=%lu\n", clk_get_rate(priv->mainck), clk_get_rate(priv->gck));
+	gck_rate = clk_get_rate(priv->gck);
+	if (priv->mainck)
+		clk_base = clk_get_rate(priv->mainck);
+	else
+		clk_base = gck_rate / 2;
+
+	/* Compute values that need to be updated in the capabilities registers */
+	clk_base = gck_rate / 2;
+	clk_mul = gck_rate / clk_base - 1;
+	caps0 &= (~SDHCI_CLOCK_V3_BASE_MASK);
+	caps0 |= (((clk_base / 1000000) << SDHCI_CLOCK_BASE_SHIFT) & SDHCI_CLOCK_V3_BASE_MASK);
+	caps1 &= (~SDHCI_CLOCK_MUL_MASK);
+	caps1 |= ((clk_mul << SDHCI_CLOCK_MUL_SHIFT) & SDHCI_CLOCK_MUL_MASK);
+	writel(caps0, host->ioaddr + SDHCI_CAPABILITIES);
+	writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
+	/* Set capabilities in ro mode. */
+	writel(0, host->ioaddr + SDMMC_CACR);
+	dev_info(dev, "update capabilities: clk_base=%uHz, clk_mul=%uHz, mul=%u\n",
+		 clk_base, gck_rate, clk_mul + 1);
 
 	/*
 	 * We have to set preset values because it depends on the clk_mul
@@ -204,19 +207,19 @@ static int sdhci_at91_set_clks_presets(struct device *dev)
 	 * maximum sd clock value is 120 MHz instead of 208 MHz. For that
 	 * reason, we need to use presets to support SDR104.
 	 */
-	preset_div = DIV_ROUND_UP(real_gck_rate, 24000000) - 1;
+	preset_div = DIV_ROUND_UP(gck_rate, 24000000) - 1;
 	writew(SDHCI_AT91_PRESET_COMMON_CONF | preset_div,
 	       host->ioaddr + SDHCI_PRESET_FOR_SDR12);
-	preset_div = DIV_ROUND_UP(real_gck_rate, 50000000) - 1;
+	preset_div = DIV_ROUND_UP(gck_rate, 50000000) - 1;
 	writew(SDHCI_AT91_PRESET_COMMON_CONF | preset_div,
 	       host->ioaddr + SDHCI_PRESET_FOR_SDR25);
-	preset_div = DIV_ROUND_UP(real_gck_rate, 100000000) - 1;
+	preset_div = DIV_ROUND_UP(gck_rate, 100000000) - 1;
 	writew(SDHCI_AT91_PRESET_COMMON_CONF | preset_div,
 	       host->ioaddr + SDHCI_PRESET_FOR_SDR50);
-	preset_div = DIV_ROUND_UP(real_gck_rate, 120000000) - 1;
+	preset_div = DIV_ROUND_UP(gck_rate, 120000000) - 1;
 	writew(SDHCI_AT91_PRESET_COMMON_CONF | preset_div,
 	       host->ioaddr + SDHCI_PRESET_FOR_SDR104);
-	preset_div = DIV_ROUND_UP(real_gck_rate, 50000000) - 1;
+	preset_div = DIV_ROUND_UP(gck_rate, 50000000) - 1;
 	writew(SDHCI_AT91_PRESET_COMMON_CONF | preset_div,
 	       host->ioaddr + SDHCI_PRESET_FOR_DDR50);
 
@@ -278,10 +281,12 @@ static int sdhci_at91_runtime_resume(struct device *dev)
 		goto out;
 	}
 
-	ret = clk_prepare_enable(priv->mainck);
-	if (ret) {
-		dev_err(dev, "can't enable mainck\n");
-		return ret;
+	if (priv->mainck) {
+		ret = clk_prepare_enable(priv->mainck);
+		if (ret) {
+			dev_err(dev, "can't enable mainck\n");
+			return ret;
+		}
 	}
 
 	ret = clk_prepare_enable(priv->hclock);
@@ -331,8 +336,8 @@ static int sdhci_at91_probe(struct platform_device *pdev)
 
 	priv->mainck = devm_clk_get(&pdev->dev, "baseclk");
 	if (IS_ERR(priv->mainck)) {
-		dev_err(&pdev->dev, "failed to get baseclk\n");
-		return PTR_ERR(priv->mainck);
+		dev_warn(&pdev->dev, "baseclk missing, assume it is generated from multclk\n");
+		priv->mainck = NULL;
 	}
 
 	priv->hclock = devm_clk_get(&pdev->dev, "hclock");
