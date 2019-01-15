@@ -432,7 +432,7 @@
 			};
 
 			pwm0: pwm@f8034000 {
-				compatible = "atmel,at91sam9rl-pwm";
+				compatible = "microchip,sam9x60-pwm";
 				reg = <0xf8034000 0x300>;
 				interrupts = <18 IRQ_TYPE_LEVEL_HIGH 4>;
 				clocks = <&pwm_clk>;

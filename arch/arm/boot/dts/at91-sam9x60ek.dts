@@ -202,6 +202,12 @@
 					};
 				};
 
+			pwm0: pwm@f8034000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_pwm0_0 &pinctrl_pwm0_1 &pinctrl_pwm0_2 &pinctrl_pwm0_3>;
+				status = "disabled"; /* conflict with leds*/
+			};
+
 			hlcdc: hlcdc@f8038000 {
 				status = "okay";
 
@@ -508,6 +514,28 @@
 							 AT91_PIOB 7 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PB7 periph A */
 							 AT91_PIOB 9 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PB9 periph A */
 							 AT91_PIOB 10 AT91_PERIPH_A AT91_PINCTRL_NONE>;	/* PB10 periph A */
+					};
+				};
+
+				pwm0 {
+					pinctrl_pwm0_0: pwm0_0 {
+						atmel,pins =
+							<AT91_PIOB 11 AT91_PERIPH_B AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_pwm0_1: pwm0_1 {
+						atmel,pins =
+							<AT91_PIOB 12 AT91_PERIPH_B AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_pwm0_2: pwm0_2 {
+						atmel,pins =
+							<AT91_PIOB 13 AT91_PERIPH_B AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_pwm0_3: pwm0_3 {
+						atmel,pins =
+							<AT91_PIOB 14 AT91_PERIPH_B AT91_PINCTRL_NONE>;
 					};
 				};
 			}; /* pinctrl */
