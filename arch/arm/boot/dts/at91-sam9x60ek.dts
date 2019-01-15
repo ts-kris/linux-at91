@@ -589,21 +589,22 @@
 
 	leds {
 		compatible = "gpio-leds";
+		status = "okay"; /* Conflict with pwm0. */
 
-		pb11 {
-			label = "pb11";
-			gpios = <&pioB 11 GPIO_ACTIVE_LOW>;
+		red {
+			label = "red";
+			gpios = <&pioB 11 GPIO_ACTIVE_HIGH>;
 		};
 
-		pb12 {
-			label = "pb12";
-			gpios = <&pioB 12 GPIO_ACTIVE_LOW>;
+		green {
+			label = "green";
+			gpios = <&pioB 12 GPIO_ACTIVE_HIGH>;
+		};
+
+		blue {
+			label = "blue";
+			gpios = <&pioB 13 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
-		};
-
-		pb13 {
-			label = "pb13";
-			gpios = <&pioB 13 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
