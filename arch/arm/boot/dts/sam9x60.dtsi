@@ -437,6 +437,7 @@
 				interrupts = <18 IRQ_TYPE_LEVEL_HIGH 4>;
 				clocks = <&pwm_clk>;
 				#pwm-cells = <3>;
+				status="disabled";
 			};
 
 			hlcdc: hlcdc@f8038000 {
