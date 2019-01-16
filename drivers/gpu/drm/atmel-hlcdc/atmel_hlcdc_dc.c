@@ -457,6 +457,7 @@ static const struct atmel_hlcdc_dc_desc atmel_hlcdc_dc_sam9x60 = {
 	.max_spw = 0xff,
 	.max_vpw = 0xff,
 	.max_hpw = 0x3ff,
+	.noclksel = true,
 	.nlayers = ARRAY_SIZE(atmel_hlcdc_sam9x60_layers),
 	.layers = atmel_hlcdc_sam9x60_layers,
 };

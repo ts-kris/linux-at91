@@ -78,7 +78,7 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 	unsigned long mode_rate;
 	struct videomode vm;
 	unsigned long prate;
-	unsigned int cfg;
+	unsigned int cfg, mask = ATMEL_HLCDC_CLKDIV_MASK | ATMEL_HLCDC_CLKPOL;
 	int div;
 
 	vm.vfront_porch = adj->crtc_vsync_start - adj->crtc_vdisplay;
@@ -105,23 +105,18 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 
 	prate = clk_get_rate(crtc->dc->hlcdc->sys_clk);
 	mode_rate = adj->crtc_clock * 1000;
-#if 0
-	if ((prate / 2) < mode_rate) {
+	if (!crtc->dc->desc->noclksel && (prate / 2) < mode_rate) {
 		prate *= 2;
 		cfg |= ATMEL_HLCDC_CLKSEL;
+		mask |= ATMEL_HLCDC_CLKSEL;
 	}
-#endif
 	div = DIV_ROUND_UP(prate, mode_rate);
 	if (div < 2)
 		div = 2;
 
 	cfg |= ATMEL_HLCDC_CLKDIV(div);
 
-	pr_warn("%s: prate = %ld div = %d cfg = %d \n",__func__,prate,div,cfg);
-
-	regmap_update_bits(regmap, ATMEL_HLCDC_CFG(0),
-			   /*ATMEL_HLCDC_CLKSEL |*/ ATMEL_HLCDC_CLKDIV_MASK |
-			   ATMEL_HLCDC_CLKPOL, cfg);
+	regmap_update_bits(regmap, ATMEL_HLCDC_CFG(0), mask, cfg);
 
 	cfg = 0;
 
