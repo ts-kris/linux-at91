@@ -554,7 +554,7 @@
 				};
 
 				prog: progck {
-					compatible = "atmel,at91sam9x5-clk-programmable";
+					compatible = "atmel,sama5d2-clk-programmable";
 					#address-cells = <1>;
 					#size-cells = <0>;
 					interrupt-parent = <&pmc>;
