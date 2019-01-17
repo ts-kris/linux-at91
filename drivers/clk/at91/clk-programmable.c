@@ -17,7 +17,7 @@
 
 #include "pmc.h"
 
-#define PROG_SOURCE_MAX		5
+#define PROG_SOURCE_MAX		6
 #define PROG_ID_MAX		7
 
 #define PROG_STATUS_MASK(id)	(1 << ((id) + 8))
