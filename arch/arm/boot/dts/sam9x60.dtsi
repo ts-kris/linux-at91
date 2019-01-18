@@ -821,13 +821,7 @@
 
 					ddrck: ddrck {
 						#clock-cells = <0>;
-						reg = <3>;
-						clocks = <&mck>;
-					};
-
-					lcdck: lcdck {
-						#clock-cells = <0>;
-						reg = <4>;
+						reg = <2>;
 						clocks = <&mck>;
 					};
 
@@ -841,48 +835,6 @@
 						#clock-cells = <0>;
 						reg = <8>;
 						clocks = <&prog0>;
-					};
-
-					pck1: pck1 {
-						#clock-cells = <0>;
-						reg = <9>;
-						clocks = <&prog1>;
-					};
-
-					pck2: pck2 {
-						#clock-cells = <0>;
-						reg = <10>;
-						clocks = <&prog2>;
-					};
-
-					pck3: pck3 {
-						#clock-cells = <0>;
-						reg = <11>;
-						clocks = <&prog3>;
-					};
-
-					pck4: pck4 {
-						#clock-cells = <0>;
-						reg = <12>;
-						clocks = <&prog4>;
-					};
-
-					pck5: pck5 {
-						#clock-cells = <0>;
-						reg = <13>;
-						clocks = <&prog5>;
-					};
-
-					pck6: pck6 {
-						#clock-cells = <0>;
-						reg = <14>;
-						clocks = <&prog6>;
-					};
-
-					pck7: pck7 {
-						#clock-cells = <0>;
-						reg = <15>;
-						clocks = <&prog7>;
 					};
 
 					qspi_ck: qspi_ck {
