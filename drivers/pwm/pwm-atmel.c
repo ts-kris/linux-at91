@@ -134,7 +134,7 @@ static int atmel_pwm_calculate_cprd_and_pres(struct pwm_chip *chip,
 	for (*pres = 0; cycles > atmel_pwm->data->cfg.max_period; cycles >>= 1)
 		(*pres)++;
 
-	if (*pres > atmel_pwm->data->cfg.max_period) {
+	if (*pres > atmel_pwm->data->cfg.max_pres) {
 		dev_err(chip->dev, "pres exceeds the maximum value\n");
 		return -EINVAL;
 	}
