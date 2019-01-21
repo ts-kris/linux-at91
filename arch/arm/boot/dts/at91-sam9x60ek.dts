@@ -116,6 +116,21 @@
 		};
 
 		apb {
+			qspi: qspi@f0014000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_qspi>;
+				status = "okay";
+
+				flash@0 {
+					#address-cells = <1>;
+					#size-cells = <1>;
+					compatible = "jedec,spi-nor";
+					reg = <0>;
+					spi-max-frequency = <80000000>;
+					m25p,fast-read;
+				};
+			};
+
 			flx6: flexcom@f8010000 {
 				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 				status = "okay";
