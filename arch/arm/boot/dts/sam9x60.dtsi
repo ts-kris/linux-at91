@@ -181,7 +181,7 @@
 			};
 
 			qspi: qspi@f0014000 {
-				compatible = "atmel,sama5d2-qspi";
+				compatible = "microchip,sam9x60-qspi";
 				reg = <0xf0014000 0x100>, <0x70000000 0x08000000>;
 				reg-names = "qspi_base", "qspi_mmap";
 				interrupts = <35 IRQ_TYPE_LEVEL_HIGH 7>;
