@@ -58,7 +58,8 @@ Required properties:
 
 	"atmel,at91rm9200-clk-programmable" or
 	"atmel,at91sam9g45-clk-programmable" or
-	"atmel,at91sam9x5-clk-programmable":
+	"atmel,at91sam9x5-clk-programmable" or
+	"atmel,sama5d2-clk-programmable":
 		at91 programmable clocks
 
 	"atmel,at91sam9x5-clk-smd":
