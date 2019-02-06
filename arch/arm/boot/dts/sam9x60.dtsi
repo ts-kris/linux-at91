@@ -1253,7 +1253,7 @@
 			};
 
 			sckc@fffffe50 {
-				compatible = "atmel,at91sam9x5-sckc";
+				compatible = "microchip,at91sam9x60-sckc";
 				reg = <0xfffffe50 0x4>;
 
 				slow_osc: slow_osc {
