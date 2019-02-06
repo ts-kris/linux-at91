@@ -554,6 +554,15 @@
 					};
 				};
 			}; /* pinctrl */
+
+			shutdown_controller: shdwc@fffffe10 {
+				atmel,shdwc-debouncer = <976>;
+				status = "okay";
+
+				input@0 {
+					reg = <0>;
+				};
+			};
 		}; /* apb */
 	}; /*ahb */
 
