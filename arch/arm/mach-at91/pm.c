@@ -40,6 +40,9 @@ extern void at91_pinctrl_gpio_resume(void);
 #endif
 
 struct at91_soc_pm {
+	int (*config_shdwc_ws)(void __iomem *shdwc, u32 *mode, u32 *polarity);
+	int (*config_pmc_ws)(void __iomem *pmc, u32 mode, u32 polarity);
+	const struct of_device_id *ws_ids;
 	struct at91_pm_data data;
 };
 
@@ -97,6 +100,8 @@ static const struct wakeup_source_info ws_info[] = {
 	{ .pmc_fsmr_bit = AT91_PMC_RTCAL,	.shdwc_mr_bit = BIT(17) },
 	{ .pmc_fsmr_bit = AT91_PMC_USBAL },
 	{ .pmc_fsmr_bit = AT91_PMC_SDMMC_CD },
+	{ .pmc_fsmr_bit = AT91_PMC_RTTAL },
+	{ .pmc_fsmr_bit = AT91_PMC_RXLP_MCE },
 };
 
 static const struct of_device_id sama5d2_ws_ids[] = {
@@ -111,6 +116,13 @@ static const struct of_device_id sama5d2_ws_ids[] = {
 	{ /* sentinel */ }
 };
 
+static const struct of_device_id sam9x60_ws_ids[] = {
+	{ .compatible = "atmel,at91sam9x5-rtc",		.data = &ws_info[1] },
+	{ .compatible = "atmel,at91sam9260-rtt",	.data = &ws_info[4] },
+	{ .compatible = "cdns,sam9x60-macb",		.data = &ws_info[5] },
+	{ /* sentinel */ }
+};
+
 static int at91_pm_config_ws(unsigned int pm_mode, bool set)
 {
 	const struct wakeup_source_info *wsi;
@@ -122,7 +134,7 @@ static int at91_pm_config_ws(unsigned int pm_mode, bool set)
 	if (pm_mode != AT91_PM_ULP1)
 		return 0;
 
-	if (!soc_pm.data.pmc || !soc_pm.data.shdwc)
+	if (!soc_pm.data.pmc || !soc_pm.data.shdwc || !soc_pm.ws_ids)
 		return -EPERM;
 
 	if (!set) {
@@ -130,16 +142,14 @@ static int at91_pm_config_ws(unsigned int pm_mode, bool set)
 		return 0;
 	}
 
-	/* SHDWC.WUIR */
-	val = readl(soc_pm.data.shdwc + 0x0c);
-	mode |= (val & 0x3ff);
-	polarity |= ((val >> 16) & 0x3ff);
+	if (soc_pm.config_shdwc_ws)
+		soc_pm.config_shdwc_ws(soc_pm.data.shdwc, &mode, &polarity);
 
 	/* SHDWC.MR */
 	val = readl(soc_pm.data.shdwc + 0x04);
 
 	/* Loop through defined wakeup sources. */
-	for_each_matching_node_and_match(np, sama5d2_ws_ids, &match) {
+	for_each_matching_node_and_match(np, soc_pm.ws_ids, &match) {
 		pdev = of_find_device_by_node(np);
 		if (!pdev)
 			continue;
@@ -161,13 +171,44 @@ put_node:
 	}
 
 	if (mode) {
-		writel(mode, soc_pm.data.pmc + AT91_PMC_FSMR);
-		writel(polarity, soc_pm.data.pmc + AT91_PMC_FSPR);
+		if (soc_pm.config_pmc_ws)
+			soc_pm.config_pmc_ws(soc_pm.data.pmc, mode, polarity);
 	} else {
 		pr_err("AT91: PM: no ULP1 wakeup sources found!");
 	}
 
 	return mode ? 0 : -EPERM;
+}
+
+static int at91_sama5d2_config_shdwc_ws(void __iomem *shdwc, u32 *mode,
+					u32 *polarity)
+{
+	u32 val;
+
+	if (!mode || !polarity)
+		return -EINVAL;
+
+	/* SHDWC.WUIR */
+	val = readl(shdwc + 0x0c);
+	*mode |= (val & 0x3ff);
+	*polarity |= ((val >> 16) & 0x3ff);
+
+	return 0;
+}
+
+static int at91_sama5d2_config_pmc_ws(void __iomem *pmc, u32 mode, u32 polarity)
+{
+	writel(mode, pmc + AT91_PMC_FSMR);
+	writel(polarity, pmc + AT91_PMC_FSPR);
+
+	return 0;
+}
+
+static int at91_sam9x60_config_pmc_ws(void __iomem *pmc, u32 mode, u32 polarity)
+{
+	writel(mode, pmc + AT91_PMC_FSMR);
+
+	return 0;
 }
 
 /*
@@ -588,6 +629,9 @@ static int __init at91_pm_backup_init(void)
 	struct platform_device *pdev = NULL;
 	int ret = -ENODEV;
 
+	if (!IS_ENABLED(CONFIG_SOC_SAMA5D2))
+		return -EPERM;
+
 	if (!at91_is_pm_mode_active(AT91_PM_BACKUP))
 		return 0;
 
@@ -650,6 +694,12 @@ static void __init at91_pm_use_default_mode(int pm_mode)
 		soc_pm.data.suspend_mode = AT91_PM_ULP0;
 }
 
+static const struct of_device_id atmel_shdwc_ids[] = {
+	{ .compatible = "atmel,sama5d2-shdwc" },
+	{ .compatible = "microchip,sam9x60-shdwc" },
+	{ /* sentinel */ }
+};
+
 static void __init at91_pm_modes_init(void)
 {
 	struct device_node *np;
@@ -659,7 +709,7 @@ static void __init at91_pm_modes_init(void)
 	    !at91_is_pm_mode_active(AT91_PM_ULP1))
 		return;
 
-	np = of_find_compatible_node(NULL, NULL, "atmel,sama5d2-shdwc");
+	np = of_find_matching_node_and_match(NULL, atmel_shdwc_ids, NULL);
 	if (!np) {
 		pr_warn("%s: failed to find shdwc!\n", __func__);
 		goto ulp1_default;
@@ -768,8 +818,11 @@ void __init sam9x60_pm_init(void)
 		return;
 
 	at91_dt_ramc();
+	at91_pm_modes_init();
 	at91_pm_init(at91sam9x60_idle);
 
+	soc_pm.ws_ids = sam9x60_ws_ids;
+	soc_pm.config_pmc_ws = at91_sam9x60_config_pmc_ws;
 }
 
 void __init at91sam9_pm_init(void)
@@ -788,6 +841,10 @@ void __init sama5_pm_init(void)
 
 	at91_dt_ramc();
 	at91_pm_init(NULL);
+
+	soc_pm.ws_ids = sama5d2_ws_ids;
+	soc_pm.config_shdwc_ws = at91_sama5d2_config_shdwc_ws;
+	soc_pm.config_pmc_ws = at91_sama5d2_config_pmc_ws;
 }
 
 void __init sama5d2_pm_init(void)
