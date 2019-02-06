@@ -162,7 +162,7 @@ SHDWC SAMA5D2-Compatible Shutdown Controller
 1) shdwc node
 
 required properties:
-- compatible: should be "atmel,sama5d2-shdwc".
+- compatible: should be "atmel,sama5d2-shdwc" or "microchip,sam9x60-shdwc".
 - reg: should contain registers location and length
 - clocks: phandle to input clock.
 - #address-cells: should be one. The cell is the wake-up input index.
