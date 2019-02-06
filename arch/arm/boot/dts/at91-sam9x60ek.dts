@@ -553,6 +553,13 @@
 							<AT91_PIOB 14 AT91_PERIPH_B AT91_PINCTRL_NONE>;
 					};
 				};
+
+				gpio_keys {
+					pinctrl_key_gpio_default: pinctrl_key_gpio {
+						atmel,pins =
+							<AT91_PIOD 18 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
+					};
+				};
 			}; /* pinctrl */
 
 			shutdown_controller: shdwc@fffffe10 {
@@ -609,6 +616,20 @@
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		status = "okay";
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_key_gpio_default>;
+		status = "okay";
+
+		sw1 {
+			label = "SW1";
+			gpios = <&pioD 18 GPIO_ACTIVE_LOW>;
+			linux,code=<0x104>;
+			wakeup-source;
+		};
 	};
 
 	leds {
