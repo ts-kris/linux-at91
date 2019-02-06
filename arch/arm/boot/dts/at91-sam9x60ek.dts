@@ -84,7 +84,11 @@
 	};
 
 	ahb {
-		usb0: ohci@600000 {
+		usb0: gadget@500000 {
+			status = "okay";
+		};
+
+		usb1: ohci@600000 {
 			num-ports = <3>;
 			atmel,vbus-gpio = <0
 					   &pioD 15 GPIO_ACTIVE_HIGH
@@ -92,7 +96,7 @@
 			status = "okay";
 		};
 
-		usb1: ehci@700000 {
+		usb2: ehci@700000 {
 			status = "okay";
 		};
 
