@@ -1235,9 +1235,14 @@
 			};
 
 			shutdown_controller: shdwc@fffffe10 {
-				compatible = "atmel,at91sam9x5-shdwc";
+				compatible = "microchip,sam9x60-shdwc";
 				reg = <0xfffffe10 0x10>;
 				clocks = <&td_slck>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				atmel,wakeup-rtc-timer;
+				atmel,wakeup-rtt-timer;
+				status = "disabled";
 			};
 
 			pit: timer@fffffe40 {
