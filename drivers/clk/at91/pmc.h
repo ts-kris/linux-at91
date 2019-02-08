@@ -151,6 +151,12 @@ at91_clk_register_master(struct regmap *regmap, const char *name,
 			 const struct clk_master_characteristics *characteristics);
 
 struct clk_hw * __init
+sam9x60_clk_register_master(struct regmap *regmap, const char *name,
+			    int num_parents, const char **parent_names,
+			    const struct clk_master_layout *layout,
+			    const struct clk_master_characteristics *characteristics);
+
+struct clk_hw * __init
 at91_clk_register_peripheral(struct regmap *regmap, const char *name,
 			     const char *parent_name, u32 id);
 struct clk_hw * __init

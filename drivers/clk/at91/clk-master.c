@@ -29,6 +29,7 @@ struct clk_master {
 	struct regmap *regmap;
 	const struct clk_master_layout *layout;
 	const struct clk_master_characteristics *characteristics;
+	u32 mckr;
 };
 
 static inline bool clk_master_ready(struct regmap *regmap)
@@ -69,7 +70,7 @@ static unsigned long clk_master_recalc_rate(struct clk_hw *hw,
 						master->characteristics;
 	unsigned int mckr;
 
-	regmap_read(master->regmap, AT91_PMC_MCKR, &mckr);
+	regmap_read(master->regmap, master->mckr, &mckr);
 	mckr &= layout->mask;
 
 	pres = (mckr >> layout->pres_shift) & MASTER_PRES_MASK;
@@ -95,7 +96,7 @@ static u8 clk_master_get_parent(struct clk_hw *hw)
 	struct clk_master *master = to_clk_master(hw);
 	unsigned int mckr;
 
-	regmap_read(master->regmap, AT91_PMC_MCKR, &mckr);
+	regmap_read(master->regmap, master->mckr, &mckr);
 
 	return mckr & AT91_PMC_CSS;
 }
@@ -107,12 +108,13 @@ static const struct clk_ops master_ops = {
 	.get_parent = clk_master_get_parent,
 };
 
-struct clk_hw * __init
-at91_clk_register_master(struct regmap *regmap,
+static struct clk_hw * __init
+_at91_clk_register_master(struct regmap *regmap,
 		const char *name, int num_parents,
 		const char **parent_names,
 		const struct clk_master_layout *layout,
-		const struct clk_master_characteristics *characteristics)
+		const struct clk_master_characteristics *characteristics,
+		u32 mckr)
 {
 	struct clk_master *master;
 	struct clk_init_data init;
@@ -136,6 +138,7 @@ at91_clk_register_master(struct regmap *regmap,
 	master->layout = layout;
 	master->characteristics = characteristics;
 	master->regmap = regmap;
+	master->mckr = mckr;
 
 	hw = &master->hw;
 	ret = clk_hw_register(NULL, &master->hw);
@@ -147,6 +150,29 @@ at91_clk_register_master(struct regmap *regmap,
 	return hw;
 }
 
+struct clk_hw * __init
+at91_clk_register_master(struct regmap *regmap,
+		const char *name, int num_parents,
+		const char **parent_names,
+		const struct clk_master_layout *layout,
+		const struct clk_master_characteristics *characteristics)
+{
+	return _at91_clk_register_master(regmap, name, num_parents,
+					 parent_names, layout, characteristics,
+					 AT91_PMC_MCKR);
+}
+
+struct clk_hw * __init
+sam9x60_clk_register_master(struct regmap *regmap,
+		const char *name, int num_parents,
+		const char **parent_names,
+		const struct clk_master_layout *layout,
+		const struct clk_master_characteristics *characteristics)
+{
+	return _at91_clk_register_master(regmap, name, num_parents,
+					 parent_names, layout, characteristics,
+					 AT91_PMC_CPU_CKR);
+}
 
 const struct clk_master_layout at91rm9200_master_layout = {
 	.mask = 0x31F,
