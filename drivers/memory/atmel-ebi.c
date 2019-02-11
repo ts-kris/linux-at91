@@ -38,6 +38,7 @@ struct atmel_ebi_dev {
 struct atmel_ebi_caps {
 	unsigned int available_cs;
 	unsigned int ebi_csa_offs;
+	const char *regmap_name;
 	void (*get_config)(struct atmel_ebi_dev *ebid,
 			   struct atmel_ebi_dev_config *conf);
 	int (*xlate_config)(struct atmel_ebi_dev *ebid,
@@ -49,7 +50,7 @@ struct atmel_ebi_caps {
 
 struct atmel_ebi {
 	struct clk *clk;
-	struct regmap *matrix;
+	struct regmap *regmap;
 	struct  {
 		struct regmap *regmap;
 		struct clk *clk;
@@ -360,7 +361,7 @@ static int atmel_ebi_dev_setup(struct atmel_ebi *ebi, struct device_node *np,
 		 * one "atmel,smc-" property is present.
 		 */
 		if (ebi->caps->ebi_csa_offs && apply)
-			regmap_update_bits(ebi->matrix,
+			regmap_update_bits(ebi->regmap,
 					   ebi->caps->ebi_csa_offs,
 					   BIT(cs), 0);
 
@@ -375,6 +376,7 @@ static int atmel_ebi_dev_setup(struct atmel_ebi *ebi, struct device_node *np,
 static const struct atmel_ebi_caps at91sam9260_ebi_caps = {
 	.available_cs = 0xff,
 	.ebi_csa_offs = AT91SAM9260_MATRIX_EBICSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -383,6 +385,7 @@ static const struct atmel_ebi_caps at91sam9260_ebi_caps = {
 static const struct atmel_ebi_caps at91sam9261_ebi_caps = {
 	.available_cs = 0xff,
 	.ebi_csa_offs = AT91SAM9261_MATRIX_EBICSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -391,6 +394,7 @@ static const struct atmel_ebi_caps at91sam9261_ebi_caps = {
 static const struct atmel_ebi_caps at91sam9263_ebi0_caps = {
 	.available_cs = 0x3f,
 	.ebi_csa_offs = AT91SAM9263_MATRIX_EBI0CSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -399,6 +403,7 @@ static const struct atmel_ebi_caps at91sam9263_ebi0_caps = {
 static const struct atmel_ebi_caps at91sam9263_ebi1_caps = {
 	.available_cs = 0x7,
 	.ebi_csa_offs = AT91SAM9263_MATRIX_EBI1CSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -407,6 +412,7 @@ static const struct atmel_ebi_caps at91sam9263_ebi1_caps = {
 static const struct atmel_ebi_caps at91sam9rl_ebi_caps = {
 	.available_cs = 0x3f,
 	.ebi_csa_offs = AT91SAM9RL_MATRIX_EBICSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -415,6 +421,7 @@ static const struct atmel_ebi_caps at91sam9rl_ebi_caps = {
 static const struct atmel_ebi_caps at91sam9g45_ebi_caps = {
 	.available_cs = 0x3f,
 	.ebi_csa_offs = AT91SAM9G45_MATRIX_EBICSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -423,6 +430,7 @@ static const struct atmel_ebi_caps at91sam9g45_ebi_caps = {
 static const struct atmel_ebi_caps at91sam9x5_ebi_caps = {
 	.available_cs = 0x3f,
 	.ebi_csa_offs = AT91SAM9X5_MATRIX_EBICSA,
+	.regmap_name = "atmel,matrix",
 	.get_config = at91sam9_ebi_get_config,
 	.xlate_config = atmel_ebi_xslate_smc_config,
 	.apply_config = at91sam9_ebi_apply_config,
@@ -546,13 +554,14 @@ static int atmel_ebi_probe(struct platform_device *pdev)
 
 	/*
 	 * The sama5d3 does not provide an EBICSA register and thus does need
-	 * to access the matrix registers.
+	 * to access it.
 	 */
 	if (ebi->caps->ebi_csa_offs) {
-		ebi->matrix =
-			syscon_regmap_lookup_by_phandle(np, "atmel,matrix");
-		if (IS_ERR(ebi->matrix))
-			return PTR_ERR(ebi->matrix);
+		ebi->regmap =
+			syscon_regmap_lookup_by_phandle(np,
+							ebi->caps->regmap_name);
+		if (IS_ERR(ebi->regmap))
+			return PTR_ERR(ebi->regmap);
 	}
 
 	ret = of_property_read_u32(np, "#address-cells", &val);
