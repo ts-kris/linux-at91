@@ -318,17 +318,6 @@ static struct usba_fifo_cfg mode_4_cfg[] = {
 { .hw_ep_num = 7, .fifo_size = 8,	.nr_banks = 2, },
 { .hw_ep_num = 8, .fifo_size = 8,	.nr_banks = 2, },
 };
-
-/* mode 5 - fits in 16.448KB, sam9x60 fifo configuration */
-static struct usba_fifo_cfg mode_5_cfg[] = {
-{ .hw_ep_num = 0, .fifo_size = 64,      .nr_banks = 1, },
-{ .hw_ep_num = 1, .fifo_size = 1024,    .nr_banks = 2, },
-{ .hw_ep_num = 2, .fifo_size = 1024,    .nr_banks = 2, },
-{ .hw_ep_num = 3, .fifo_size = 1024,    .nr_banks = 3, },
-{ .hw_ep_num = 4, .fifo_size = 1024,    .nr_banks = 3, },
-{ .hw_ep_num = 5, .fifo_size = 1024,    .nr_banks = 3, },
-{ .hw_ep_num = 6, .fifo_size = 1024,    .nr_banks = 3, },
-};
 /* Add additional configurations here */
 
 static int usba_config_fifo_table(struct usba_udc *udc)
@@ -357,10 +346,6 @@ static int usba_config_fifo_table(struct usba_udc *udc)
 	case 4:
 		udc->fifo_cfg = mode_4_cfg;
 		n = ARRAY_SIZE(mode_4_cfg);
-		break;
-	case 5:
-		udc->fifo_cfg = mode_5_cfg;
-		n = ARRAY_SIZE(mode_5_cfg);
 		break;
 	}
 	DBG(DBG_HW, "Setup fifo_mode %d\n", fifo_mode);
