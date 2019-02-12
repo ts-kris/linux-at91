@@ -4,6 +4,8 @@
  * All rights reserved.
  */
 
+#define DEBUG 12
+
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
