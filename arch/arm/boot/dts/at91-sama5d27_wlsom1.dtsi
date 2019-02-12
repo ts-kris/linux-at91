@@ -24,6 +24,21 @@
 			clock-frequency = <24000000>;
 		};
 	};
+
+	wifi_pwrseq: pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		pre-power-on-delay-ms = <5>;
+		power-off-delay-us = <1000>;
+		reset-gpios = <&pioA PIN_PA27 GPIO_ACTIVE_LOW>;
+		powerdown-gpios = <&pioA PIN_PA29  GPIO_ACTIVE_HIGH>;
+		pinctrl-0 = <&pinctrl_wilc_pwrseq>;
+		pinctrl-names = "default";
+		clocks = <&pck1>;
+		clock-names = "ext_clock";
+		assigned-clocks = <&pck1>;
+		assigned-clock-rates = <32768>;
+		status = "disabled";
+	};
 };
 
 &macb0 {
@@ -88,8 +103,11 @@
 	pinctrl_wilc_pwrseq: wilc_pwrseq {
 		conf-ce-nrst {
 			pinmux = <PIN_PA27__GPIO>,
-				<PIN_PA29__GPIO>,
-				<PIN_PB25__GPIO>;
+				 <PIN_PA29__GPIO>;
+			bias-disable;
+		};
+		conf-rtcclk {
+			pinmux = <PIN_PB13__PCK1>;
 			bias-disable;
 		};
 	};
@@ -101,6 +119,7 @@
 	bus-width = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdmmc1_default>;
+	mmc-pwrseq = <&wifi_pwrseq>;
 	non-removable;
 
 	wilc: wilc@0 {
@@ -109,8 +128,6 @@
 		compatible = "microchip,wilc3000", "microchip,wilc1000";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_wilc_default>;
-		reset-gpios = <&pioA PIN_PA27 GPIO_ACTIVE_LOW>;
-		chip_en-gpios = <&pioA PIN_PA29  GPIO_ACTIVE_HIGH>;
 		irq-gpios = <&pioA PIN_PB25 GPIO_ACTIVE_LOW>;
 		status = "disabled";
 	};

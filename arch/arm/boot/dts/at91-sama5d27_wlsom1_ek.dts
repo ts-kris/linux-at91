@@ -222,3 +222,7 @@
 &watchdog {
 	status = "okay";
 };
+
+&wifi_pwrseq {
+	status = "okay";
+};

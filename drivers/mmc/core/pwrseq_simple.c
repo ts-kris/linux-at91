@@ -26,9 +26,11 @@
 struct mmc_pwrseq_simple {
 	struct mmc_pwrseq pwrseq;
 	bool clk_enabled;
+	u32 pre_power_on_delay_ms;
 	u32 post_power_on_delay_ms;
 	u32 power_off_delay_us;
 	struct clk *ext_clk;
+	struct gpio_desc *pwrdn_gpio;
 	struct gpio_descs *reset_gpios;
 };
 
@@ -59,10 +61,16 @@ static void mmc_pwrseq_simple_pre_power_on(struct mmc_host *host)
 {
 	struct mmc_pwrseq_simple *pwrseq = to_pwrseq_simple(host->pwrseq);
 
+	if (!IS_ERR(pwrseq->pwrdn_gpio))
+		gpiod_set_value_cansleep(pwrseq->pwrdn_gpio, 1);
+
 	if (!IS_ERR(pwrseq->ext_clk) && !pwrseq->clk_enabled) {
 		clk_prepare_enable(pwrseq->ext_clk);
 		pwrseq->clk_enabled = true;
 	}
+
+	if (pwrseq->pre_power_on_delay_ms)
+		msleep(pwrseq->pre_power_on_delay_ms);
 
 	mmc_pwrseq_simple_set_gpios_value(pwrseq, 1);
 }
@@ -91,6 +99,9 @@ static void mmc_pwrseq_simple_power_off(struct mmc_host *host)
 		clk_disable_unprepare(pwrseq->ext_clk);
 		pwrseq->clk_enabled = false;
 	}
+
+	if (!IS_ERR(pwrseq->pwrdn_gpio))
+		gpiod_set_value_cansleep(pwrseq->pwrdn_gpio, 0);
 }
 
 static const struct mmc_pwrseq_ops mmc_pwrseq_simple_ops = {
@@ -126,6 +137,15 @@ static int mmc_pwrseq_simple_probe(struct platform_device *pdev)
 		return PTR_ERR(pwrseq->reset_gpios);
 	}
 
+	pwrseq->pwrdn_gpio = devm_gpiod_get(dev, "powerdown", GPIOD_OUT_LOW);
+	if (IS_ERR(pwrseq->pwrdn_gpio) &&
+	    PTR_ERR(pwrseq->pwrdn_gpio) != -ENOENT &&
+	    PTR_ERR(pwrseq->pwrdn_gpio) != -ENOSYS) {
+		return PTR_ERR(pwrseq->pwrdn_gpio);
+	}
+
+	device_property_read_u32(dev, "pre-power-on-delay-ms",
+				 &pwrseq->pre_power_on_delay_ms);
 	device_property_read_u32(dev, "post-power-on-delay-ms",
 				 &pwrseq->post_power_on_delay_ms);
 	device_property_read_u32(dev, "power-off-delay-us",
