@@ -17,6 +17,7 @@
 
 	aliases {
 		serial0 = &uart0;	/* DBGU */
+		serial1 = &uart6;	/* BT */
 	};
 
 	chosen {
@@ -60,6 +61,16 @@
 			gpios = <&pioA PIN_PA8 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
 		};
+	};
+};
+
+&flx1 {
+	status = "okay";
+
+	uart6: serial@200 {
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+		status = "okay";
 	};
 };
 
