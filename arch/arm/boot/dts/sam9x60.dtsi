@@ -107,7 +107,7 @@
 			clocks = <&mck>;
 
 			nand_controller: nand-controller {
-				compatible = "atmel,at91sam9g45-nand-controller";
+				compatible = "microchip,sam9x60-nand-controller";
 				ecc-engine = <&pmecc>;
 				#address-cells = <2>;
 				#size-cells = <1>;
