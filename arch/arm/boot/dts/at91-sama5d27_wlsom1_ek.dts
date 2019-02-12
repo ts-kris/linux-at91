@@ -15,6 +15,7 @@
 
 	aliases {
 		serial0 = &uart0;	/* DBGU */
+		serial1 = &uart6;	/* BT */
 		serial2 = &uart5;	/* mikro BUS 2 */
 		i2c1	= &i2c1;
 	};
@@ -81,7 +82,16 @@
 		clock-names = "usart";
 		pinctrl-0 = <&pinctrl_flx0_default>;
 		pinctrl-names = "default";
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+		status = "okay";
+	};
+};
 
+&flx1 {
+	status = "okay";
+
+	uart6: serial@200 {
 		atmel,use-dma-rx;
 		atmel,use-dma-tx;
 		status = "okay";
