@@ -50,8 +50,7 @@
 #define MCHP_PIT64_TMSBR	0x24	/* Timer MSB Register */
 
 #define MCHP_PRES_MAX		0x10
-#define MCHP_PIT64_CS_RATE	2500000UL	/* 2.5 MHz */
-#define MCHP_PIT64_CE_RATE	2500000UL	/* 2.5 MHz */
+#define MCHP_PIT64_DEF_RATE	2500000UL	/* 2.5 MHz */
 #define MCHP_PIT64_LSBMASK	GENMASK_ULL(31, 0)
 #define MCHP_PIT64_PRESCALER(p)	(MCHP_PIT64_MR_PRES & ((p) << 8))
 
@@ -64,19 +63,20 @@ enum mchp_pit64_mode {
 
 struct mchp_pit64_common_data {
 	void __iomem *base;
-	struct clk *clk;
+	struct clk *pclk;
+	struct clk *gclk;
 	u64 cycles;
 	u8 pres;
 };
 
 struct mchp_pit64_clksrc_data {
 	struct clocksource *clksrc;
-	struct mchp_pit64_common_data cd;
+	struct mchp_pit64_common_data *cd;
 };
 
 struct mchp_pit64_clkevt_data {
 	struct clock_event_device *clkevt;
-	struct mchp_pit64_common_data cd;
+	struct mchp_pit64_common_data *cd;
 };
 
 static struct mchp_pit64_data {
@@ -124,7 +124,9 @@ static inline void mchp_pit64_set_period(void __iomem *base, u64 cycles)
 static inline void mchp_pit64_reset(struct mchp_pit64_common_data *data,
 				    u32 mode, bool irq_ena)
 {
-	mode |= MCHP_PIT64_PRESCALER(data->pres - 1);
+	mode |= MCHP_PIT64_PRESCALER(data->pres);
+	if (data->gclk)
+		mode |= MCHP_PIT64_MR_SGCLK;
 
 	mchp_pit64_write(data->base, MCHP_PIT64_CR, MCHP_PIT64_CR_SWRST);
 	mchp_pit64_write(data->base, MCHP_PIT64_MR, mode);
@@ -137,12 +139,12 @@ static inline void mchp_pit64_reset(struct mchp_pit64_common_data *data,
 
 static u64 mchp_pit64_read_clk(struct clocksource *cs)
 {
-	return mchp_pit64_get_period(data.csd->cd.base);
+	return mchp_pit64_get_period(data.csd->cd->base);
 }
 
 static u64 mchp_sched_read_clk(void)
 {
-	return mchp_pit64_get_period(data.csd->cd.base);
+	return mchp_pit64_get_period(data.csd->cd->base);
 }
 
 static struct clocksource mchp_clksrc = {
@@ -155,21 +157,21 @@ static struct clocksource mchp_clksrc = {
 
 static int mchp_pit64_clkevt_shutdown(struct clock_event_device *cedev)
 {
-	mchp_pit64_write(data.ced->cd.base, MCHP_PIT64_CR, MCHP_PIT64_CR_SWRST);
+	mchp_pit64_write(data.ced->cd->base, MCHP_PIT64_CR, MCHP_PIT64_CR_SWRST);
 
 	return 0;
 }
 
 static int mchp_pit64_clkevt_set_periodic(struct clock_event_device *cedev)
 {
-	mchp_pit64_reset(&data.ced->cd, MCHP_PIT64_MR_CONT, true);
+	mchp_pit64_reset(data.ced->cd, MCHP_PIT64_MR_CONT, true);
 
 	return 0;
 }
 
 static int mchp_pit64_clkevt_set_oneshot(struct clock_event_device *cedev)
 {
-	mchp_pit64_reset(&data.ced->cd, MCHP_PIT64_MR_SMOD, true);
+	mchp_pit64_reset(data.ced->cd, MCHP_PIT64_MR_SMOD, true);
 
 	return 0;
 }
@@ -177,31 +179,32 @@ static int mchp_pit64_clkevt_set_oneshot(struct clock_event_device *cedev)
 static int mchp_pit64_clkevt_set_next_event(unsigned long evt,
 					    struct clock_event_device *cedev)
 {
-	mchp_pit64_set_period(data.ced->cd.base, evt);
-	mchp_pit64_write(data.ced->cd.base, MCHP_PIT64_CR, MCHP_PIT64_CR_START);
+	mchp_pit64_set_period(data.ced->cd->base, evt);
+	mchp_pit64_write(data.ced->cd->base, MCHP_PIT64_CR, MCHP_PIT64_CR_START);
 
 	return 0;
 }
 
 static void mchp_pit64_clkevt_suspend(struct clock_event_device *cedev)
 {
-	mchp_pit64_write(data.ced->cd.base, MCHP_PIT64_CR, MCHP_PIT64_CR_SWRST);
-	clk_disable_unprepare(data.ced->cd.clk);
+	mchp_pit64_write(data.ced->cd->base, MCHP_PIT64_CR, MCHP_PIT64_CR_SWRST);
+	if (data.ced->cd->gclk)
+		clk_disable_unprepare(data.ced->cd->gclk);
+	clk_disable_unprepare(data.ced->cd->pclk);
 }
 
 static void mchp_pit64_clkevt_resume(struct clock_event_device *cedev)
 {
 	u32 mode = MCHP_PIT64_MR_SMOD;
 
-	if (clk_prepare_enable(data.ced->cd.clk)) {
-		pr_err("clkevt: Failed to enable clk on resume!\n");
-		return;
-	}
+	clk_prepare_enable(data.ced->cd->pclk);
+	if (data.ced->cd->gclk)
+		clk_prepare_enable(data.ced->cd->gclk);
 
 	if (clockevent_state_periodic(data.ced->clkevt))
 		mode = MCHP_PIT64_MR_CONT;
 
-	mchp_pit64_reset(&data.ced->cd, mode, true);
+	mchp_pit64_reset(data.ced->cd, mode, true);
 }
 
 static struct clock_event_device mchp_clkevt = {
@@ -223,7 +226,7 @@ static irqreturn_t mchp_pit64_interrupt(int irq, void *dev_id)
 	if (data.ced != irq_data)
 		return IRQ_NONE;
 
-	if (mchp_pit64_read(irq_data->cd.base, MCHP_PIT64_ISR) &
+	if (mchp_pit64_read(irq_data->cd->base, MCHP_PIT64_ISR) &
 	    MCHP_PIT64_ISR_PERIOD) {
 		irq_data->clkevt->event_handler(irq_data->clkevt);
 		return IRQ_HANDLED;
@@ -232,28 +235,76 @@ static irqreturn_t mchp_pit64_interrupt(int irq, void *dev_id)
 	return IRQ_NONE;
 }
 
-static u16 __init mchp_pit64_pres_compute(unsigned long clk_rate,
-					  unsigned long long max_rate)
+static int __init mchp_pit64_pres_compute(u32 *pres, u32 clk_rate, u32 max_rate)
 {
-	u32 tmp, pres;
+	u32 tmp;
 
-	for (pres = 0; pres < MCHP_PRES_MAX; pres++) {
-		tmp = clk_rate / (pres + 1);
-		pr_err("%s(): pres=%u, clk_rate=%lu, max_rate=%llu\n", __func__, pres, clk_rate, max_rate);
+	for (*pres = 0; *pres < MCHP_PRES_MAX; (*pres)++) {
+		tmp = clk_rate / (*pres + 1);
 		if (tmp <= max_rate)
 			break;
 	}
 
-	/*
-	 * Use the last prescaller in case we don't locate one for max_rate Hz.
-	 */
-	if (pres == MCHP_PRES_MAX)
-		pres = MCHP_PRES_MAX - 1;
+	if (*pres == MCHP_PRES_MAX)
+		return -EINVAL;
 
-	return pres;
+	return 0;
 }
 
-static int __init mchp_pit64_dt_init_clksrc(void __iomem *base, struct clk *clk)
+static int __init mchp_pit64_pres_prepare(struct mchp_pit64_common_data *cd,
+					  unsigned long max_rate)
+{
+	unsigned long pclk_rate, diff = 0, best_diff = ULONG_MAX;
+	long gclk_round = 0;
+	u32 pres, best_pres;
+	int ret = 0;
+
+	pclk_rate = clk_get_rate(cd->pclk);
+	if (!pclk_rate)
+		return -EINVAL;
+
+	if (cd->gclk) {
+		gclk_round = clk_round_rate(cd->gclk, max_rate);
+		if (gclk_round < 0)
+			goto pclk;
+
+		if (pclk_rate / gclk_round < 3)
+			goto pclk;
+
+		ret = mchp_pit64_pres_compute(&pres, gclk_round, max_rate);
+		if (ret)
+			best_diff = abs(gclk_round - max_rate);
+		else
+			best_diff = abs(gclk_round / (pres + 1) - max_rate);
+		best_pres = pres;
+	}
+
+pclk:
+	/* Check if requested rate could be obtained using PCLK. */
+	ret = mchp_pit64_pres_compute(&pres, pclk_rate, max_rate);
+	if (ret)
+		diff = abs(pclk_rate - max_rate);
+	else
+		diff = abs(pclk_rate / (pres + 1) - max_rate);
+
+	if (best_diff > diff) {
+		/* Use PCLK. */
+		cd->gclk = NULL;
+		best_pres = pres;
+	} else {
+		clk_set_rate(cd->gclk, gclk_round);
+	}
+
+	cd->pres = best_pres;
+
+	pr_err("PIT64: using clk=%s with prescaler %u, freq=%lu [Hz]\n",
+	       cd->gclk ? "gclk" : "pclk", cd->pres,
+	       cd->gclk ? gclk_round / (cd->pres + 1) : pclk_rate / (cd->pres + 1));
+
+	return 0;
+}
+
+static int __init mchp_pit64_dt_init_clksrc(struct mchp_pit64_common_data *cd)
 {
 	struct mchp_pit64_clksrc_data *csd;
 	unsigned long clk_rate;
@@ -263,21 +314,16 @@ static int __init mchp_pit64_dt_init_clksrc(void __iomem *base, struct clk *clk)
 	if (!csd)
 		return -ENOMEM;
 
-	csd->cd.base = base;
-	csd->cd.clk = clk;
+	csd->cd = cd;
 
-	ret = clk_prepare_enable(csd->cd.clk);
-	if (ret) {
-		pr_err("clksrc: Failed to enable PIT64's clock!\n");
-		goto free;
-	}
+	if (csd->cd->gclk)
+		clk_rate = clk_get_rate(csd->cd->gclk);
+	else
+		clk_rate = clk_get_rate(csd->cd->pclk);
 
-	clk_rate = clk_get_rate(csd->cd.clk);
-	csd->cd.pres = mchp_pit64_pres_compute(clk_rate, MCHP_PIT64_CS_RATE);
-	clk_rate = clk_rate / csd->cd.pres;
-	csd->cd.cycles = ULLONG_MAX;
-
-	mchp_pit64_reset(&csd->cd, MCHP_PIT64_MR_CONT, false);
+	clk_rate = clk_rate / (cd->pres + 1);
+	csd->cd->cycles = ULLONG_MAX;
+	mchp_pit64_reset(csd->cd, MCHP_PIT64_MR_CONT, false);
 
 	data.csd = csd;
 
@@ -286,15 +332,13 @@ static int __init mchp_pit64_dt_init_clksrc(void __iomem *base, struct clk *clk)
 	ret = clocksource_register_hz(csd->clksrc, clk_rate);
 	if (ret) {
 		pr_err("clksrc: Failed to register PIT64 clocksource!\n");
-		goto clk_unprepare;
+		goto free;
 	}
 
 	sched_clock_register(mchp_sched_read_clk, 64, clk_rate);
 
 	return 0;
 
-clk_unprepare:
-	clk_disable_unprepare(csd->cd.clk);
 free:
 	kfree(csd);
 	data.csd = NULL;
@@ -302,7 +346,7 @@ free:
 	return ret;
 }
 
-static int __init mchp_pit64_dt_init_clkevt(void __iomem *base, struct clk *clk,
+static int __init mchp_pit64_dt_init_clkevt(struct mchp_pit64_common_data *cd,
 					    u32 irq)
 {
 	struct mchp_pit64_clkevt_data *ced;
@@ -313,25 +357,21 @@ static int __init mchp_pit64_dt_init_clkevt(void __iomem *base, struct clk *clk,
 	if (!ced)
 		return -ENOMEM;
 
-	ced->cd.base = base;
-	ced->cd.clk = clk;
+	ced->cd = cd;
 
-	ret = clk_prepare_enable(ced->cd.clk);
-	if (ret) {
-		pr_err("clkevt: Failed to enable PIT64's clock!\n");
-		goto free;
-	}
+	if (ced->cd->gclk)
+		clk_rate = clk_get_rate(ced->cd->gclk);
+	else
+		clk_rate = clk_get_rate(ced->cd->pclk);
 
-	clk_rate = clk_get_rate(ced->cd.clk);
-	ced->cd.pres = mchp_pit64_pres_compute(clk_rate, MCHP_PIT64_CE_RATE);
-	clk_rate = clk_rate / ced->cd.pres;
-	ced->cd.cycles = DIV_ROUND_CLOSEST(clk_rate, HZ);
+	clk_rate = clk_rate / (ced->cd->pres + 1);
+	ced->cd->cycles = DIV_ROUND_CLOSEST(clk_rate, HZ);
 
 	ret = request_irq(irq, mchp_pit64_interrupt, IRQF_TIMER, "pit64_tick",
 			  ced);
 	if (ret) {
 		pr_err("clkevt: Failed to setup PIT64 IRQ\n");
-		goto clk_unprepare;
+		goto free;
 	}
 
 	data.ced = ced;
@@ -344,8 +384,6 @@ static int __init mchp_pit64_dt_init_clkevt(void __iomem *base, struct clk *clk,
 
 	return 0;
 
-clk_unprepare:
-	clk_disable_unprepare(ced->cd.clk);
 free:
 	kfree(ced);
 	data.ced = NULL;
@@ -357,41 +395,66 @@ static int __init mchp_pit64_dt_init(struct device_node *node,
 				     enum mchp_pit64_mode mode)
 {
 	const char *name = node->name ? node->name : "pit64";
-	void __iomem *base;
-	struct clk *clk;
-	u32 irq;
+	struct mchp_pit64_common_data *cd;
+	u32 irq, freq = MCHP_PIT64_DEF_RATE;
 	int ret;
 
-	base = of_iomap(node, 0);
-	if (!base) {
-		pr_err("%s: Could not map PIT64 address!\n", name);
-		return -ENXIO;
+	cd = kzalloc(sizeof(*cd), GFP_KERNEL);
+	if (!cd)
+		return -ENOMEM;
+
+	cd->pclk = of_clk_get_by_name(node, "pclk");
+	if (IS_ERR(cd->pclk)) {
+		ret = PTR_ERR(cd->pclk);
+		goto free;
 	}
 
-	clk = of_clk_get(node, 0);
-	if (IS_ERR(clk)) {
-		pr_err("%s: Failed to get PIT64's clock!\n", name);
-		ret = PTR_ERR(clk);
+	cd->gclk = of_clk_get_by_name(node, "gclk");
+	if (IS_ERR(cd->gclk))
+		cd->gclk = NULL;
+
+	ret = of_property_read_u32(node, "clock-frequency", &freq);
+	if (ret)
+		pr_debug("PIT64: failed to read clock frequency. Using default!\n");
+
+	ret = mchp_pit64_pres_prepare(cd, freq);
+	if (ret)
+		goto free;
+
+	cd->base = of_iomap(node, 0);
+	if (!cd->base) {
+		pr_err("%s: Could not map PIT64 address!\n", name);
+		ret = -ENXIO;
+		goto free;
+	}
+
+	ret = clk_prepare_enable(cd->pclk);
+	if (ret)
 		goto unmap;
+
+	if (cd->gclk) {
+		ret = clk_prepare_enable(cd->gclk);
+		if (ret)
+			goto pclk_unprepare;
 	}
 
 	switch (mode) {
 	case MCHP_PIT64_MODE_CLKSRC:
 		if (data.csd) {
 			ret = -EBUSY;
-			goto clock_put;
+			goto gclk_unprepare;
 		}
 
-		ret = mchp_pit64_dt_init_clksrc(base, clk);
+		ret = mchp_pit64_dt_init_clksrc(cd);
 		if (ret)
-			goto clock_put;
+			goto gclk_unprepare;
 
 		break;
 
 	case MCHP_PIT64_MODE_CLKEVT:
 		if (data.ced) {
 			ret = -EBUSY;
-			goto clock_put;
+			goto gclk_unprepare;
 		}
 
 		irq = irq_of_parse_and_map(node, 0);
@@ -399,10 +462,10 @@ static int __init mchp_pit64_dt_init(struct device_node *node,
 			pr_err("%s: Failed to get PIT64 clockevent IRQ!\n",
 			       name);
 			ret = -ENODEV;
-			goto clock_put;
+			goto gclk_unprepare;
 		}
 
-		ret = mchp_pit64_dt_init_clkevt(base, clk, irq);
+		ret = mchp_pit64_dt_init_clkevt(cd, irq);
 		if (ret)
 			goto irq_unmap;
 
@@ -410,17 +473,22 @@ static int __init mchp_pit64_dt_init(struct device_node *node,
 
 	default:
 		ret = -EINVAL;
-		goto clock_put;
+		goto gclk_unprepare;
 	}
 
 	return 0;
 
 irq_unmap:
 	irq_dispose_mapping(irq);
-clock_put:
-	clk_put(clk);
+gclk_unprepare:
+	if (cd->gclk)
+		clk_disable_unprepare(cd->gclk);
+pclk_unprepare:
+	clk_disable_unprepare(cd->pclk);
 unmap:
-	iounmap(base);
+	iounmap(cd->base);
+free:
+	kfree(cd);
 
 	return ret;
 }
