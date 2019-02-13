@@ -58,18 +58,6 @@
 			#clock-cells = <0>;
 			clock-frequency = <24000000>;
 		};
-
-		slow_rc_osc: slow_rc_osc {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <32000>;
-		};
-
-		md_slck: md_slck {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clocks = <&slow_rc_osc>;
-		};
 	};
 
 	sram: sram@300000 {
@@ -1262,10 +1250,22 @@
 					clocks = <&slow_xtal>;
 				};
 
+				slow_rc_osc: slow_rc_osc {
+					compatible = "atmel,at91sam9x5-clk-slow-rc-osc";
+					#clock-cells = <0>;
+					clock-frequency = <32768>;
+				};
+
 				td_slck: td_slck {
 					compatible = "atmel,at91sam9x5-clk-slow";
 					#clock-cells = <0>;
 					clocks = <&slow_rc_osc>, <&slow_osc>;
+				};
+
+				md_slck: md_slck {
+					compatible = "atmel,at91sam9x5-clk-slow";
+					#clock-cells = <0>;
+					clocks = <&slow_rc_osc>;
 				};
 			};
 
