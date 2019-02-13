@@ -84,13 +84,11 @@
 				 <PIN_PA20__SDMMC1_DAT2>,
 				 <PIN_PA21__SDMMC1_DAT3>;
 			bias-disable;
-			atmel,drive-strength = <ATMEL_PIO_DRVSTR_ME>;
 		};
 
 		conf-ck {
 			pinmux = <PIN_PA22__SDMMC1_CK>;
 			bias-disable;
-			atmel,drive-strength = <ATMEL_PIO_DRVSTR_ME>;
 		};
 	};
 
