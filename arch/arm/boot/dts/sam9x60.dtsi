@@ -244,10 +244,14 @@
 			};
 
 			pit64b: timer@f0028000 {
-				compatible = "microchip,pit64-clkevt";
+				compatible = "microchip,pit64b-clkevt";
 				reg = <0xf0028000 0x100>;
 				interrupts = <37 IRQ_TYPE_LEVEL_HIGH 7>;
-				clocks = <&pit64b_clk>;
+				clock-frequency=<10000000>;
+				clocks = <&pit64b_clk>, <&pit64b_gclk>;
+				clock-names = "pclk", "gclk";
+				assigned-clock = <&pit64b_gclk>;
+				assigned-clock-parents = <&mck>;
 			};
 
 			sha@f002c000 {
