@@ -442,12 +442,12 @@ config OXNAS_RPS_TIMER
 config SYS_SUPPORTS_SH_CMT
         bool
 
-config MICROCHIP_PIT64
-	bool "Microchip PIT64 support"
+config MICROCHIP_PIT64B
+	bool "Microchip PIT64B support"
 	depends on GENERIC_CLOCKEVENTS
 	select CLKSRC_OF if OF
 	help
-	  This option enables Microchip PIT64 timer.
+	  This option enables Microchip PIT64B timer.
 
 config MTK_TIMER
 	bool "Mediatek timer driver" if COMPILE_TEST
