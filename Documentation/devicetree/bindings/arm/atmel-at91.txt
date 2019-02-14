@@ -85,6 +85,7 @@ PIT64B Timer required properties:
 - compatible: Should be "microchip,pit64b-clksrc" to use timer as clocksource
 or "microchip,pit64b-clkevt" to use timer as clockevent
 - reg: Should contain registers location and length
+- clock-frequency: Should contain PIT64B timer frequency
 - interrupts: Should contain interrupt for PIT64B timer which is used as
 clockevents; for clocksource timer, the interrupt could be omitted.
 - clock: Should contain the input clock of the PIT64B timer.
