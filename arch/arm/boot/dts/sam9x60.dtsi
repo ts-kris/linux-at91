@@ -206,7 +206,7 @@
 			};
 
 			i2s: i2s@f001c000 {
-				compatible = "atmel,sama5d2-i2s";
+				compatible = "microchip,sam9x60-i2smcc";
 				reg = <0xf001c000 0x100>;
 				interrupts = <34 IRQ_TYPE_LEVEL_HIGH 7>;
 				dmas = <&dma0
@@ -218,8 +218,6 @@
 				dma-names = "tx", "rx";
 				clocks = <&i2s_clk>, <&i2s_gclk>;
 				clock-names = "pclk", "gclk";
-				assigned-clocks = <&i2smuxck>;
-				assigned-clock-parents = <&i2s_gclk>;
 				status = "disabled";
 			};
 
@@ -1215,19 +1213,6 @@
 						atmel,clk-output-range = <0 66666666>;
 					};
 				};
-
-				i2s_clkmux {
-					compatible = "atmel,sama5d2-clk-i2s-mux";
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					i2smuxck: i2s_muxclk {
-						clocks = <&i2s_clk>, <&i2s_gclk>;
-						#clock-cells = <0>;
-						reg = <0>;
-					};
-				};
-
 			};
 
 			reset_controller: rstc@fffffe00 {
