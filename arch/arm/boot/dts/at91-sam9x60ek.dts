@@ -182,7 +182,7 @@
 					dma-names = "tx", "rx";
 					#address-cells = <1>;
 					#size-cells = <0>;
-					clocks = <&flex0_clk>;
+					clocks = <&flex6_clk>;
 					pinctrl-names = "default";
 					pinctrl-0 = <&pinctrl_flx6_default>;
 					atmel,fifo-size = <16>;
