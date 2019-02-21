@@ -386,14 +386,14 @@
 				qt1070 {
 					pinctrl_qt1070_irq: qt1070_irq {
 						atmel,pins =
-							<AT91_PIOC 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;
+							<AT91_PIOB 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;
 					};
 				};
 
 				mxt {
 					pinctrl_mxt_irq: mxt_irq {
 						atmel,pins =
-							<AT91_PIOB 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;
+							<AT91_PIOC 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;
 					};
 				};
 
