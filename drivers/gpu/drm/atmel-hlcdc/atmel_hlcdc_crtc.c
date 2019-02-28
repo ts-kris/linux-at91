@@ -105,7 +105,7 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 
 	prate = clk_get_rate(crtc->dc->hlcdc->sys_clk);
 	mode_rate = adj->crtc_clock * 1000;
-	if (!crtc->dc->desc->noclksel && (prate / 2) < mode_rate) {
+	if (!crtc->dc->desc->fixed_clksrc && (prate / 2) < mode_rate) {
 		prate *= 2;
 		cfg |= ATMEL_HLCDC_CLKSEL;
 		mask |= ATMEL_HLCDC_CLKSEL;
