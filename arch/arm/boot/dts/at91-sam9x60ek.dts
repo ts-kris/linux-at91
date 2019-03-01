@@ -37,6 +37,7 @@
 			regulator-name = "VDD_1V8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
 			status = "okay";
 		};
 
@@ -45,6 +46,7 @@
 			regulator-name = "VDD_1V5";
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <1500000>;
+			regulator-always-on;
 			status = "okay";
 		};
 
@@ -53,6 +55,7 @@
 			regulator-name = "VDD1_3V3";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
 			status = "okay";
 		};
 
@@ -61,6 +64,7 @@
 			regulator-name = "VDD2_3V3";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
 			status = "okay";
 		};
 	};
