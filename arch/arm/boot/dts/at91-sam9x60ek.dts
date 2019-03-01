@@ -32,6 +32,10 @@
 	};
 
 	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		vdd_1v8: fixed-regulator-vdd_1v8@0 {
 			compatible = "regulator-fixed";
 			regulator-name = "VDD_1V8";
