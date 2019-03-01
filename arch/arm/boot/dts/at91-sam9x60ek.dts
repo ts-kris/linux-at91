@@ -58,7 +58,7 @@
 
 		vdd2_3v3: regulator-fixed-vdd2_3v3@3 {
 			compatible = "regulator-fixed";
-			regulator-name = "VDD1_3V3";
+			regulator-name = "VDD2_3V3";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
 			status = "okay";
