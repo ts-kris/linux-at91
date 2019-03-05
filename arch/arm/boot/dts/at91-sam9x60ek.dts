@@ -102,7 +102,7 @@
 					cs-gpios = <&pioD 4 GPIO_ACTIVE_HIGH>;
 					nand-bus-width = <8>;
 					nand-ecc-mode = "hw";
-					nand-ecc-strength = <2>;
+					nand-ecc-strength = <8>;
 					nand-ecc-step-size = <512>;
 					nand-on-flash-bbt;
 					label = "atmel_nand";
