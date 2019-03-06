@@ -215,7 +215,7 @@
 
 			flx0: flexcom@f801c000 {
 				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
-				status = "disabled";
+				status = "okay";
 
 				i2c0: i2c@600 {
 					compatible = "atmel,sama5d2-i2c";
@@ -234,7 +234,7 @@
 					pinctrl-names = "default";
 					pinctrl-0 = <&pinctrl_flx0_default>;
 					atmel,fifo-size = <16>;
-					status = "disabled";
+					status = "okay";
 				};
 			};
 
