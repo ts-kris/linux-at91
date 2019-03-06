@@ -196,6 +196,15 @@
 					atmel,fifo-size = <16>;
 					status = "okay";
 
+					qt1070: keyboard@1b {
+						compatible = "qt1070";
+						reg = <0x1b>;
+						interrupt-parent = <&pioB>;
+						interrupts = <17 0>;
+						pinctrl-names = "default";
+						pinctrl-0 = <&pinctrl_qt1070_irq>;
+					};
+
 					gpio_exp: mcp23008@20 {
 						compatible = "microchip,mcp23008";
 						reg = <0x20>;
