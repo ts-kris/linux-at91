@@ -173,6 +173,25 @@
 				};
 			};
 
+			flx4: flexcom@f0000000 {
+				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
+				status = "okay";
+				spi0: spi@400 {
+					compatible = "atmel,at91rm9200-spi";
+					reg = <0x400 0x200>;
+					interrupts = <13 IRQ_TYPE_LEVEL_HIGH 7>;
+					clocks = <&flex4_clk>;
+					clock-names = "spi_clk";
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_flx4_default>;
+					atmel,fifo-size = <16>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					status = "okay"; /* conflict with sdmmc1 */
+				};
+
+			};
+
 			i2s: i2s@f001c000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2s_default>;
@@ -560,6 +579,14 @@
 						atmel,pins =
 							<AT91_PIOA 0 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
 							 AT91_PIOA 1 AT91_PERIPH_A AT91_PINCTRL_PULL_UP>;
+					};
+
+					pinctrl_flx4_default: flx4_spi {
+						atmel,pins =
+							<AT91_PIOA 11 AT91_PERIPH_A AT91_PINCTRL_NONE
+							 AT91_PIOA 12 AT91_PERIPH_A AT91_PINCTRL_NONE
+							 AT91_PIOA 13 AT91_PERIPH_A AT91_PINCTRL_NONE
+							 AT91_PIOA 14 AT91_PERIPH_A AT91_PINCTRL_NONE>;
 					};
 
 					pinctrl_flx6_default: flx6_twi {
