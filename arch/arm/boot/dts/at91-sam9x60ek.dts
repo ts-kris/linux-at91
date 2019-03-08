@@ -173,6 +173,13 @@
 				};
 			};
 
+			i2s: i2s@f001c000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_i2s_default>;
+				#sound-dai-cells = <0>;
+				status = "disabled";	/* conflict with QSPI */
+			};
+
 			flx6: flexcom@f8010000 {
 				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 				status = "okay";
@@ -349,6 +356,17 @@
 							 AT91_PIOA 2 AT91_PERIPH_B AT91_PINCTRL_PULL_UP		/* PA2 DAT1 periph B with pullup */
 							 AT91_PIOA 3 AT91_PERIPH_B AT91_PINCTRL_PULL_UP		/* PA3 DAT2 periph B with pullup */
 							 AT91_PIOA 4 AT91_PERIPH_B AT91_PINCTRL_PULL_UP>;	/* PA4 DAT3 periph B with pullup */
+					};
+				};
+
+				i2s {
+					pinctrl_i2s_default: i2s {
+						atmel,pins =
+							<AT91_PIOB 19 AT91_PERIPH_B AT91_PINCTRL_NONE		/* I2SCK */
+							 AT91_PIOB 20 AT91_PERIPH_B AT91_PINCTRL_NONE		/* I2SWS */
+							 AT91_PIOB 21 AT91_PERIPH_B AT91_PINCTRL_NONE		/* I2SDIN */
+							 AT91_PIOB 22 AT91_PERIPH_B AT91_PINCTRL_NONE		/* I2SDOUT */
+							 AT91_PIOB 23 AT91_PERIPH_B AT91_PINCTRL_NONE>;		/* I2SMCK */
 					};
 				};
 
