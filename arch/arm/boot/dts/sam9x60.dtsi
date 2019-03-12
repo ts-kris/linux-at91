@@ -59,7 +59,7 @@
 			clock-frequency = <24000000>;
 		};
 
-		slow_rc_osc: slow_rc_osc {
+		md_slck: md_slck {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <32000>;
@@ -713,7 +713,7 @@
 				reg = <0xfffffc00 0x200>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				#clock-cells = <2>;
-				clocks = <&td_slck>, <&slow_rc_osc>, <&main_xtal>;
+				clocks = <&td_slck>, <&md_slck>, <&main_xtal>;
 				clock-names = "td_slck", "md_slck", "main_xtal";
 			};
 
