@@ -444,7 +444,7 @@ config SYS_SUPPORTS_SH_CMT
 
 config MICROCHIP_PIT64B
 	bool "Microchip PIT64B support"
-	depends on OF
+	depends on OF || COMPILE_TEST
 	help
 	  This option enables Microchip PIT64B timer.
 
