@@ -137,7 +137,7 @@ static struct clocksource mchp_pit64b_clksrc = {
 	.name = MCHP_PIT64B_NAME,
 	.mask = CLOCKSOURCE_MASK(64),
 	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
-	.rating = 250,
+	.rating = 210,
 	.read = mchp_pit64b_read_clk,
 };
 
@@ -199,7 +199,7 @@ static void mchp_pit64b_clkevt_resume(struct clock_event_device *cedev)
 static struct clock_event_device mchp_pit64b_clkevt = {
 	.name = MCHP_PIT64B_NAME,
 	.features = CLOCK_EVT_FEAT_ONESHOT | CLOCK_EVT_FEAT_PERIODIC,
-	.rating = 250,
+	.rating = 150,
 	.set_state_shutdown = mchp_pit64b_clkevt_shutdown,
 	.set_state_periodic = mchp_pit64b_clkevt_set_periodic,
 	.set_state_oneshot = mchp_pit64b_clkevt_set_oneshot,
