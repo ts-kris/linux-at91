@@ -254,7 +254,7 @@
 				clock-frequency=<10000000>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 37>, <&pmc PMC_TYPE_GCK 37>;
 				clock-names = "pclk", "gclk";
-				assigned-clock = <&pmc PMC_TYPE_GCK 37>;
+				assigned-clocks = <&pmc PMC_TYPE_GCK 37>;
 				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_MCK>;
 			};
 
