@@ -457,7 +457,7 @@
 				compatible = "microchip,sam9x60-hlcdc";
 				reg = <0xf8038000 0x4000>;
 				interrupts = <25 IRQ_TYPE_LEVEL_HIGH 0>;
-				clocks = <&pmc PMC_TYPE_PERIPHERAL 25>, <&pmc PMC_TYPE_GCK 25>, <&td_slck>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 25>, <&pmc PMC_TYPE_GCK 25>, <&clk32k>;
 				clock-names = "periph_clk","sys_clk", "slow_clk";
 				assigned-clocks = <&pmc PMC_TYPE_GCK 25>;
 				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_MCK>;
@@ -713,7 +713,7 @@
 				reg = <0xfffffc00 0x200>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				#clock-cells = <2>;
-				clocks = <&td_slck>, <&md_slck>, <&main_xtal>;
+				clocks = <&clk32k>, <&md_slck>, <&main_xtal>;
 				clock-names = "td_slck", "md_slck", "main_xtal";
 			};
 
@@ -741,21 +741,11 @@
 				clocks = <&pmc PMC_TYPE_CORE PMC_MCK>;
 			};
 
-			sckc@fffffe50 {
-				compatible = "microchip,at91sam9x60-sckc";
+			clk32k: sckc@fffffe50 {
+				compatible = "microchip,sam9x60-sckc";
 				reg = <0xfffffe50 0x4>;
-
-				slow_osc: slow_osc {
-					compatible = "atmel,at91sam9x5-clk-slow-osc";
-					#clock-cells = <0>;
-					clocks = <&slow_xtal>;
-				};
-
-				td_slck: td_slck {
-					compatible = "atmel,at91sam9x5-clk-slow";
-					#clock-cells = <0>;
-					clocks = <&slow_rc_osc>, <&slow_osc>;
-				};
+				clocks = <&md_slck>, <&slow_xtal>;
+				#clock-cells = <0>;
 			};
 
 			gpbr: syscon@fffffe60 {
@@ -767,14 +757,14 @@
 				compatible = "atmel,at91sam9260-rtt";
 				reg = <0xfffffe20 0x10>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
-				clocks = <&td_slck>;
+				clocks = <&clk32k>;
 			};
 
 			rtc@ffffffA8 {
 				compatible = "atmel,at91sam9x5-rtc";
 				reg = <0xffffffa8 0x40>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
-				clocks = <&td_slck>;
+				clocks = <&clk32k>;
 			};
 
 			watchdog: watchdog@ffffff80 {
