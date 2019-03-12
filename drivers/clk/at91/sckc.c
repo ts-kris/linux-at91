@@ -339,15 +339,9 @@ at91_clk_register_sam9x5_slow(void __iomem *sckcr,
 	return hw;
 }
 
-static const struct clk_slow_offsets at91sam9x5_offsets = {
-	.cr_rcen = BIT(0),
-	.cr_osc32en = BIT(1),
-	.cr_osc32byp = BIT(2),
-	.cr_oscsel = BIT(3),
-};
-
 static void __init at91sam9x5_sckc_register(struct device_node *np,
-					    unsigned int rc_osc_startup_us)
+					    unsigned int rc_osc_startup_us,
+					    const struct clk_slow_offsets *offsets)
 {
 	const char *parent_names[2] = { "slow_rc_osc", "slow_osc" };
 	void __iomem *regbase = of_iomap(np, 0);
@@ -361,7 +355,7 @@ static void __init at91sam9x5_sckc_register(struct device_node *np,
 
 	hw = at91_clk_register_slow_rc_osc(regbase, parent_names[0], 32768,
 					   50000000, rc_osc_startup_us,
-					   &at91sam9x5_offsets);
+					   offsets);
 	if (IS_ERR(hw))
 		return;
 
@@ -384,12 +378,12 @@ static void __init at91sam9x5_sckc_register(struct device_node *np,
 		return;
 
 	hw = at91_clk_register_slow_osc(regbase, parent_names[1], xtal_name,
-					1200000, bypass, &at91sam9x5_offsets);
+					1200000, bypass, offsets);
 	if (IS_ERR(hw))
 		return;
 
 	hw = at91_clk_register_sam9x5_slow(regbase, "slowck", parent_names, 2,
-					   &at91sam9x5_offsets);
+					   offsets);
 	if (IS_ERR(hw))
 		return;
 
@@ -400,16 +394,23 @@ static void __init at91sam9x5_sckc_register(struct device_node *np,
 		of_clk_add_hw_provider(child, of_clk_hw_simple_get, hw);
 }
 
+static const struct clk_slow_offsets at91sam9x5_offsets = {
+	.cr_rcen = BIT(0),
+	.cr_osc32en = BIT(1),
+	.cr_osc32byp = BIT(2),
+	.cr_oscsel = BIT(3),
+};
+
 static void __init of_at91sam9x5_sckc_setup(struct device_node *np)
 {
-	at91sam9x5_sckc_register(np, 75);
+	at91sam9x5_sckc_register(np, 75, &at91sam9x5_offsets);
 }
 CLK_OF_DECLARE(at91sam9x5_clk_sckc, "atmel,at91sam9x5-sckc",
 	       of_at91sam9x5_sckc_setup);
 
 static void __init of_sama5d3_sckc_setup(struct device_node *np)
 {
-	at91sam9x5_sckc_register(np, 500);
+	at91sam9x5_sckc_register(np, 500, &at91sam9x5_offsets);
 }
 CLK_OF_DECLARE(sama5d3_clk_sckc, "atmel,sama5d3-sckc",
 	       of_sama5d3_sckc_setup);
