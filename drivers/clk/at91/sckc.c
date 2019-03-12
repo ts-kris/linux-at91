@@ -22,25 +22,15 @@
 #define SLOWCK_SW_TIME_USEC	((SLOWCK_SW_CYCLES * USEC_PER_SEC) / \
 				 SLOW_CLOCK_FREQ)
 
-#define	AT91_SCKC_CR		0x00
-#define		AT91_SCKC_RCEN(off)	(1 << (off)->cr_rcen)
-#define		AT91_SCKC_OSC32EN(off)	(1 << (off)->cr_osc32en)
-#define		AT91_SCKC_OSC32BYP(off)	(1 << (off)->cr_osc32byp)
-#define		AT91_SCKC_OSCSEL(off)	(1 << (off)->cr_oscsel)
-
-#define AT91_SCKC_OFFSET_INVALID        (32)
-
-struct clk_slow_offsets {
-	u8 cr_rcen;
-	u8 cr_osc32en;
-	u8 cr_osc32byp;
-	u8 cr_oscsel;
-};
+#define	AT91_SCKC_CR			0x00
+#define		AT91_SCKC_RCEN		(1 << 0)
+#define		AT91_SCKC_OSC32EN	(1 << 1)
+#define		AT91_SCKC_OSC32BYP	(1 << 2)
+#define		AT91_SCKC_OSCSEL	(1 << 3)
 
 struct clk_slow_osc {
 	struct clk_hw hw;
 	void __iomem *sckcr;
-	const struct clk_slow_offsets *offsets;
 	unsigned long startup_usec;
 };
 
@@ -49,7 +39,6 @@ struct clk_slow_osc {
 struct clk_sama5d4_slow_osc {
 	struct clk_hw hw;
 	void __iomem *sckcr;
-	const struct clk_slow_offsets *offsets;
 	unsigned long startup_usec;
 	bool prepared;
 };
@@ -59,7 +48,6 @@ struct clk_sama5d4_slow_osc {
 struct clk_slow_rc_osc {
 	struct clk_hw hw;
 	void __iomem *sckcr;
-	const struct clk_slow_offsets *offsets;
 	unsigned long frequency;
 	unsigned long accuracy;
 	unsigned long startup_usec;
@@ -70,7 +58,6 @@ struct clk_slow_rc_osc {
 struct clk_sam9x5_slow {
 	struct clk_hw hw;
 	void __iomem *sckcr;
-	const struct clk_slow_offsets *offsets;
 	u8 parent;
 };
 
@@ -82,11 +69,10 @@ static int clk_slow_osc_prepare(struct clk_hw *hw)
 	void __iomem *sckcr = osc->sckcr;
 	u32 tmp = readl(sckcr);
 
-	if (tmp & (AT91_SCKC_OSC32BYP(osc->offsets) |
-		   AT91_SCKC_OSC32EN(osc->offsets)))
+	if (tmp & (AT91_SCKC_OSC32BYP | AT91_SCKC_OSC32EN))
 		return 0;
 
-	writel(tmp | AT91_SCKC_OSC32EN(osc->offsets), sckcr);
+	writel(tmp | AT91_SCKC_OSC32EN, sckcr);
 
 	usleep_range(osc->startup_usec, osc->startup_usec + 1);
 
@@ -99,10 +85,10 @@ static void clk_slow_osc_unprepare(struct clk_hw *hw)
 	void __iomem *sckcr = osc->sckcr;
 	u32 tmp = readl(sckcr);
 
-	if (tmp & AT91_SCKC_OSC32BYP(osc->offsets))
+	if (tmp & AT91_SCKC_OSC32BYP)
 		return;
 
-	writel(tmp & ~AT91_SCKC_OSC32EN(osc->offsets), sckcr);
+	writel(tmp & ~AT91_SCKC_OSC32EN, sckcr);
 }
 
 static int clk_slow_osc_is_prepared(struct clk_hw *hw)
@@ -111,10 +97,10 @@ static int clk_slow_osc_is_prepared(struct clk_hw *hw)
 	void __iomem *sckcr = osc->sckcr;
 	u32 tmp = readl(sckcr);
 
-	if (tmp & AT91_SCKC_OSC32BYP(osc->offsets))
+	if (tmp & AT91_SCKC_OSC32BYP)
 		return 1;
 
-	return !!(tmp & AT91_SCKC_OSC32EN(osc->offsets));
+	return !!(tmp & AT91_SCKC_OSC32EN);
 }
 
 static const struct clk_ops slow_osc_ops = {
@@ -128,8 +114,7 @@ at91_clk_register_slow_osc(void __iomem *sckcr,
 			   const char *name,
 			   const char *parent_name,
 			   unsigned long startup,
-			   bool bypass,
-			   const struct clk_slow_offsets *offsets)
+			   bool bypass)
 {
 	struct clk_slow_osc *osc;
 	struct clk_hw *hw;
@@ -152,11 +137,9 @@ at91_clk_register_slow_osc(void __iomem *sckcr,
 	osc->hw.init = &init;
 	osc->sckcr = sckcr;
 	osc->startup_usec = startup;
-	osc->offsets = offsets;
 
 	if (bypass)
-		writel((readl(sckcr) & ~AT91_SCKC_OSC32EN(osc->offsets)) |
-					AT91_SCKC_OSC32BYP(osc->offsets),
+		writel((readl(sckcr) & ~AT91_SCKC_OSC32EN) | AT91_SCKC_OSC32BYP,
 		       sckcr);
 
 	hw = &osc->hw;
@@ -170,8 +153,7 @@ at91_clk_register_slow_osc(void __iomem *sckcr,
 }
 
 static void __init
-of_at91sam9x5_clk_slow_osc_setup(struct device_node *np, void __iomem *sckcr,
-				 const struct clk_slow_offsets *offsets)
+of_at91sam9x5_clk_slow_osc_setup(struct device_node *np, void __iomem *sckcr)
 {
 	struct clk_hw *hw;
 	const char *parent_name;
@@ -185,7 +167,7 @@ of_at91sam9x5_clk_slow_osc_setup(struct device_node *np, void __iomem *sckcr,
 	bypass = of_property_read_bool(np, "atmel,osc-bypass");
 
 	hw = at91_clk_register_slow_osc(sckcr, name, parent_name, startup,
-					bypass, offsets);
+					 bypass);
 	if (IS_ERR(hw))
 		return;
 
@@ -213,7 +195,7 @@ static int clk_slow_rc_osc_prepare(struct clk_hw *hw)
 	struct clk_slow_rc_osc *osc = to_clk_slow_rc_osc(hw);
 	void __iomem *sckcr = osc->sckcr;
 
-	writel(readl(sckcr) | AT91_SCKC_RCEN(osc->offsets), sckcr);
+	writel(readl(sckcr) | AT91_SCKC_RCEN, sckcr);
 
 	usleep_range(osc->startup_usec, osc->startup_usec + 1);
 
@@ -225,14 +207,14 @@ static void clk_slow_rc_osc_unprepare(struct clk_hw *hw)
 	struct clk_slow_rc_osc *osc = to_clk_slow_rc_osc(hw);
 	void __iomem *sckcr = osc->sckcr;
 
-	writel(readl(sckcr) & ~AT91_SCKC_RCEN(osc->offsets), sckcr);
+	writel(readl(sckcr) & ~AT91_SCKC_RCEN, sckcr);
 }
 
 static int clk_slow_rc_osc_is_prepared(struct clk_hw *hw)
 {
 	struct clk_slow_rc_osc *osc = to_clk_slow_rc_osc(hw);
 
-	return !!(readl(osc->sckcr) & AT91_SCKC_RCEN(osc->offsets));
+	return !!(readl(osc->sckcr) & AT91_SCKC_RCEN);
 }
 
 static const struct clk_ops slow_rc_osc_ops = {
@@ -248,8 +230,7 @@ at91_clk_register_slow_rc_osc(void __iomem *sckcr,
 			      const char *name,
 			      unsigned long frequency,
 			      unsigned long accuracy,
-			      unsigned long startup,
-			      const struct clk_slow_offsets *offsets)
+			      unsigned long startup)
 {
 	struct clk_slow_rc_osc *osc;
 	struct clk_hw *hw;
@@ -271,7 +252,6 @@ at91_clk_register_slow_rc_osc(void __iomem *sckcr,
 
 	osc->hw.init = &init;
 	osc->sckcr = sckcr;
-	osc->offsets = offsets;
 	osc->frequency = frequency;
 	osc->accuracy = accuracy;
 	osc->startup_usec = startup;
@@ -287,8 +267,7 @@ at91_clk_register_slow_rc_osc(void __iomem *sckcr,
 }
 
 static void __init
-of_at91sam9x5_clk_slow_rc_osc_setup(struct device_node *np, void __iomem *sckcr,
-				    const struct clk_slow_offsets *offsets)
+of_at91sam9x5_clk_slow_rc_osc_setup(struct device_node *np, void __iomem *sckcr)
 {
 	struct clk_hw *hw;
 	u32 frequency = 0;
@@ -302,7 +281,7 @@ of_at91sam9x5_clk_slow_rc_osc_setup(struct device_node *np, void __iomem *sckcr,
 	of_property_read_u32(np, "atmel,startup-time-usec", &startup);
 
 	hw = at91_clk_register_slow_rc_osc(sckcr, name, frequency, accuracy,
-					   startup, offsets);
+					    startup);
 	if (IS_ERR(hw))
 		return;
 
@@ -320,14 +299,14 @@ static int clk_sam9x5_slow_set_parent(struct clk_hw *hw, u8 index)
 
 	tmp = readl(sckcr);
 
-	if ((!index && !(tmp & AT91_SCKC_OSCSEL(slowck->offsets))) ||
-	    (index && (tmp & AT91_SCKC_OSCSEL(slowck->offsets))))
+	if ((!index && !(tmp & AT91_SCKC_OSCSEL)) ||
+	    (index && (tmp & AT91_SCKC_OSCSEL)))
 		return 0;
 
 	if (index)
-		tmp |= AT91_SCKC_OSCSEL(slowck->offsets);
+		tmp |= AT91_SCKC_OSCSEL;
 	else
-		tmp &= ~AT91_SCKC_OSCSEL(slowck->offsets);
+		tmp &= ~AT91_SCKC_OSCSEL;
 
 	writel(tmp, sckcr);
 
@@ -340,7 +319,7 @@ static u8 clk_sam9x5_slow_get_parent(struct clk_hw *hw)
 {
 	struct clk_sam9x5_slow *slowck = to_clk_sam9x5_slow(hw);
 
-	return !!(readl(slowck->sckcr) & AT91_SCKC_OSCSEL(slowck->offsets));
+	return !!(readl(slowck->sckcr) & AT91_SCKC_OSCSEL);
 }
 
 static const struct clk_ops sam9x5_slow_ops = {
@@ -352,8 +331,7 @@ static struct clk_hw * __init
 at91_clk_register_sam9x5_slow(void __iomem *sckcr,
 			      const char *name,
 			      const char **parent_names,
-			      int num_parents,
-			      const struct clk_slow_offsets *offsets)
+			      int num_parents)
 {
 	struct clk_sam9x5_slow *slowck;
 	struct clk_hw *hw;
@@ -375,8 +353,7 @@ at91_clk_register_sam9x5_slow(void __iomem *sckcr,
 
 	slowck->hw.init = &init;
 	slowck->sckcr = sckcr;
-	slowck->offsets = offsets;
-	slowck->parent = !!(readl(sckcr) & AT91_SCKC_OSCSEL(slowck->offsets));
+	slowck->parent = !!(readl(sckcr) & AT91_SCKC_OSCSEL);
 
 	hw = &slowck->hw;
 	ret = clk_hw_register(NULL, &slowck->hw);
@@ -389,8 +366,7 @@ at91_clk_register_sam9x5_slow(void __iomem *sckcr,
 }
 
 static void __init
-of_at91sam9x5_clk_slow_setup(struct device_node *np, void __iomem *sckcr,
-			     const struct clk_slow_offsets *offsets)
+of_at91sam9x5_clk_slow_setup(struct device_node *np, void __iomem *sckcr)
 {
 	struct clk_hw *hw;
 	const char *parent_names[2];
@@ -406,7 +382,7 @@ of_at91sam9x5_clk_slow_setup(struct device_node *np, void __iomem *sckcr,
 	of_property_read_string(np, "clock-output-names", &name);
 
 	hw = at91_clk_register_sam9x5_slow(sckcr, name, parent_names,
-					   num_parents, offsets);
+					    num_parents);
 	if (IS_ERR(hw))
 		return;
 
@@ -430,18 +406,10 @@ static const struct of_device_id sckc_clk_ids[] __initconst = {
 	{ /*sentinel*/ }
 };
 
-static const struct clk_slow_offsets at91sam9x5_offsets = {
-	.cr_rcen = 0,
-	.cr_osc32en = 1,
-	.cr_osc32byp = 2,
-	.cr_oscsel = 3,
-};
-
 static void __init of_at91sam9x5_sckc_setup(struct device_node *np)
 {
 	struct device_node *childnp;
-	void (*clk_setup)(struct device_node *np, void __iomem *io,
-			  const struct clk_slow_offsets *offsets);
+	void (*clk_setup)(struct device_node *, void __iomem *);
 	const struct of_device_id *clk_id;
 	void __iomem *regbase = of_iomap(np, 0);
 
@@ -453,40 +421,11 @@ static void __init of_at91sam9x5_sckc_setup(struct device_node *np)
 		if (!clk_id)
 			continue;
 		clk_setup = clk_id->data;
-		clk_setup(childnp, regbase, &at91sam9x5_offsets);
+		clk_setup(childnp, regbase);
 	}
 }
 CLK_OF_DECLARE(at91sam9x5_clk_sckc, "atmel,at91sam9x5-sckc",
 	       of_at91sam9x5_sckc_setup);
-
-static const struct clk_slow_offsets at91sam9x60_offsets = {
-	.cr_rcen = AT91_SCKC_OFFSET_INVALID,
-	.cr_osc32en = 1,
-	.cr_osc32byp = 2,
-	.cr_oscsel = 24,
-};
-
-static void __init of_at91sam9x60_sckc_setup(struct device_node *np)
-{
-	struct device_node *childnp;
-	void (*clk_setup)(struct device_node *np, void __iomem *io,
-			  const struct clk_slow_offsets *offsets);
-	const struct of_device_id *clk_id;
-	void __iomem *regbase = of_iomap(np, 0);
-
-	if (!regbase)
-		return;
-
-	for_each_child_of_node(np, childnp) {
-		clk_id = of_match_node(sckc_clk_ids, childnp);
-		if (!clk_id)
-			continue;
-		clk_setup = clk_id->data;
-		clk_setup(childnp, regbase, &at91sam9x60_offsets);
-	}
-}
-CLK_OF_DECLARE(at91sam9x60_clk_sckc, "microchip,at91sam9x60-sckc",
-	       of_at91sam9x60_sckc_setup);
 
 static int clk_sama5d4_slow_osc_prepare(struct clk_hw *hw)
 {
@@ -499,7 +438,7 @@ static int clk_sama5d4_slow_osc_prepare(struct clk_hw *hw)
 	 * Assume that if it has already been selected (for example by the
 	 * bootloader), enough time has aready passed.
 	 */
-	if ((readl(osc->sckcr) & AT91_SCKC_OSCSEL(osc->offsets))) {
+	if ((readl(osc->sckcr) & AT91_SCKC_OSCSEL)) {
 		osc->prepared = true;
 		return 0;
 	}
@@ -520,13 +459,6 @@ static int clk_sama5d4_slow_osc_is_prepared(struct clk_hw *hw)
 static const struct clk_ops sama5d4_slow_osc_ops = {
 	.prepare = clk_sama5d4_slow_osc_prepare,
 	.is_prepared = clk_sama5d4_slow_osc_is_prepared,
-};
-
-static const struct clk_slow_offsets at91sama5d4_offsets = {
-	.cr_rcen = AT91_SCKC_OFFSET_INVALID,
-	.cr_osc32en = AT91_SCKC_OFFSET_INVALID,
-	.cr_osc32byp = AT91_SCKC_OFFSET_INVALID,
-	.cr_oscsel = 3,
 };
 
 static void __init of_sama5d4_sckc_setup(struct device_node *np)
@@ -566,11 +498,9 @@ static void __init of_sama5d4_sckc_setup(struct device_node *np)
 	osc->hw.init = &init;
 	osc->sckcr = regbase;
 	osc->startup_usec = 1200000;
-	osc->offsets = &at91sama5d4_offsets;
 
 	if (bypass)
-		writel((readl(regbase) | AT91_SCKC_OSC32BYP(osc->offsets)),
-		       regbase);
+		writel((readl(regbase) | AT91_SCKC_OSC32BYP), regbase);
 
 	hw = &osc->hw;
 	ret = clk_hw_register(NULL, &osc->hw);
@@ -579,8 +509,7 @@ static void __init of_sama5d4_sckc_setup(struct device_node *np)
 		return;
 	}
 
-	hw = at91_clk_register_sam9x5_slow(regbase, "slowck", parent_names, 2,
-					   &at91sama5d4_offsets);
+	hw = at91_clk_register_sam9x5_slow(regbase, "slowck", parent_names, 2);
 	if (IS_ERR(hw))
 		return;
 
