@@ -386,5 +386,3 @@ static void __init of_sama5d2_clk_generated_setup(struct device_node *np)
 }
 CLK_OF_DECLARE(of_sama5d2_clk_generated_setup, "atmel,sama5d2-clk-generated",
 	       of_sama5d2_clk_generated_setup);
-CLK_OF_DECLARE(of_sam9x60_clk_generated_setup, "microchip,sam9x60-clk-generated",
-	       of_sama5d2_clk_generated_setup);
