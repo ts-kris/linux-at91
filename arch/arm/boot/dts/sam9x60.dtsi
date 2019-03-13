@@ -654,7 +654,7 @@
 					interrupts = <3 IRQ_TYPE_LEVEL_HIGH 1>;
 					#gpio-cells = <2>;
 					gpio-controller;
-					#gpio-lines = <25>;
+					#gpio-lines = <26>;
 					interrupt-controller;
 					#interrupt-cells = <2>;
 					clocks = <&pioB_clk>;
@@ -677,7 +677,7 @@
 					interrupts = <44 IRQ_TYPE_LEVEL_HIGH 1>;
 					#gpio-cells = <2>;
 					gpio-controller;
-					#gpio-lines = <21>;
+					#gpio-lines = <22>;
 					interrupt-controller;
 					#interrupt-cells = <2>;
 					clocks = <&pioD_clk>;
