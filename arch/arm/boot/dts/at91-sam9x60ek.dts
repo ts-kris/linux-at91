@@ -164,7 +164,8 @@
 			bus-width = <4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc1_default>;
-			status = "disabled";
+			status = "okay"; /* Conflict with flx4. */
+
 		};
 
 		apb {
@@ -215,7 +216,8 @@
 
 			flx4: flexcom@f0000000 {
 				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
-				status = "okay";
+				status = "disabled";
+
 				spi0: spi@400 {
 					compatible = "atmel,at91rm9200-spi";
 					reg = <0x400 0x200>;
@@ -227,7 +229,7 @@
 					atmel,fifo-size = <16>;
 					#address-cells = <1>;
 					#size-cells = <0>;
-					status = "okay"; /* conflict with sdmmc1 */
+					status = "disabled"; /* conflict with sdmmc1 */
 				};
 
 			};
