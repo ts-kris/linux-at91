@@ -409,12 +409,12 @@
 				sdmmc1 {
 					pinctrl_sdmmc1_default: sdmmc1 {
 						atmel,pins =
-							<AT91_PIOA 13 AT91_PERIPH_B AT91_PINCTRL_NONE		/* PA13 CK periph B */
-							 AT91_PIOA 12 AT91_PERIPH_B AT91_PINCTRL_PULL_UP	/* PA12 CMD periph B with pullup */
-							 AT91_PIOA 11 AT91_PERIPH_B AT91_PINCTRL_PULL_UP	/* PA11 DAT0 periph B with pullup */
-							 AT91_PIOA 2 AT91_PERIPH_B AT91_PINCTRL_PULL_UP		/* PA2 DAT1 periph B with pullup */
-							 AT91_PIOA 3 AT91_PERIPH_B AT91_PINCTRL_PULL_UP		/* PA3 DAT2 periph B with pullup */
-							 AT91_PIOA 4 AT91_PERIPH_B AT91_PINCTRL_PULL_UP>;	/* PA4 DAT3 periph B with pullup */
+							<AT91_PIOA 13 AT91_PERIPH_B AT91_PINCTRL_DRIVE_STRENGTH_HI				/* PA13 CK periph B */
+							 AT91_PIOA 12 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA12 CMD periph B with pullup */
+							 AT91_PIOA 11 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA11 DAT0 periph B with pullup */
+							 AT91_PIOA 2 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA2 DAT1 periph B with pullup */
+							 AT91_PIOA 3 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)	/* PA3 DAT2 periph B with pullup */
+							 AT91_PIOA 4 AT91_PERIPH_B (AT91_PINCTRL_PULL_UP | AT91_PINCTRL_DRIVE_STRENGTH_HI)>;	/* PA4 DAT3 periph B with pullup */
 					};
 				};
 
