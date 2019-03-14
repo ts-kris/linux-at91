@@ -373,6 +373,14 @@
 				};
 			};
 
+			adc: adc@f804c000 {
+				vddana-supply = <&vdd1_3v3>;
+				vref-supply = <&vdd1_3v3>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_adc_default &pinctrl_adtrg_default>;
+				status = "okay";
+			};
+
 			dbgu: serial@fffff200 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_dbgu>;
@@ -387,6 +395,18 @@
 						 0xffffffff 0xF83FFFFF 0xB800F3FC	/* pioC */
 						 0x003FFFFF 0x003F8000 0x00000000	/* pioD */
 						 >;
+
+				adc {
+					pinctrl_adc_default: adc_default {
+						atmel,pins =
+								<AT91_PIOB 15 AT91_PERIPH_A AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_adtrg_default: adtrg_default {
+						atmel,pins =
+								<AT91_PIOB 18 AT91_PERIPH_B AT91_PINCTRL_PULL_UP>;
+					};
+				};
 
 				dbgu {
 					pinctrl_dbgu: dbgu-0 {
