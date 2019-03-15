@@ -576,7 +576,7 @@
 
 			isi: isi@f8048000 {
 				compatible = "atmel,at91sam9g45-isi";
-				reg = <0xf8048000 0x4000>;
+				reg = <0xf8048000 0x100>;
 				interrupts = <43 IRQ_TYPE_LEVEL_HIGH 5>;
 				clocks = <&pmc PMC_TYPE_CORE PMC_MCK>;
 				clock-names = "isi_clk";
