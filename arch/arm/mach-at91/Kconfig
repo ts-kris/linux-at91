@@ -117,6 +117,7 @@ config SOC_SAM9X60
 	select HAVE_AT91_GENERATED_CLK
 	select MEMORY
 	select PINCTRL_AT91
+	select SOC_SAM_V4_V5
 	select SRAM if PM
 	help
 	  Select this if you are using Microchip's SAM9X60 SoC
