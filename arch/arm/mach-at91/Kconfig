@@ -111,8 +111,14 @@ config SOC_SAM9X60
 	bool "SAM9X60"
 	depends on ARCH_MULTI_V5
 	select ATMEL_AIC5_IRQ
+	select ATMEL_PM if PM
+	select ATMEL_SDRAMC
+	select CPU_ARM926T
 	select HAVE_AT91_GENERATED_CLK
 	select HAVE_AT91_SAM9X60_PLL
+	select MEMORY
+	select PINCTRL_AT91
+	select SRAM if PM
 	help
 	  Select this if you are using Microchip's SAM9X60 SoC
 
