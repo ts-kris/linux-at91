@@ -255,6 +255,29 @@
 
 			};
 
+			flx5: flexcom@f0004000 {
+				atmel.flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+				status = "okay";
+
+				uart1: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <14 IRQ_TYPE_LEVEL_HIGH 7>;
+					dmas = <&dma0
+						(AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
+						 AT91_XDMAC_DT_PERID(10))>,
+					       <&dma0
+					        (AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
+						 AT91_XDMAC_DT_PERID(11))>;
+					dma-names = "tx", "rx";
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 14>;
+					clock-names = "usart";
+					pinctrl-0 = <&pinctrl_flx5_default>;
+					pinctrl-names = "default";
+					status = "okay";
+				};
+			};
+
 			i2s: i2s@f001c000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2s_default>;
@@ -670,6 +693,14 @@
 							 AT91_PIOA 12 AT91_PERIPH_A AT91_PINCTRL_NONE
 							 AT91_PIOA 13 AT91_PERIPH_A AT91_PINCTRL_NONE
 							 AT91_PIOA 14 AT91_PERIPH_A AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_flx5_default: flx_uart {
+						atmel,pins =
+							<AT91_PIOA 7 AT91_PERIPH_C AT91_PINCTRL_NONE
+							 AT91_PIOA 8 AT91_PERIPH_C AT91_PINCTRL_NONE
+							 AT91_PIOA 21 AT91_PERIPH_B AT91_PINCTRL_NONE
+							 AT91_PIOA 22 AT91_PERIPH_B AT91_PINCTRL_NONE>;
 					};
 
 					pinctrl_flx6_default: flx6_twi {
