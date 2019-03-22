@@ -173,8 +173,20 @@
 			bus-width = <4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc1_default>;
+			mmc-pwrseq = <&wifi_pwrseq>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			no-1-8-v;
+			non-removable;
 			status = "okay"; /* Conflict with flx4. */
 
+			wilc: wilc@1 {
+				compatible = "microchip,wilc1000", "microchip,wilc3000";
+				reg = <1>;
+				irq-gpios = <&pioA 28 0>;
+				bus-width = <4>;
+				status = "okay";
+			};
 		};
 
 		apb {
@@ -745,7 +757,6 @@
 							 AT91_PIOB 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN>;
 					};
 				};
-
 			}; /* pinctrl */
 
 			shutdown_controller: shdwc@fffffe10 {
