@@ -31,6 +31,15 @@
 		};
 	};
 
+	wifi_pwrseq: wifi_pwrseq {
+		compatible = "mmc-pwrseq-wilc";
+		reset-gpios = <&pioB 25 GPIO_ACTIVE_HIGH>;
+		powerdown-gpios = <&pioA 29 GPIO_ACTIVE_HIGH>;
+		pinctrl-0 = <&pinctrl_wilc_pwrseq_default>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+
 	regulators {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -728,6 +737,15 @@
 							<AT91_PIOD 18 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
 					};
 				};
+
+				wilc_pwrseq {
+					pinctrl_wilc_pwrseq_default: pinctrl_wilc_pwrseq {
+						atmel,pins =
+							<AT91_PIOA 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN
+							 AT91_PIOB 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN>;
+					};
+				};
+
 			}; /* pinctrl */
 
 			shutdown_controller: shdwc@fffffe10 {
