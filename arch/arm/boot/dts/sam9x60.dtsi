@@ -763,9 +763,9 @@
 				clocks = <&clk32k>;
 			};
 
-			rtc@ffffffA8 {
+			rtc@fffffea8 {
 				compatible = "atmel,at91sam9x5-rtc";
-				reg = <0xffffffa8 0x40>;
+				reg = <0xfffffea8 0x40>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				clocks = <&clk32k>;
 			};
