@@ -129,6 +129,7 @@
 			clock-names = "hclock", "multclk";
 			assigned-clocks = <&pmc PMC_TYPE_GCK 12>;
 			assigned-clock-rates = <100000000>;
+			status = "disabled";
 		};
 
 		sdmmc1: sdio-host@90000000 {
