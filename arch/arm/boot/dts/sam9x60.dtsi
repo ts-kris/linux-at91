@@ -756,14 +756,14 @@
 				reg = <0xfffffe60 0x10>;
 			};
 
-			rtc@fffffe20 {
+			rtt: rtc@fffffe20 {
 				compatible = "atmel,at91sam9260-rtt";
 				reg = <0xfffffe20 0x10>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				clocks = <&clk32k>;
 			};
 
-			rtc@fffffea8 {
+			rtc: rtc@fffffea8 {
 				compatible = "atmel,at91sam9x5-rtc";
 				reg = <0xfffffea8 0x40>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
