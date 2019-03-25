@@ -761,6 +761,7 @@
 				reg = <0xfffffe20 0x20>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				clocks = <&clk32k>;
+				status = "disabled";
 			};
 
 			rtc: rtc@fffffea8 {
