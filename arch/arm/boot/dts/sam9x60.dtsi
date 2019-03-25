@@ -770,18 +770,6 @@
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
 				clocks = <&clk32k>;
 			};
-
-			watchdog: watchdog@ffffff80 {
-				compatible = "atmel,at91sam9260-wdt";
-				reg = <0xffffff80 0x10>;
-				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;
-				clocks = <&md_slck>;
-				atmel,watchdog-type = "hardware";
-				atmel,reset-type = "all";
-				atmel,dbg-halt;
-				status = "disabled";
-			};
-
 		};
 	};
 };
