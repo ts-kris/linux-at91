@@ -256,7 +256,7 @@
 			};
 
 			flx5: flexcom@f0004000 {
-				atmel.flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 				status = "okay";
 
 				uart1: serial@200 {
