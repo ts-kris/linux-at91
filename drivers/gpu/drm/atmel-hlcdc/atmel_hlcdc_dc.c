@@ -1101,6 +1101,9 @@ static int atmel_hlcdc_dc_drm_probe(struct platform_device *pdev)
 				    compare_of, core_node);
 	}
 
+	if (!match)
+		return -ENODEV;
+
 	return component_master_add_with_match(&pdev->dev,
 					       &atmel_hlcdc_dc_master_ops, match);
 }
