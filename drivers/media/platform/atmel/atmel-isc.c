@@ -902,15 +902,6 @@ static inline bool sensor_is_preferred(const struct isc_format *isc_fmt)
 		!isc_fmt->isc_support;
 }
 
-static inline u32 get_preferred_mbus_code(const struct isc_device *isc,
-		const struct isc_format *isc_fmt)
-{
-	if (sensor_is_preferred(isc_fmt) || !isc->raw_fmt)
-		return isc_fmt->mbus_code;
-	else
-		return isc->raw_fmt->mbus_code;
-}
-
 static struct fmt_config *get_fmt_config(u32 fourcc)
 {
 	struct fmt_config *config;
@@ -964,7 +955,7 @@ static void isc_set_pipeline(struct isc_device *isc, u32 pipeline)
 {
 	struct regmap *regmap = isc->regmap;
 	struct isc_ctrls *ctrls = &isc->ctrls;
-	struct fmt_config *config;
+	struct fmt_config *config = get_fmt_config(isc->raw_fmt->fourcc);
 	u32 val, bay_cfg;
 	const u32 *gamma;
 	unsigned int i;
@@ -978,12 +969,7 @@ static void isc_set_pipeline(struct isc_device *isc, u32 pipeline)
 	if (!pipeline)
 		return;
 
-	if (isc->raw_fmt) {
-		config = get_fmt_config(isc->raw_fmt->fourcc);
-		bay_cfg = config->cfa_baycfg;
-	} else {
-		bay_cfg = 0;
-	}
+	bay_cfg = config->cfa_baycfg;
 
 	regmap_write(regmap, ISC_WB_CFG, bay_cfg);
 	regmap_write(regmap, ISC_WB_O_RGR, 0x0);
@@ -1036,20 +1022,12 @@ static void isc_set_histogram(struct isc_device *isc)
 {
 	struct regmap *regmap = isc->regmap;
 	struct isc_ctrls *ctrls = &isc->ctrls;
-	struct fmt_config *config;
-	u32	cfa_baycfg;
-
-	if (isc->raw_fmt) {
-		config = get_fmt_config(isc->raw_fmt->fourcc);
-		cfa_baycfg = config->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT;
-	} else {
-		cfa_baycfg = 0;
-	}
+	struct fmt_config *config = get_fmt_config(isc->raw_fmt->fourcc);
 
 	if (ctrls->awb && (ctrls->hist_stat != HIST_ENABLED)) {
 		regmap_write(regmap, ISC_HIS_CFG,
 			     ISC_HIS_CFG_MODE_R |
-				 cfa_baycfg |
+			     (config->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT) |
 			     ISC_HIS_CFG_RAR);
 		regmap_write(regmap, ISC_HIS_CTRL, ISC_HIS_CTRL_EN);
 		regmap_write(regmap, ISC_INTEN, ISC_INT_HISDONE);
@@ -1097,7 +1075,7 @@ static int isc_configure(struct isc_device *isc)
 	struct regmap *regmap = isc->regmap;
 	const struct isc_format *current_fmt = isc->current_fmt;
 	struct fmt_config *curfmt_config = get_fmt_config(current_fmt->fourcc);
-	struct fmt_config *rawfmt_config;
+	struct fmt_config *rawfmt_config = get_fmt_config(isc->raw_fmt->fourcc);
 	struct isc_subdev_entity *subdev = isc->current_subdev;
 	u32 pfe_cfg0, rlp_mode, dcfg, mask, pipeline;
 
@@ -1107,12 +1085,7 @@ static int isc_configure(struct isc_device *isc)
 		isc_get_param(current_fmt, &rlp_mode, &dcfg);
 		isc->ctrls.hist_stat = HIST_INIT;
 	} else {
-		if (isc->raw_fmt) {
-			rawfmt_config = get_fmt_config(isc->raw_fmt->fourcc);
-			pfe_cfg0 = rawfmt_config->pfe_cfg0_bps;
-		} else {
-			pfe_cfg0 = curfmt_config->pfe_cfg0_bps;
-		}
+		pfe_cfg0 = rawfmt_config->pfe_cfg0_bps;
 		pipeline = curfmt_config->bits_pipeline;
 		rlp_mode = curfmt_config->rlp_cfg_mode;
 		dcfg = curfmt_config->dcfg_imode |
@@ -1342,7 +1315,10 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 	if (pixfmt->height > ISC_MAX_SUPPORT_HEIGHT)
 		pixfmt->height = ISC_MAX_SUPPORT_HEIGHT;
 
-	mbus_code = get_preferred_mbus_code(isc, isc_fmt);
+	if (sensor_is_preferred(isc_fmt))
+		mbus_code = isc_fmt->mbus_code;
+	else
+		mbus_code = isc->raw_fmt->mbus_code;
 
 	v4l2_fill_mbus_format(&format.format, pixfmt, mbus_code);
 	ret = v4l2_subdev_call(isc->current_subdev->sd, pad, set_fmt,
@@ -1466,7 +1442,10 @@ static int isc_enum_framesizes(struct file *file, void *fh,
 	if (!isc_fmt)
 		return -EINVAL;
 
-	fse.code = get_preferred_mbus_code(isc, isc_fmt);
+	if (sensor_is_preferred(isc_fmt))
+		fse.code = isc_fmt->mbus_code;
+	else
+		fse.code = isc->raw_fmt->mbus_code;
 
 	ret = v4l2_subdev_call(isc->current_subdev->sd, pad, enum_frame_size,
 			       NULL, &fse);
@@ -1497,7 +1476,10 @@ static int isc_enum_frameintervals(struct file *file, void *fh,
 	if (!isc_fmt)
 		return -EINVAL;
 
-	fie.code = get_preferred_mbus_code(isc, isc_fmt);
+	if (sensor_is_preferred(isc_fmt))
+		fie.code = isc_fmt->mbus_code;
+	else
+		fie.code = isc->raw_fmt->mbus_code;
 
 	ret = v4l2_subdev_call(isc->current_subdev->sd, pad,
 			       enum_frame_interval, NULL, &fie);
@@ -1686,7 +1668,7 @@ static void isc_awb_work(struct work_struct *w)
 	struct isc_device *isc =
 		container_of(w, struct isc_device, awb_work);
 	struct regmap *regmap = isc->regmap;
-	struct fmt_config *config;
+	struct fmt_config *config = get_fmt_config(isc->raw_fmt->fourcc);
 	struct isc_ctrls *ctrls = &isc->ctrls;
 	u32 hist_id = ctrls->hist_id;
 	u32 baysel;
@@ -1704,13 +1686,7 @@ static void isc_awb_work(struct work_struct *w)
 	}
 
 	ctrls->hist_id = hist_id;
-
-	if (isc->raw_fmt) {
-		config = get_fmt_config(isc->raw_fmt->fourcc);
-		baysel = config->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT;
-	} else {
-		baysel = 0;
-	}
+	baysel = config->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT;
 
 	pm_runtime_get_sync(isc->dev);
 
