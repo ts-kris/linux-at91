@@ -386,10 +386,10 @@
 				pinctrl-0 = <&pinctrl_macb0_rmii>;
 				status = "okay";
 
-					ethernet-phy@0 {
-						reg = <0x0>;
-					};
+				ethernet-phy@0 {
+					reg = <0x0>;
 				};
+			};
 
 			pwm0: pwm@f8034000 {
 				pinctrl-names = "default";
