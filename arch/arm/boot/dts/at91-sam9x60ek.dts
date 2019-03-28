@@ -15,6 +15,7 @@
 
 	aliases {
 		i2c0 = &i2c0;
+		i2c1 = &i2c1;
 	};
 
 	chosen {
