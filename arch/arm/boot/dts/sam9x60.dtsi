@@ -261,7 +261,7 @@
 				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_MCK>;
 			};
 
-			sha@f002c000 {
+			sha: sha@f002c000 {
 				compatible = "atmel,at91sam9g46-sha";
 				reg = <0xf002c000 0x100>;
 				interrupts = <41 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -274,7 +274,7 @@
 				status = "disabled";
 			};
 
-			trng@f0030000 {
+			trng: trng@f0030000 {
 				compatible = "atmel,at91sam9g45-trng";
 				reg = <0xf0030000 0x100>;
 				interrupts = <38 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -282,7 +282,7 @@
 				status = "disabled";
 			};
 
-			aes@f0034000 {
+			aes: aes@f0034000 {
 				compatible = "atmel,at91sam9g46-aes";
 				reg = <0xf0034000 0x100>;
 				interrupts = <39 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -298,7 +298,7 @@
 				status = "disabled";
 			};
 
-			tdes@f0038000 {
+			tdes: tdes@f0038000 {
 				compatible = "atmel,at91sam9g46-tdes";
 				reg = <0xf0038000 0x100>;
 				interrupts = <40 IRQ_TYPE_LEVEL_HIGH 0>;
