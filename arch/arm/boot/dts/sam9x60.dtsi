@@ -111,6 +111,7 @@
 				  0x4 0x0 0x50000000 0x10000000
 				  0x5 0x0 0x60000000 0x10000000>;
 			clocks = <&pmc PMC_TYPE_CORE PMC_MCK>;
+			status = "disabled";
 
 			nand_controller: nand-controller {
 				compatible = "microchip,sam9x60-nand-controller";
@@ -118,6 +119,7 @@
 				#address-cells = <2>;
 				#size-cells = <1>;
 				ranges;
+				status = "disabled";
 			};
 		};
 
@@ -324,6 +326,7 @@
 				dma-names = "tx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 42>, <&pmc PMC_TYPE_GCK 42>;
 				clock-names = "pclk", "gclk";
+				status = "disabled";
 			};
 
 			can0: can@f8000000 {
@@ -464,6 +467,7 @@
 				clock-names = "periph_clk","sys_clk", "slow_clk";
 				assigned-clocks = <&pmc PMC_TYPE_GCK 25>;
 				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_MCK>;
+				status = "disabled";
 
 				hlcdc-display-controller {
 					compatible = "atmel,hlcdc-display-controller";
