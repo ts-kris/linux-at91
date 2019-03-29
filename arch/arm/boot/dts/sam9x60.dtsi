@@ -351,7 +351,7 @@
 				compatible = "atmel,at91sam9x5-tcb", "simple-mfd", "syscon";
 				reg = <0xf8008000 0x100>;
 				interrupts = <17 IRQ_TYPE_LEVEL_HIGH 0>;
-				clocks = <&pmc PMC_TYPE_PERIPHERAL 17>, <&slow_xtal>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 17>, <&md_slck>;
 				clock-names = "t0_clk", "slow_clk";
 			};
 
@@ -359,7 +359,7 @@
 				compatible = "atmel,at91sam9x5-tcb", "simple-mfd", "syscon";
 				reg = <0xf800c000 0x100>;
 				interrupts = <45 IRQ_TYPE_LEVEL_HIGH 0>;
-				clocks = <&pmc PMC_TYPE_PERIPHERAL 45>, <&slow_xtal>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 45>, <&md_slck>;
 				clock-names = "t0_clk", "slow_clk";
 			};
 
