@@ -333,7 +333,7 @@
 				compatible = "atmel,at91sam9x5-can";
 				reg = <0xf8000000 0x300>;
 				interrupts = <29 IRQ_TYPE_LEVEL_HIGH 3>;
-				clocks = <&pmc PMC_TYPE_CORE PMC_MCK>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 29>;
 				clock-names = "can_clk";
 				status = "disabled";
 			};
@@ -342,7 +342,7 @@
 				compatible = "atmel,at91sam9x5-can";
 				reg = <0xf8004000 0x300>;
 				interrupts = <30 IRQ_TYPE_LEVEL_HIGH 3>;
-				clocks = <&pmc PMC_TYPE_CORE PMC_MCK>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 30>;
 				clock-names = "can_clk";
 				status = "disabled";
 			};
