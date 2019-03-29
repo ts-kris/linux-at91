@@ -82,7 +82,7 @@ PIT Timer required properties:
   shared across all System Controller members.
 
 PIT64B Timer required properties:
-- compatible: Should be "microchip,pit64b"
+- compatible: Should be "microchip,sam9x60-pit64b"
 - reg: Should contain registers location and length
 - clock-frequency: Should contain PIT64B timer frequency
 - interrupts: Should contain interrupt for PIT64B timer

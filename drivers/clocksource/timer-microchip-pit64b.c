@@ -465,5 +465,5 @@ free:
 	return ret;
 }
 
-CLOCKSOURCE_OF_DECLARE(mchp_pit64b_clksrc, "microchip,pit64b",
+CLOCKSOURCE_OF_DECLARE(mchp_pit64b_clksrc, "microchip,sam9x60-pit64b",
 		       mchp_pit64b_dt_init);
