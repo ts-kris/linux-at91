@@ -194,7 +194,7 @@
 			qspi: qspi@f0014000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_qspi>;
-				status = "okay";
+				status = "okay"; /* Conflict with i2s. */
 
 				flash@0 {
 					#address-cells = <1>;
@@ -251,7 +251,7 @@
 					atmel,fifo-size = <16>;
 					#address-cells = <1>;
 					#size-cells = <0>;
-					status = "disabled"; /* conflict with sdmmc1 */
+					status = "disabled"; /* Conflict with sdmmc1. */
 				};
 
 			};
@@ -283,7 +283,7 @@
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2s_default>;
 				#sound-dai-cells = <0>;
-				status = "disabled";	/* conflict with QSPI */
+				status = "disabled"; /* Conflict with QSPI. */
 			};
 
 			flx6: flexcom@f8010000 {
@@ -352,11 +352,13 @@
 			can0: can@f8000000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_can0_rx_tx>;
+				status = "disabled"; /* Conflict with dbgu. */
 			};
 
 			can1: can@f8004000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_can1_rx_tx>;
+				status = "okay";
 			};
 
 			macb0: ethernet@f802c000 {
@@ -375,7 +377,7 @@
 			pwm0: pwm@f8034000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_pwm0_0 &pinctrl_pwm0_1 &pinctrl_pwm0_2 &pinctrl_pwm0_3>;
-				status = "disabled"; /* conflict with leds*/
+				status = "disabled"; /* Conflict with leds. */
 			};
 
 			adc: adc@f804c000 {
@@ -389,7 +391,7 @@
 			dbgu: serial@fffff200 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_dbgu>;
-				status = "okay";
+				status = "okay"; /* Conflict with can0. */
 			};
 
 			pinctrl: pinctrl@fffff400 {
