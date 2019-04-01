@@ -25,6 +25,7 @@
 #define		PMC_PLL_CTRL1_MUL_MSK 		GENMASK(30, 24)
 
 #define PMC_PLL_ACR	0x18
+#define		PMC_PLL_ACR_DEFAULT		0x1b040010UL
 #define		PMC_PLL_ACR_UTMIVR 		BIT(12)
 #define		PMC_PLL_ACR_UTMIBG 		BIT(13)
 #define		PMC_PLL_ACR_LOOP_FILTER_MSK	GENMASK(31, 24)
@@ -86,23 +87,23 @@ static int sam9x60_pll_prepare(struct clk_hw *hw)
 		return 0;
 	}
 
-	/* Recommended value for PMC_PLL_ACR.LOOP_FILTER is 0x9 */
-	regmap_update_bits(regmap, PMC_PLL_ACR,
-			   PMC_PLL_ACR_LOOP_FILTER_MSK, 0x9);
+	/* Recommended value for PMC_PLL_ACR */
+	val = PMC_PLL_ACR_DEFAULT;
+	regmap_write(regmap, PMC_PLL_ACR, val);
 
 	regmap_write(regmap, PMC_PLL_CTRL1,
 		     FIELD_PREP(PMC_PLL_CTRL1_MUL_MSK, pll->mul));
 
 	if (pll->characteristics->upll) {
 		/* Enable the UTMI internal bandgap */
-		regmap_update_bits(regmap, PMC_PLL_ACR,
-				   PMC_PLL_ACR_UTMIBG, PMC_PLL_ACR_UTMIBG);
+		val |= PMC_PLL_ACR_UTMIBG;
+		regmap_write(regmap, PMC_PLL_ACR, val);
 
 		udelay(10);
 
 		/* Enable the UTMI internal regulator */
-		regmap_update_bits(regmap, PMC_PLL_ACR,
-				   PMC_PLL_ACR_UTMIVR, PMC_PLL_ACR_UTMIVR);
+		val |= PMC_PLL_ACR_UTMIVR;
+		regmap_write(regmap, PMC_PLL_ACR, val);
 
 		udelay(10);
 	}
@@ -150,8 +151,7 @@ static void sam9x60_pll_unprepare(struct clk_hw *hw)
 	regmap_update_bits(pll->regmap, PMC_PLL_CTRL0, PMC_PLL_CTRL0_ENPLL, 0);
 
 	if (pll->characteristics->upll)
-		regmap_update_bits(pll->regmap, PMC_PLL_ACR,
-				   PMC_PLL_ACR_UTMIBG | PMC_PLL_ACR_UTMIVR, 0);
+		regmap_write(regmap, PMC_PLL_ACR, PMC_PLL_ACR_DEFAULT);
 
 	regmap_update_bits(pll->regmap, PMC_PLL_UPDT,
 			   PMC_PLL_UPDT_UPDATE, PMC_PLL_UPDT_UPDATE);
