@@ -17,6 +17,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
 #include <linux/suspend.h>
+#include <linux/gpio/consumer.h>
 
 #define VDD_LOW_SEL 0x0D
 #define VDD_HIGH_SEL 0x3F
@@ -90,6 +91,7 @@ static unsigned int mcp16502_of_map_mode(unsigned int mode)
 		.ops			= &(_ops),			\
 		.type			= REGULATOR_VOLTAGE,		\
 		.owner			= THIS_MODULE,			\
+		.n_voltages		= MCP16502_VSEL + 1,		\
 		.linear_ranges		= _ranges,			\
 		.n_linear_ranges	= ARRAY_SIZE(_ranges),		\
 		.of_match		= of_match_ptr(_name),		\
@@ -497,7 +499,7 @@ static int mcp16502_probe(struct i2c_client *client,
 	return 0;
 }
 
-#ifdef CONFIG_SUSPEND
+#ifdef CONFIG_PM_SLEEP
 static int mcp16502_suspend_noirq(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -517,10 +519,7 @@ static int mcp16502_resume_noirq(struct device *dev)
 
 	return 0;
 }
-#else /* !CONFIG_SUSPEND */
-#define mcp16502_suspend_noirq NULL
-#define mcp16502_resume_noirq NULL
-#endif /* !CONFIG_SUSPEND */
+#endif
 
 #ifdef CONFIG_PM
 static const struct dev_pm_ops mcp16502_pm_ops = {
@@ -548,7 +547,6 @@ static struct i2c_driver mcp16502_drv = {
 
 module_i2c_driver(mcp16502_drv);
 
-MODULE_VERSION("1.0");
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MCP16502 PMIC driver");
 MODULE_AUTHOR("Andrei Stefanescu andrei.stefanescu@microchip.com");
