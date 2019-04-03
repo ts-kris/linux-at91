@@ -42,11 +42,6 @@
 
 #define MCHP_PIT64B_NAME	"pit64b"
 
-enum mchp_pit64b_mode {
-	MCHP_PIT64B_MODE_CLKSRC,
-	MCHP_PIT64B_MODE_CLKEVT,
-};
-
 struct mchp_pit64b_common_data {
 	void __iomem *base;
 	struct clk *pclk;
