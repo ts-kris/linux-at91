@@ -151,7 +151,7 @@ static void sam9x60_pll_unprepare(struct clk_hw *hw)
 	regmap_update_bits(pll->regmap, PMC_PLL_CTRL0, PMC_PLL_CTRL0_ENPLL, 0);
 
 	if (pll->characteristics->upll)
-		regmap_write(regmap, PMC_PLL_ACR, PMC_PLL_ACR_DEFAULT);
+		regmap_write(pll->regmap, PMC_PLL_ACR, PMC_PLL_ACR_DEFAULT);
 
 	regmap_update_bits(pll->regmap, PMC_PLL_UPDT,
 			   PMC_PLL_UPDT_UPDATE, PMC_PLL_UPDT_UPDATE);
