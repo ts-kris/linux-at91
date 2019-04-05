@@ -8,6 +8,7 @@
 #define WILC_WLAN_IF_H
 
 #include <linux/netdevice.h>
+#include "wilc_debugfs.h"
 
 /********************************************
  *
@@ -17,6 +18,11 @@
 
 #define HIF_SDIO		(0)
 #define HIF_SPI			BIT(0)
+#define HIF_SDIO_GPIO_IRQ	BIT(2)
+
+#define	FW_WILC1000_WIFi		"mchp/wilc1000_wifi_firmware.bin"
+#define	FW_WILC3000_WIFI		"mchp/wilc3000_wifi_firmware.bin"
+#define	FW_WILC3000_BLE		"mchp/wilc3000_ble_firmware.bin"
 
 /********************************************
  *
@@ -52,6 +58,7 @@ struct tx_complete_data {
 	void *buff;
 	u8 *bssid;
 	struct sk_buff *skb;
+	struct wilc_vif *vif;
 };
 
 typedef void (*wilc_tx_complete_func_t)(void *, int);
@@ -86,6 +93,10 @@ enum {
 	G_AUTO_PREAMBLE		= 2,	/* Auto Preamble Selection */
 };
 
+#define DEV_WIFI	0
+#define DEV_BT		1
+#define DEV_MAX		2
+
 enum {
 	PASSIVE_SCAN		= 0,
 	ACTIVE_SCAN		= 1,
@@ -97,12 +108,6 @@ enum {
 	MAX_FAST_PS		= 2,
 	MIN_PSPOLL_PS		= 3,
 	MAX_PSPOLL_PS		= 4
-};
-
-enum chip_ps_states {
-	CHIP_WAKEDUP		= 0,
-	CHIP_SLEEPING_AUTO      = 1,
-	CHIP_SLEEPING_MANUAL	= 2
 };
 
 enum bus_acquire {
@@ -204,10 +209,13 @@ enum wid_type {
 	WID_STR			= 3,
 	WID_BIN_DATA		= 4,
 	WID_BIN			= 5,
-	WID_IP			= 6,
-	WID_ADR			= 7,
-	WID_UNDEF		= 8,
-	WID_TYPE_FORCE_32BIT	= 0xFFFFFFFF
+};
+
+enum {
+	ANTENNA1		= 0,
+	ANTENNA2		= 1,
+	DIVERSITY		= 2,
+	NUM_ANT_MODE
 };
 
 struct wid {
@@ -273,6 +281,7 @@ enum {
 	 *  -----------------------------------------------------------
 	 */
 	WID_STATUS			= 0x0005,
+	WID_BT_COEX_MODE		= 0x0006,
 
 	/*
 	 *  Scan type
@@ -367,6 +376,15 @@ enum {
 	 *  -----------------------------------------------------------
 	 */
 	WID_ACK_POLICY			= 0x0011,
+
+	/*
+	 *  Set coex null frames transmission mode
+	 * --------------------------------------------------------------
+	 *  Configuration :   Enable	Disable
+	 *  Values to set :       1			0
+	 * --------------------------------------------------------------
+	 */
+	WID_COEX_NULL_FRAMES_MODE               = 0x0013,
 
 	/*
 	 *  Reset MAC (Set only)
@@ -679,6 +697,7 @@ enum {
 
 	WID_LOG_TERMINAL_SWITCH		= 0x00CD,
 	WID_TX_POWER			= 0x00CE,
+	WID_WOWLAN_TRIGGER		= 0X00CF,
 	/*  EMAC Short WID list */
 	/*  RTS Threshold */
 	/*
@@ -702,13 +721,8 @@ enum {
 	WID_LONG_RETRY_LIMIT		= 0x1003,
 	WID_BEACON_INTERVAL		= 0x1006,
 	WID_MEMORY_ACCESS_16BIT		= 0x1008,
-	WID_RX_SENSE			= 0x100B,
-	WID_ACTIVE_SCAN_TIME		= 0x100C,
-	WID_PASSIVE_SCAN_TIME		= 0x100D,
 
-	WID_SITE_SURVEY_SCAN_TIME	= 0x100E,
 	WID_JOIN_START_TIMEOUT		= 0x100F,
-	WID_AUTH_TIMEOUT		= 0x1010,
 	WID_ASOC_TIMEOUT		= 0x1011,
 	WID_11I_PROTOCOL_TIMEOUT	= 0x1012,
 	WID_EAPOL_RESPONSE_TIMEOUT	= 0x1013,
@@ -743,11 +757,8 @@ enum {
 	WID_HW_RX_COUNT			= 0x2015,
 	WID_MEMORY_ADDRESS		= 0x201E,
 	WID_MEMORY_ACCESS_32BIT		= 0x201F,
-	WID_RF_REG_VAL			= 0x2021,
 
 	/* NMAC Integer WID list */
-	WID_11N_PHY_ACTIVE_REG_VAL	= 0x2080,
-
 	/* Custom Integer WID list */
 	WID_GET_INACTIVE_TIME		= 0x2084,
 	WID_SET_OPERATION_MODE		= 0X2086,
@@ -768,7 +779,6 @@ enum {
 	WID_SUPP_PASSWORD		= 0x3011,
 	WID_SITE_SURVEY_RESULTS		= 0x3012,
 	WID_RX_POWER_LEVEL		= 0x3013,
-	WID_DEL_ALL_RX_BA		= 0x3014,
 	WID_SET_STA_MAC_INACTIVE_TIME	= 0x3017,
 	WID_ADD_WEP_KEY			= 0x3019,
 	WID_REMOVE_WEP_KEY		= 0x301A,
@@ -782,9 +792,9 @@ enum {
 	WID_MODEL_NAME			= 0x3027, /*Added for CAPI tool */
 	WID_MODEL_NUM			= 0x3028, /*Added for CAPI tool */
 	WID_DEVICE_NAME			= 0x3029, /*Added for CAPI tool */
-	WID_SET_DRV_HANDLER		= 0x3079,
 
 	/* NMAC String WID list */
+	WID_SET_DRV_HANDLER		= 0x3079,
 	WID_11N_P_ACTION_REQ		= 0x3080,
 	WID_HUT_TEST_ID			= 0x3081,
 	WID_PMKID_INFO			= 0x3082,
@@ -822,13 +832,12 @@ enum {
 
 	WID_SETUP_MULTICAST_FILTER	= 0x408b,
 
+	WID_ANTENNA_SELECTION		= 0x408c,
 	/* Miscellaneous WIDs */
 	WID_ALL				= 0x7FFE,
 	WID_MAX				= 0xFFFF
 };
 
 struct wilc;
-int wilc_wlan_init(struct net_device *dev);
-u32 wilc_get_chipid(struct wilc *wilc, bool update);
 
 #endif
