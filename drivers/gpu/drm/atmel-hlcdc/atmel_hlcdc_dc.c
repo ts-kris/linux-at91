@@ -1093,7 +1093,7 @@ static int atmel_hlcdc_dc_drm_probe(struct platform_device *pdev)
 	struct component_match *match = NULL;
 	struct device_node *core_node;
 
-	for_each_compatible_node(core_node, NULL, "atmel,gfx2d") {
+	for_each_compatible_node(core_node, NULL, "microchip,sam9x60-gfx2d") {
 		if (!of_device_is_available(core_node))
 				continue;
 
