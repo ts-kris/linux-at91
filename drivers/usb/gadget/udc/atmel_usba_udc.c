@@ -2005,6 +2005,7 @@ static const struct of_device_id atmel_pmc_dt_ids[] __initconst = {
 	{ .compatible = "atmel,at91sam9rl-pmc" },
 	{ .compatible = "atmel,at91sam9x5-pmc" },
 	{ .compatible = "microchip,sam9x60-pmc" },
+	{ /* sentinel */ }
 };
 
 static struct usba_ep * atmel_udc_of_init(struct platform_device *pdev,
