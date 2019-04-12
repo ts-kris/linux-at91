@@ -2012,7 +2012,7 @@ static const struct of_device_id atmel_udc_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, atmel_udc_dt_ids);
 
-static const struct of_device_id atmel_pmc_dt_ids[] __initconst = {
+static const struct of_device_id atmel_pmc_dt_ids[] = {
 	{ .compatible = "atmel,at91sam9g45-pmc" },
 	{ .compatible = "atmel,at91sam9rl-pmc" },
 	{ .compatible = "atmel,at91sam9x5-pmc" },
