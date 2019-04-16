@@ -16,6 +16,7 @@
 	aliases {
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
+		serial1 = &uart1;
 	};
 
 	chosen {
@@ -279,6 +280,8 @@
 					clock-names = "usart";
 					pinctrl-0 = <&pinctrl_flx5_default>;
 					pinctrl-names = "default";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
 					status = "okay";
 				};
 			};
