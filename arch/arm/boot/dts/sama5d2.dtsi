@@ -1234,6 +1234,7 @@
 				interrupts = <38 IRQ_TYPE_LEVEL_HIGH 7>;
 				#pwm-cells = <3>;
 				clocks = <&pwm_clk>;
+				status = "disabled";
 			};
 
 			sfr: sfr@f8030000 {
@@ -1492,9 +1493,12 @@
 				clocks = <&pioA_clk>;
 			};
 
-			secumod@fc040000 {
+			pioBU: secumod@fc040000 {
 				compatible = "atmel,sama5d2-secumod", "syscon";
 				reg = <0xfc040000 0x100>;
+
+				gpio-controller;
+				#gpio-cells = <2>;
 			};
 
 			tdes@fc044000 {
