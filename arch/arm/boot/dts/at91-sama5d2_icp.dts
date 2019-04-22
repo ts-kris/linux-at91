@@ -3,7 +3,7 @@
  * at91-sama5d2_icp.dts - Device Tree file for SAMA5D27-ICP board
  *
  *  Copyright (c) 2019, Microchip Technology Inc.
- *		  2019 Razvan Stefanescu <razvan.stefanescu@microchip.com>
+*		  2019 Razvan Stefanescu <razvan.stefanescu@microchip.com>
  *
  */
 /dts-v1/;
@@ -127,7 +127,6 @@
 
 			watchdog@f8048040 {
 				status = "okay";
-				timeout-sec = <10>;
 			};
 
 			i2c0: i2c@f8028000 { /* mikrobus i2c */
