@@ -17,8 +17,6 @@
 #include <dt-bindings/pinctrl/at91.h>
 #include <linux/clk.h>
 #include <linux/gpio/driver.h>
-/* FIXME: needed for gpio_to_irq(), get rid of this */
-#include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/init.h>
@@ -264,6 +262,13 @@ static struct irq_chip atmel_gpio_irq_chip = {
 	.irq_set_wake	= atmel_gpio_irq_set_wake,
 };
 
+static int atmel_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
+{
+	struct atmel_pioctrl *atmel_pioctrl = gpiochip_get_data(chip);
+
+	return irq_find_mapping(atmel_pioctrl->irq_domain, offset);
+}
+
 static void atmel_gpio_irq_handler(struct irq_desc *desc)
 {
 	unsigned int irq = irq_desc_get_irq(desc);
@@ -297,8 +302,9 @@ static void atmel_gpio_irq_handler(struct irq_desc *desc)
 			break;
 
 		for_each_set_bit(n, &isr, BITS_PER_LONG)
-			generic_handle_irq(gpio_to_irq(bank *
-					ATMEL_PIO_NPINS_PER_BANK + n));
+			generic_handle_irq(atmel_gpio_to_irq(
+					atmel_pioctrl->gpio_chip,
+					bank * ATMEL_PIO_NPINS_PER_BANK + n));
 	}
 
 	chained_irq_exit(chip, desc);
@@ -360,14 +366,9 @@ static void atmel_gpio_set(struct gpio_chip *chip, unsigned offset, int val)
 			 BIT(pin->line));
 }
 
-static int atmel_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
-{
-	struct atmel_pioctrl *atmel_pioctrl = gpiochip_get_data(chip);
-
-	return irq_find_mapping(atmel_pioctrl->irq_domain, offset);
-}
-
 static struct gpio_chip atmel_gpio_chip = {
+	.request		= gpiochip_generic_request,
+	.free			= gpiochip_generic_free,
 	.direction_input        = atmel_gpio_direction_input,
 	.get                    = atmel_gpio_get,
 	.direction_output       = atmel_gpio_direction_output,
@@ -493,7 +494,6 @@ static int atmel_pctl_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 	unsigned num_pins, num_configs, reserve;
 	unsigned long *configs;
 	struct property	*pins;
-	bool has_config;
 	u32 pinfunc;
 	int ret, i;
 
@@ -509,9 +509,6 @@ static int atmel_pctl_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		return ret;
 	}
 
-	if (num_configs)
-		has_config = true;
-
 	num_pins = pins->length / sizeof(u32);
 	if (!num_pins) {
 		dev_err(pctldev->dev, "no pins found in node %pOF\n", np);
@@ -524,7 +521,7 @@ static int atmel_pctl_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 	 * map for each pin.
 	 */
 	reserve = 1;
-	if (has_config && num_pins >= 1)
+	if (num_configs)
 		reserve++;
 	reserve *= num_pins;
 	ret = pinctrl_utils_reserve_map(pctldev, map, reserved_maps, num_maps,
@@ -547,7 +544,7 @@ static int atmel_pctl_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		pinctrl_utils_add_map_mux(pctldev, map, reserved_maps, num_maps,
 					  group, func);
 
-		if (has_config) {
+		if (num_configs) {
 			ret = pinctrl_utils_add_map_configs(pctldev, map,
 					reserved_maps, num_maps, group,
 					configs, num_configs,
@@ -655,11 +652,27 @@ static int atmel_pmx_set_mux(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
+static int atmel_pmx_gpio_request_enable(struct pinctrl_dev *pctldev,
+					 struct pinctrl_gpio_range *range,
+					 unsigned offset)
+{
+	u32 conf;
+
+	conf = atmel_pin_config_read(pctldev, offset);
+	conf &= (~ATMEL_PIO_CFGR_FUNC_MASK);
+	atmel_pin_config_write(pctldev, offset, conf);
+
+	dev_dbg(pctldev->dev, "enable pin %u as GPIO\n", offset);
+
+	return 0;
+}
+
 static const struct pinmux_ops atmel_pmxops = {
 	.get_functions_count	= atmel_pmx_get_functions_count,
 	.get_function_name	= atmel_pmx_get_function_name,
 	.get_function_groups	= atmel_pmx_get_function_groups,
 	.set_mux		= atmel_pmx_set_mux,
+	.gpio_request_enable	= atmel_pmx_gpio_request_enable,
 };
 
 static int atmel_conf_pin_config_group_get(struct pinctrl_dev *pctldev,
@@ -873,8 +886,7 @@ static struct pinctrl_desc atmel_pinctrl_desc = {
 
 static int __maybe_unused atmel_pctrl_suspend(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct atmel_pioctrl *atmel_pioctrl = platform_get_drvdata(pdev);
+	struct atmel_pioctrl *atmel_pioctrl = dev_get_drvdata(dev);
 	int i, j;
 
 	/*
@@ -902,8 +914,7 @@ static int __maybe_unused atmel_pctrl_suspend(struct device *dev)
 
 static int __maybe_unused atmel_pctrl_resume(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct atmel_pioctrl *atmel_pioctrl = platform_get_drvdata(pdev);
+	struct atmel_pioctrl *atmel_pioctrl = dev_get_drvdata(dev);
 	int i, j;
 
 	for (i = 0; i < atmel_pioctrl->nbanks; i++) {
@@ -923,7 +934,7 @@ static int __maybe_unused atmel_pctrl_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops atmel_pctrl_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(atmel_pctrl_suspend, atmel_pctrl_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(atmel_pctrl_suspend, atmel_pctrl_resume)
 };
 
 /*
