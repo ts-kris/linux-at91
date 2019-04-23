@@ -766,11 +766,6 @@ static void isc_start_dma(struct isc_device *isc)
 	dma_addr_t addr0;
 	u32 h, w;
 
-	if (!isc->cur_frm) {
-		v4l2_err(&isc->v4l2_dev, "Video buffer not available\n");
-		return;
-	}
-
 	h = isc->fmt.fmt.pix.height;
 	w = isc->fmt.fmt.pix.width;
 
@@ -936,7 +931,8 @@ static int isc_configure(struct isc_device *isc)
 	pfe_cfg0  |= subdev->pfe_cfg0 | ISC_PFE_CFG0_MODE_PROGRESSIVE;
 	mask = ISC_PFE_CFG0_BPS_MASK | ISC_PFE_CFG0_HPOL_LOW |
 	       ISC_PFE_CFG0_VPOL_LOW | ISC_PFE_CFG0_PPOL_LOW |
-	       ISC_PFE_CFG0_MODE_MASK;
+	       ISC_PFE_CFG0_MODE_MASK | ISC_PFE_CFG0_CCIR_CRC |
+		   ISC_PFE_CFG0_CCIR656;
 
 	regmap_update_bits(regmap, ISC_PFE_CFG0, mask, pfe_cfg0);
 
@@ -970,9 +966,6 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 	unsigned long flags;
 	int ret;
 
-	if (vb2_is_streaming(&isc->vb2_vidq))
-		return -EBUSY;
-
 	/* Enable stream on the sub device */
 	ret = v4l2_subdev_call(isc->current_subdev->sd, video, s_stream, 1);
 	if (ret && ret != -ENOIOCTLCMD) {
@@ -983,20 +976,6 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	pm_runtime_get_sync(isc->dev);
 
-	spin_lock_irqsave(&isc->dma_queue_lock, flags);
-
-	isc->sequence = 0;
-	isc->stop = false;
-	reinit_completion(&isc->comp);
-
-	if (list_empty(&isc->dma_queue)) {
-		v4l2_err(&isc->v4l2_dev, "dma queue empty\n");
-		ret = -EINVAL;
-		goto err_configure_unlock;
-	}
-
-	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
-
 	ret = isc_configure(isc);
 	if (unlikely(ret))
 		goto err_configure;
@@ -1006,6 +985,10 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	spin_lock_irqsave(&isc->dma_queue_lock, flags);
 
+	isc->sequence = 0;
+	isc->stop = false;
+	reinit_completion(&isc->comp);
+
 	isc->cur_frm = list_first_entry(&isc->dma_queue,
 					struct isc_buffer, list);
 	list_del(&isc->cur_frm->list);
@@ -1014,14 +997,14 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
 
+	/* if we streaming from RAW, we can do one-shot white balance adj */
+	if (ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code))
+		v4l2_ctrl_activate(isc->do_wb_ctrl, true);
+
 	return 0;
 
-err_configure_unlock:
-	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
-
-
 err_configure:
-	isc->stop = true;
+	pm_runtime_put_sync(isc->dev);
 
 	v4l2_subdev_call(isc->current_subdev->sd, video, s_stream, 0);
 
@@ -1032,7 +1015,6 @@ err_start_stream:
 	INIT_LIST_HEAD(&isc->dma_queue);
 	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
 
-	pm_runtime_put_sync(isc->dev);
 	return ret;
 }
 
@@ -1042,6 +1024,8 @@ static void isc_stop_streaming(struct vb2_queue *vq)
 	unsigned long flags;
 	struct isc_buffer *buf;
 	int ret;
+
+	v4l2_ctrl_activate(isc->do_wb_ctrl, false);
 
 	isc->stop = true;
 
@@ -1224,6 +1208,10 @@ static int isc_try_validate_formats(struct isc_device *isc)
 	if ((bayer || grey) &&
 	    !ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code))
 		return -EINVAL;
+
+	v4l2_dbg(1, debug, &isc->v4l2_dev,
+		 "Format validation, requested rgb=%u, yuv=%u, grey=%u, bayer=%u\n",
+		 rgb, yuv, grey, bayer);
 
 	return ret;
 }
@@ -1448,6 +1436,11 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 			 (char *)&pixfmt->pixelformat, (char *)&sd_fmt->fourcc);
 	}
 
+	if (!sd_fmt) {
+		ret = -EINVAL;
+		goto isc_try_fmt_err;
+	}
+
 	/* Step 7: Print out what we decided for debugging */
 	v4l2_dbg(1, debug, &isc->v4l2_dev,
 		 "Preferring to have sensor using format %.4s\n",
@@ -1476,7 +1469,7 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 
 	if (isc_try_validate_formats(isc)) {
 		pixfmt->pixelformat = isc->try_config.fourcc = sd_fmt->fourcc;
-		/* This should be redundant, format should be supported */
+		/* Re-try to validate the new format */
 		ret = isc_try_validate_formats(isc);
 		if (ret)
 			goto isc_try_fmt_err;
@@ -1494,7 +1487,7 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 	ret = v4l2_subdev_call(isc->current_subdev->sd, pad, set_fmt,
 			       &pad_cfg, &format);
 	if (ret < 0)
-		goto isc_try_fmt_err;
+		goto isc_try_fmt_subdev_err;
 
 	v4l2_fill_pix_format(pixfmt, &format.format);
 
@@ -1509,6 +1502,7 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 
 isc_try_fmt_err:
 	v4l2_err(&isc->v4l2_dev, "Could not find any possible format for a working pipeline\n");
+isc_try_fmt_subdev_err:
 	memset(&isc->try_config, 0, sizeof(isc->try_config));
 
 	return ret;
@@ -1540,7 +1534,7 @@ static int isc_set_fmt(struct isc_device *isc, struct v4l2_format *f)
 		isc_reset_awb_ctrls(isc);
 	}
 	/* make the try configuration active */
-	memcpy(&isc->config, &isc->try_config, sizeof(isc->config));
+	isc->config = isc->try_config;
 
 	v4l2_dbg(1, debug, &isc->v4l2_dev, "New ISC configuration in place\n");
 
@@ -2003,6 +1997,9 @@ static int isc_s_ctrl(struct v4l2_ctrl *ctrl)
 					     struct isc_device, ctrls.handler);
 	struct isc_ctrls *ctrls = &isc->ctrls;
 
+	if (ctrl->flags & V4L2_CTRL_FLAG_INACTIVE)
+		return 0;
+
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
 		ctrls->brightness = ctrl->val & ISC_CBC_BRIGHT_MASK;
@@ -2014,56 +2011,33 @@ static int isc_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctrls->gamma_index = ctrl->val;
 		break;
 	case V4L2_CID_AUTO_WHITE_BALANCE:
-		if (ctrl->val == 1) {
+		if (ctrl->val == 1)
 			ctrls->awb = ISC_WB_AUTO;
-			v4l2_ctrl_activate(isc->do_wb_ctrl, false);
-		} else {
+		else
 			ctrls->awb = ISC_WB_NONE;
-			v4l2_ctrl_activate(isc->do_wb_ctrl, true);
-		}
+
 		/* we did not configure ISC yet */
 		if (!isc->config.sd_format)
 			break;
 
-		if (!ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "White balance adjustments available only if sensor is in RAW mode.\n");
-			return 0;
-		}
-
-		if (ctrls->hist_stat != HIST_ENABLED) {
+		if (ctrls->hist_stat != HIST_ENABLED)
 			isc_reset_awb_ctrls(isc);
-		}
 
-		if (isc->ctrls.awb && vb2_is_streaming(&isc->vb2_vidq) &&
+		if (isc->ctrls.awb == ISC_WB_AUTO &&
+		    vb2_is_streaming(&isc->vb2_vidq) &&
 		    ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code))
 			isc_set_histogram(isc, true);
 
 		break;
 	case V4L2_CID_DO_WHITE_BALANCE:
-		/* we did not configure ISC yet */
-		if (!isc->config.sd_format)
-			break;
+		/* if AWB is enabled, do nothing */
+		if (ctrls->awb == ISC_WB_AUTO)
+			return 0;
 
-		if (ctrls->awb == ISC_WB_AUTO) {
-			v4l2_err(&isc->v4l2_dev,
-				 "To use one time white-balance adjustment, disable auto white balance first.\n");
-			return -EAGAIN;
-		}
-		if (!vb2_is_streaming(&isc->vb2_vidq)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "One time white-balance adjustment requires streaming to be enabled.\n");
-			return -EAGAIN;
-		}
-
-		if (!ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "White balance adjustments available only if sensor is in RAW mode.\n");
-			return -EAGAIN;
-		}
 		ctrls->awb = ISC_WB_ONETIME;
 		isc_set_histogram(isc, true);
-		v4l2_info(&isc->v4l2_dev, "One time white-balance started.\n");
+		v4l2_dbg(1, debug, &isc->v4l2_dev,
+			 "One time white-balance started.\n");
 		break;
 	default:
 		return -EINVAL;
@@ -2101,6 +2075,8 @@ static int isc_ctrl_init(struct isc_device *isc)
 	/* do_white_balance is a button, so min,max,step,default are ignored */
 	isc->do_wb_ctrl = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_DO_WHITE_BALANCE,
 					    0, 0, 0, 0);
+
+	v4l2_ctrl_activate(isc->do_wb_ctrl, false);
 
 	v4l2_ctrl_handler_setup(hdl);
 
@@ -2229,6 +2205,8 @@ static int isc_async_complete(struct v4l2_async_notifier *notifier)
 	struct vb2_queue *q = &isc->vb2_vidq;
 	int ret;
 
+	INIT_WORK(&isc->awb_work, isc_awb_work);
+
 	ret = v4l2_device_register_subdev_nodes(&isc->v4l2_dev);
 	if (ret < 0) {
 		v4l2_err(&isc->v4l2_dev, "Failed to register subdev nodes\n");
@@ -2282,8 +2260,6 @@ static int isc_async_complete(struct v4l2_async_notifier *notifier)
 		v4l2_err(&isc->v4l2_dev, "Init isc ctrols failed: %d\n", ret);
 		return ret;
 	}
-
-	INIT_WORK(&isc->awb_work, isc_awb_work);
 
 	/* Register video device */
 	strlcpy(vdev->name, ATMEL_ISC_NAME, sizeof(vdev->name));
@@ -2397,8 +2373,11 @@ static int isc_parse_dt(struct device *dev, struct isc_device *isc)
 			break;
 		}
 
-		subdev_entity->asd = devm_kzalloc(dev,
-				     sizeof(*subdev_entity->asd), GFP_KERNEL);
+		/* asd will be freed by the subsystem once it's added to the
+		 * notifier list
+		 */
+		subdev_entity->asd = kzalloc(sizeof(*subdev_entity->asd),
+					     GFP_KERNEL);
 		if (!subdev_entity->asd) {
 			of_node_put(rem);
 			ret = -ENOMEM;
@@ -2415,6 +2394,10 @@ static int isc_parse_dt(struct device *dev, struct isc_device *isc)
 
 		if (flags & V4L2_MBUS_PCLK_SAMPLE_FALLING)
 			subdev_entity->pfe_cfg0 |= ISC_PFE_CFG0_PPOL_LOW;
+
+		if (v4l2_epn.bus_type == V4L2_MBUS_BT656)
+			subdev_entity->pfe_cfg0 |= ISC_PFE_CFG0_CCIR_CRC |
+					ISC_PFE_CFG0_CCIR656;
 
 		subdev_entity->asd->match_type = V4L2_ASYNC_MATCH_FWNODE;
 		subdev_entity->asd->match.fwnode =

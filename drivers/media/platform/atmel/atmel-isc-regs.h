@@ -24,6 +24,8 @@
 #define ISC_PFE_CFG0_HPOL_LOW   BIT(0)
 #define ISC_PFE_CFG0_VPOL_LOW   BIT(1)
 #define ISC_PFE_CFG0_PPOL_LOW   BIT(2)
+#define ISC_PFE_CFG0_CCIR656    BIT(9)
+#define ISC_PFE_CFG0_CCIR_CRC   BIT(10)
 
 #define ISC_PFE_CFG0_MODE_PROGRESSIVE   (0x0 << 4)
 #define ISC_PFE_CFG0_MODE_MASK          GENMASK(6, 4)
@@ -53,7 +55,6 @@
 #define ISC_PFE_CFG2_ROWMIN_MASK	GENMASK(15, 0)
 #define ISC_PFE_CFG2_ROWMAX(v)		((v) << 16)
 #define ISC_PFE_CFG2_ROWMAX_MASK	GENMASK(31, 16)
-
 
 /* ISC Clock Enable Register */
 #define ISC_CLKEN               0x00000018
