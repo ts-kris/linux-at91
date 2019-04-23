@@ -167,9 +167,6 @@ struct isc_ctrls {
 	u32 brightness;
 	u32 contrast;
 	u8 gamma_index;
-#define ISC_WB_NONE	0
-#define ISC_WB_AUTO	1
-#define ISC_WB_ONETIME	2
 	u8 awb;
 
 	/* one for each component : GR, R, GB, B */
@@ -213,7 +210,6 @@ struct isc_device {
 	struct fmt_config	try_config;
 
 	struct isc_ctrls	ctrls;
-	struct v4l2_ctrl	*do_wb_ctrl;
 	struct work_struct	awb_work;
 
 	struct mutex		lock;
@@ -813,7 +809,7 @@ static void isc_set_pipeline(struct isc_device *isc, u32 pipeline)
 
 	bay_cfg = isc->config.sd_format->cfa_baycfg;
 
-	if (ctrls->awb == ISC_WB_NONE)
+	if (!ctrls->awb)
 		isc_reset_awb_ctrls(isc);
 
 	regmap_write(regmap, ISC_WB_CFG, bay_cfg);
@@ -1924,7 +1920,7 @@ static void isc_awb_work(struct work_struct *w)
 	baysel = isc->config.sd_format->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT;
 
 	/* if no more auto white balance, reset controls. */
-	if (ctrls->awb == ISC_WB_NONE)
+	if (!ctrls->awb)
 		isc_reset_awb_ctrls(isc);
 
 	pm_runtime_get_sync(isc->dev);
@@ -1933,7 +1929,7 @@ static void isc_awb_work(struct work_struct *w)
 	 * only update if we have all the required histograms and controls
 	 * if awb has been disabled, we need to reset registers as well.
 	 */
-	if (hist_id == ISC_HIS_CFG_MODE_GR || ctrls->awb == ISC_WB_NONE) {
+	if (hist_id == ISC_HIS_CFG_MODE_GR || !ctrls->awb) {
 		/*
 		 * It may happen that DMA Done IRQ will trigger while we are
 		 * updating white balance registers here.
@@ -1943,16 +1939,6 @@ static void isc_awb_work(struct work_struct *w)
 		spin_lock_irqsave(&isc->awb_lock, flags);
 		isc_update_awb_ctrls(isc);
 		spin_unlock_irqrestore(&isc->awb_lock, flags);
-
-		/*
-		 * if we are doing just the one time white balance adjustment,
-		 * we are basically done.
-		 */
-		if (ctrls->awb == ISC_WB_ONETIME) {
-			v4l2_info(&isc->v4l2_dev,
-				  "Completed one time white-balance adjustment.\n");
-			ctrls->awb = ISC_WB_NONE;
-		}
 	}
 	regmap_write(regmap, ISC_HIS_CFG, hist_id | baysel | ISC_HIS_CFG_RAR);
 	isc_update_profile(isc);
@@ -1980,56 +1966,10 @@ static int isc_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctrls->gamma_index = ctrl->val;
 		break;
 	case V4L2_CID_AUTO_WHITE_BALANCE:
-		if (ctrl->val == 1) {
-			ctrls->awb = ISC_WB_AUTO;
-			v4l2_ctrl_activate(isc->do_wb_ctrl, false);
-		} else {
-			ctrls->awb = ISC_WB_NONE;
-			v4l2_ctrl_activate(isc->do_wb_ctrl, true);
-		}
-		/* we did not configure ISC yet */
-		if (!isc->config.sd_format)
-			break;
-
-		if (!ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "White balance adjustments available only if sensor is in RAW mode.\n");
-			return 0;
-		}
-
+		ctrls->awb = ctrl->val;
 		if (ctrls->hist_stat != HIST_ENABLED) {
 			isc_reset_awb_ctrls(isc);
 		}
-
-		if (isc->ctrls.awb && vb2_is_streaming(&isc->vb2_vidq) &&
-		    ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code))
-			isc_set_histogram(isc, true);
-
-		break;
-	case V4L2_CID_DO_WHITE_BALANCE:
-		/* we did not configure ISC yet */
-		if (!isc->config.sd_format)
-			break;
-
-		if (ctrls->awb == ISC_WB_AUTO) {
-			v4l2_err(&isc->v4l2_dev,
-				 "To use one time white-balance adjustment, disable auto white balance first.\n");
-			return -EAGAIN;
-		}
-		if (!vb2_is_streaming(&isc->vb2_vidq)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "One time white-balance adjustment requires streaming to be enabled.\n");
-			return -EAGAIN;
-		}
-
-		if (!ISC_IS_FORMAT_RAW(isc->config.sd_format->mbus_code)) {
-			v4l2_err(&isc->v4l2_dev,
-				 "White balance adjustments available only if sensor is in RAW mode.\n");
-			return -EAGAIN;
-		}
-		ctrls->awb = ISC_WB_ONETIME;
-		isc_set_histogram(isc, true);
-		v4l2_info(&isc->v4l2_dev, "One time white-balance started.\n");
 		break;
 	default:
 		return -EINVAL;
@@ -2052,7 +1992,7 @@ static int isc_ctrl_init(struct isc_device *isc)
 	ctrls->hist_stat = HIST_INIT;
 	isc_reset_awb_ctrls(isc);
 
-	ret = v4l2_ctrl_handler_init(hdl, 5);
+	ret = v4l2_ctrl_handler_init(hdl, 4);
 	if (ret < 0)
 		return ret;
 
@@ -2063,10 +2003,6 @@ static int isc_ctrl_init(struct isc_device *isc)
 	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_CONTRAST, -2048, 2047, 1, 256);
 	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_GAMMA, 0, GAMMA_MAX, 1, 2);
 	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_AUTO_WHITE_BALANCE, 0, 1, 1, 1);
-
-	/* do_white_balance is a button, so min,max,step,default are ignored */
-	isc->do_wb_ctrl = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_DO_WHITE_BALANCE,
-					    0, 0, 0, 0);
 
 	v4l2_ctrl_handler_setup(hdl);
 
