@@ -761,11 +761,6 @@ static void isc_start_dma(struct isc_device *isc)
 	u32 dctrl_dview;
 	dma_addr_t addr0;
 
-	if (!isc->cur_frm) {
-		v4l2_err(&isc->v4l2_dev, "Video buffer not available\n");
-		return;
-	}
-
 	addr0 = vb2_dma_contig_plane_dma_addr(&isc->cur_frm->vb.vb2_buf, 0);
 	regmap_write(regmap, ISC_DAD0, addr0);
 
@@ -932,9 +927,6 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 	unsigned long flags;
 	int ret;
 
-	if (vb2_is_streaming(&isc->vb2_vidq))
-		return -EBUSY;
-
 	/* Enable stream on the sub device */
 	ret = v4l2_subdev_call(isc->current_subdev->sd, video, s_stream, 1);
 	if (ret && ret != -ENOIOCTLCMD) {
@@ -945,20 +937,6 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	pm_runtime_get_sync(isc->dev);
 
-	spin_lock_irqsave(&isc->dma_queue_lock, flags);
-
-	isc->sequence = 0;
-	isc->stop = false;
-	reinit_completion(&isc->comp);
-
-	if (list_empty(&isc->dma_queue)) {
-		v4l2_err(&isc->v4l2_dev, "dma queue empty\n");
-		ret = -EINVAL;
-		goto err_configure_unlock;
-	}
-
-	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
-
 	ret = isc_configure(isc);
 	if (unlikely(ret))
 		goto err_configure;
@@ -967,6 +945,10 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 	regmap_write(regmap, ISC_INTEN, ISC_INT_DDONE);
 
 	spin_lock_irqsave(&isc->dma_queue_lock, flags);
+
+	isc->sequence = 0;
+	isc->stop = false;
+	reinit_completion(&isc->comp);
 
 	isc->cur_frm = list_first_entry(&isc->dma_queue,
 					struct isc_buffer, list);
@@ -978,12 +960,8 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	return 0;
 
-err_configure_unlock:
-	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
-
-
 err_configure:
-	isc->stop = true;
+	pm_runtime_put_sync(isc->dev);
 
 	v4l2_subdev_call(isc->current_subdev->sd, video, s_stream, 0);
 
@@ -994,7 +972,6 @@ err_start_stream:
 	INIT_LIST_HEAD(&isc->dma_queue);
 	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
 
-	pm_runtime_put_sync(isc->dev);
 	return ret;
 }
 
