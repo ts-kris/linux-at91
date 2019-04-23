@@ -4,8 +4,10 @@ The wilc1000 chips can be connected via SDIO. The node is used to specifiy
 child node to the SDIO controller that connects the device to the system.
 
 Required properties:
-- compatible	:	Should be "microchip,wilc1000-spi"
+- compatible	:	Should be "microchip,wilc1000-sdio"
 - irq-gpios	:	Connect to a host IRQ
+- reset-gpios	:	Reset module GPIO
+- chip_en-gpios	:	Chip enable GPIO
 - reg		:	Slot ID used in the controller
 
 Optional:
@@ -22,8 +24,10 @@ mmc1: mmc@fc000000 {
 		status = "okay";
 
 		wilc_sdio@0 {
-			compatible = "microchip,wilc1000-sdio";
+			compatible = "microchip,wilc1000", "microchip,wilc3000";
 			irq-gpios = <&pioC 27 0>;
+			reset-gpios = <&pioB 28 0>;
+			chip_en-gpios = <&pioC 30 0>;
 			status = "okay";
 			reg = <0>;
 			bus-width = <4>;
