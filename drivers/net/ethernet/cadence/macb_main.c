@@ -2884,9 +2884,13 @@ static int macb_get_ts_info(struct net_device *netdev,
 
 static void gem_enable_flow_filters(struct macb *bp, bool enable)
 {
+	struct net_device *netdev = bp->dev;
 	struct ethtool_rx_fs_item *item;
 	u32 t2_scr;
 	int num_t2_scr;
+
+	if (!(netdev->features & NETIF_F_NTUPLE))
+		return;
 
 	num_t2_scr = GEM_BFEXT(T2SCR, gem_readl(bp, DCFG8));
 
@@ -3047,8 +3051,7 @@ static int gem_add_flow_filter(struct net_device *netdev,
 	gem_prog_cmp_regs(bp, fs);
 	bp->rx_fs_list.count++;
 	/* enable filtering if NTUPLE on */
-	if (netdev->features & NETIF_F_NTUPLE)
-		gem_enable_flow_filters(bp, 1);
+	gem_enable_flow_filters(bp, 1);
 
 	spin_unlock_irqrestore(&bp->rx_fs_lock, flags);
 	return 0;
@@ -3236,6 +3239,50 @@ static int macb_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	}
 }
 
+static inline void macb_set_txcsum_feature(struct macb *bp,
+					   netdev_features_t features)
+{
+	u32 val;
+
+	if (!macb_is_gem(bp))
+		return;
+
+	val = gem_readl(bp, DMACFG);
+	if (features & NETIF_F_HW_CSUM)
+		val |= GEM_BIT(TXCOEN);
+	else
+		val &= ~GEM_BIT(TXCOEN);
+
+	gem_writel(bp, DMACFG, val);
+}
+
+static inline void macb_set_rxcsum_feature(struct macb *bp,
+					   netdev_features_t features)
+{
+	struct net_device *netdev = bp->dev;
+	u32 val;
+
+	if (!macb_is_gem(bp))
+		return;
+
+	val = gem_readl(bp, NCFGR);
+	if ((features & NETIF_F_RXCSUM) && !(netdev->flags & IFF_PROMISC))
+		val |= GEM_BIT(RXCOEN);
+	else
+		val &= ~GEM_BIT(RXCOEN);
+
+	gem_writel(bp, NCFGR, val);
+}
+
+static inline void macb_set_rxflow_feature(struct macb *bp,
+					   netdev_features_t features)
+{
+	if (!macb_is_gem(bp))
+		return;
+
+	gem_enable_flow_filters(bp, !!(features & NETIF_F_NTUPLE));
+}
+
 static int macb_set_features(struct net_device *netdev,
 			     netdev_features_t features)
 {
@@ -3243,37 +3290,33 @@ static int macb_set_features(struct net_device *netdev,
 	netdev_features_t changed = features ^ netdev->features;
 
 	/* TX checksum offload */
-	if ((changed & NETIF_F_HW_CSUM) && macb_is_gem(bp)) {
-		u32 dmacfg;
-
-		dmacfg = gem_readl(bp, DMACFG);
-		if (features & NETIF_F_HW_CSUM)
-			dmacfg |= GEM_BIT(TXCOEN);
-		else
-			dmacfg &= ~GEM_BIT(TXCOEN);
-		gem_writel(bp, DMACFG, dmacfg);
-	}
+	if (changed & NETIF_F_HW_CSUM)
+		macb_set_txcsum_feature(bp, features);
 
 	/* RX checksum offload */
-	if ((changed & NETIF_F_RXCSUM) && macb_is_gem(bp)) {
-		u32 netcfg;
-
-		netcfg = gem_readl(bp, NCFGR);
-		if (features & NETIF_F_RXCSUM &&
-		    !(netdev->flags & IFF_PROMISC))
-			netcfg |= GEM_BIT(RXCOEN);
-		else
-			netcfg &= ~GEM_BIT(RXCOEN);
-		gem_writel(bp, NCFGR, netcfg);
-	}
+	if (changed & NETIF_F_RXCSUM)
+		macb_set_rxcsum_feature(bp, features);
 
 	/* RX Flow Filters */
-	if ((changed & NETIF_F_NTUPLE) && macb_is_gem(bp)) {
-		bool turn_on = features & NETIF_F_NTUPLE;
+	if (changed & NETIF_F_NTUPLE)
+		macb_set_rxflow_feature(bp, features);
 
-		gem_enable_flow_filters(bp, turn_on);
-	}
 	return 0;
+}
+
+static void macb_restore_features(struct macb *bp)
+{
+	struct net_device *netdev = bp->dev;
+	netdev_features_t features = netdev->features;
+
+	/* TX checksum offload */
+	macb_set_txcsum_feature(bp, features);
+
+	/* RX checksum offload */
+	macb_set_rxcsum_feature(bp, features);
+
+	/* RX Flow Filters */
+	macb_set_rxflow_feature(bp, features);
 }
 
 static const struct net_device_ops macb_netdev_ops = {
@@ -4297,6 +4340,13 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		netif_device_detach(netdev);
 	} else {
 		netif_device_detach(netdev);
+
+		if (netdev->hw_features & NETIF_F_NTUPLE)
+			bp->pm_data.etht = gem_readl_n(bp, ETHT, SCRT2_ETHT);
+
+		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
+			bp->pm_data.usrio = macb_or_gem_readl(bp, USRIO);
+
 		for (q = 0, queue = bp->queues; q < bp->num_queues;
 		     ++q, ++queue)
 			napi_disable(&queue->napi);
@@ -4339,6 +4389,16 @@ static int __maybe_unused macb_resume(struct device *dev)
 		phy_resume(netdev->phydev);
 		phy_init_hw(netdev->phydev);
 		phy_start(netdev->phydev);
+
+		if (netdev->hw_features & NETIF_F_NTUPLE)
+			gem_writel_n(bp, ETHT, SCRT2_ETHT, bp->pm_data.etht);
+
+		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
+			macb_or_gem_writel(bp, USRIO, bp->pm_data.usrio);
+
+		macb_set_rx_mode(bp->dev);
+		macb_restore_features(bp);
+
 	}
 
 	bp->macbgem_ops.mog_init_rings(bp);
