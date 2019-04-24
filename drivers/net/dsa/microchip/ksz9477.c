@@ -249,7 +249,7 @@ static int ksz9477_reset_switch(struct ksz_device *dev)
 
 	/* disable interrupts */
 	ksz_write32(dev, REG_SW_INT_MASK__4, SWITCH_INT_MASK);
-	ksz_write32(dev, REG_SW_PORT_INT_MASK__4, 0x7F);
+	ksz_write32(dev, REG_SW_PORT_INT_MASK__4, dev->port_cnt);
 	ksz_read32(dev, REG_SW_PORT_INT_STATUS__4, &data32);
 
 	/* set broadcast storm protection 10% rate */
