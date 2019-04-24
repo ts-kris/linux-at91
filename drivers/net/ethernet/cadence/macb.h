@@ -1080,6 +1080,12 @@ struct macb_ptp_info {
 			 struct ifreq *ifr, int cmd);
 };
 
+struct macb_pm_data {
+	u32 etht;
+	u32 usrio;
+	u32 ncr;
+};
+
 struct macb_config {
 	u32			caps;
 	unsigned int		dma_burst_length;
@@ -1181,7 +1187,6 @@ struct macb {
 	int 			duplex;
 
 	u32			caps;
-	unsigned int		dma_burst_length;
 
 	phy_interface_t		phy_interface;
 
@@ -1194,7 +1199,6 @@ struct macb {
 	u64			ethtool_stats[GEM_STATS_LEN + QUEUE_STATS_LEN * MACB_MAX_QUEUES];
 
 	unsigned int		rx_frm_len_mask;
-	unsigned int		jumbo_max_len;
 
 	u32			wol;
 
@@ -1220,6 +1224,9 @@ struct macb {
 	int	tx_bd_rd_prefetch;
 
 	u32	rx_intr_mask;
+
+	const struct macb_config *config;
+	struct macb_pm_data pm_data;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
