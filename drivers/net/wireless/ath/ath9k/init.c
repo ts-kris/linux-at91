@@ -639,7 +639,7 @@ static int ath9k_of_init(struct ath_softc *sc)
 	}
 
 	mac = of_get_mac_address(np);
-	if (mac)
+	if (!IS_ERR(mac))
 		ether_addr_copy(common->macaddr, mac);
 
 	ah->ah_flags &= ~AH_USE_EEPROM;
