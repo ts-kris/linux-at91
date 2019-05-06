@@ -4342,7 +4342,7 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		netif_device_detach(netdev);
 
 		if (netdev->hw_features & NETIF_F_NTUPLE)
-			bp->pm_data.etht = gem_readl_n(bp, ETHT, SCRT2_ETHT);
+			bp->pm_data.scrt2 = gem_readl_n(bp, ETHT, SCRT2_ETHT);
 
 		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
 			bp->pm_data.usrio = macb_or_gem_readl(bp, USRIO);
@@ -4391,7 +4391,7 @@ static int __maybe_unused macb_resume(struct device *dev)
 		phy_start(netdev->phydev);
 
 		if (netdev->hw_features & NETIF_F_NTUPLE)
-			gem_writel_n(bp, ETHT, SCRT2_ETHT, bp->pm_data.etht);
+			gem_writel_n(bp, ETHT, SCRT2_ETHT, bp->pm_data.scrt2);
 
 		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
 			macb_or_gem_writel(bp, USRIO, bp->pm_data.usrio);
