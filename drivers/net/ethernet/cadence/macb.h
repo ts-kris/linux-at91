@@ -1083,7 +1083,6 @@ struct macb_ptp_info {
 struct macb_pm_data {
 	u32 etht;
 	u32 usrio;
-	u32 ncr;
 };
 
 struct macb_config {
