@@ -904,6 +904,10 @@ static int sdio_read_int(struct wilc *wilc, u32 *int_status)
 		}
 		tmp |= ((irq_flags >> 0) << IRG_FLAGS_OFFSET);
 
+		*int_status = tmp;
+	} else {
+		sdio_read_size(wilc, &tmp);
+		cmd.read_write = 0;
 		cmd.function = 1;
 		cmd.address = 0x04;
 		cmd.data = 0;
