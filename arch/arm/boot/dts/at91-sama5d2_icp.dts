@@ -20,6 +20,7 @@
 		serial0 = &uart0;	/* DBGU */
 		serial1 = &uart1;	/* mikro BUS 1 */
 		serial3 = &uart3;	/* mikro BUS 2 */
+		serial5 = &uart5;	/* flx2 */
 		i2c0	= &i2c0;
 		i2c1	= &i2c1;
 	};
@@ -36,6 +37,15 @@
 		main_xtal {
 			clock-frequency = <12000000>;
 		};
+	};
+
+	wifi_pwrseq: wifi_pwrseq {
+		compatible = "mmc-pwrseq-wilc";
+		reset-gpios = <&pioA 8 GPIO_ACTIVE_HIGH>;
+		powerdown-gpios = <&pioA 78 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&pinctrl_wilc_pwrseq_default>;
+		pinctrl-names = "default";
+		status = "okay"; /* Conflict with qspi1. */
 	};
 
 	ahb {
@@ -66,11 +76,31 @@
 			status = "okay";
 		};
 
+		sdmmc1: sdio-host@b0000000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_sdmmc1_default>;
+			bus-width = <4>;
+			mmc-pwrseq = <&wifi_pwrseq>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			no-1-8-v;
+			non-removable;
+			status = "okay";
+
+			wilc: wilc@1 {
+				compatible = "microchip,wilc1000", "microchip,wilc3000";
+				reg = <1>;
+				bus-width = <4>;
+				irq-gpios = <&pioA 77 0>;
+				status = "okay";
+			};
+		};
+
 		apb {
 			qspi1: spi@f0024000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_qspi1_default>;
-				status = "okay";
+				status = "disabled"; /* Conflict with wilc_pwrseq, flx2 */
 				flash@0 {
 					reg = <0>;
 					compatible = "jedec,spi-nor";
@@ -218,6 +248,31 @@
 				atmel,use-dma-rx;
 				atmel,use-dma-tx;
 				status = "okay";
+			};
+
+			flx2: flexcom@fc010000 {
+				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+				status = "okay";
+
+				uart5: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <21 IRQ_TYPE_LEVEL_HIGH 7>;
+					dmas = <&dma0
+						(AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
+						 AT91_XDMAC_DT_PERID(15))>,
+					       <&dma0
+					        (AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
+						 AT91_XDMAC_DT_PERID(16))>;
+					dma-names = "tx", "rx";
+					clocks = <&flx2_clk>;
+					clock-names = "usart";
+					pinctrl-0 = <&pinctrl_flx2_default>;
+					pinctrl-names = "default";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+					status = "okay"; /* Conflict w/ qspi1. */
+				};
 			};
 
 			flx3: flexcom@fc014000 { /* mikrobus1 spi */
@@ -506,6 +561,22 @@
 					};
 				};
 
+				pinctrl_sdmmc1_default: sdmmc1_default {
+					cmd_data {
+						pinmux = <PIN_PA18__SDMMC1_DAT0>,
+							 <PIN_PA19__SDMMC1_DAT1>,
+							 <PIN_PA20__SDMMC1_DAT2>,
+							 <PIN_PA21__SDMMC1_DAT3>;
+						bias-disable;
+					};
+
+					ck_cd {
+						pinmux = <PIN_PA22__SDMMC1_CK>,
+							 <PIN_PA28__SDMMC1_CMD>;
+						bias-disable;
+					};
+				};
+
 				pinctrl_mikrobus_i2c: mikrobus_i2c {
 					pinmux = <PIN_PD22__TWCK0>,
 						 <PIN_PD21__TWD0>;
@@ -677,6 +748,19 @@
 					bias-pull-up;
 				};
 
+				pinctrl_wilc_pwrseq_default: wilc_pwrseq_default {
+					pinmux = <PIN_PA8__GPIO>,
+						 <PIN_PC15__GPIO>;
+					bias-pull-up;
+				};
+
+				pinctrl_flx2_default: flx2_default {
+					pinmux = <PIN_PA6__FLEXCOM2_IO0>,
+						 <PIN_PA7__FLEXCOM2_IO1>,
+						 <PIN_PA9__FLEXCOM2_IO3>,
+						 <PIN_PA10__FLEXCOM2_IO4>;
+					bias-disable;
+				};
 			};
 
 			can1: can@fc050000 {
