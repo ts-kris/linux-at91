@@ -1732,7 +1732,6 @@ int wilc_netdev_init(struct wilc **wilc, struct device *dev, int io_type,
 		vif->ndev = ndev;
 		wl->vif[i] = vif;
 
-
 		ndev->netdev_ops = &wilc_netdev_ops;
 
 		wdev = wilc_create_wiphy(ndev, dev);
