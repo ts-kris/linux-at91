@@ -90,6 +90,14 @@
 #define	AT91_TWI_ACR_DATAL(len)	((len) & 0xff)
 #define	AT91_TWI_ACR_DIR	BIT(8)
 
+#define AT91_TWI_FILTR		0x0044
+#define AT91_TWI_FILTR_FILT	BIT(0)
+#define AT91_TWI_FILTR_PADFEN	BIT(1)
+#define AT91_TWI_FILTR_PADFCFG	BIT(2)
+#define AT91_TWI_FILTR_THRES(v)	((v) << 8)
+#define AT91_TWI_FILTR_THRES_MASK	GENMASK(10, 8)
+
+
 #define	AT91_TWI_FMR		0x0050	/* FIFO Mode Register */
 #define	AT91_TWI_FMR_TXRDYM(mode)	(((mode) & 0x3) << 0)
 #define	AT91_TWI_FMR_TXRDYM_MASK	(0x3 << 0)
@@ -114,6 +122,7 @@ struct at91_twi_pdata {
 	bool has_unre_flag;
 	bool has_alt_cmd;
 	bool has_hold_field;
+	bool has_filtering;
 	struct at_dma_slave dma_slave;
 };
 
@@ -176,6 +185,8 @@ static void at91_twi_irq_restore(struct at91_twi_dev *dev)
 
 static void at91_init_twi_bus(struct at91_twi_dev *dev)
 {
+	struct at91_twi_pdata *pdata = dev->pdata;
+
 	at91_disable_twi_interrupts(dev);
 	at91_twi_write(dev, AT91_TWI_CR, AT91_TWI_SWRST);
 	/* FIFO should be enabled immediately after the software reset */
@@ -184,6 +195,15 @@ static void at91_init_twi_bus(struct at91_twi_dev *dev)
 	at91_twi_write(dev, AT91_TWI_CR, AT91_TWI_MSEN);
 	at91_twi_write(dev, AT91_TWI_CR, AT91_TWI_SVDIS);
 	at91_twi_write(dev, AT91_TWI_CWGR, dev->twi_cwgr_reg);
+
+	if (!pdata->has_filtering)
+		return;
+
+	/* enable filter for maximum periph clocks (7) */
+	at91_twi_write(dev, AT91_TWI_FILTR,
+		       (AT91_TWI_FILTR_FILT | AT91_TWI_FILTR_PADFEN |
+		       AT91_TWI_FILTR_PADFCFG |
+		       (AT91_TWI_FILTR_THRES(7) & AT91_TWI_FILTR_THRES_MASK)));
 }
 
 /*
@@ -919,6 +939,15 @@ static struct at91_twi_pdata sama5d2_config = {
 	.has_hold_field = true,
 };
 
+static struct at91_twi_pdata sam9x60_config = {
+	.clk_max_div = 7,
+	.clk_offset = 4,
+	.has_unre_flag = true,
+	.has_alt_cmd = true,
+	.has_hold_field = true,
+	.has_filtering = true,
+};
+
 static const struct of_device_id atmel_twi_dt_ids[] = {
 	{
 		.compatible = "atmel,at91rm9200-i2c",
@@ -945,6 +974,10 @@ static const struct of_device_id atmel_twi_dt_ids[] = {
 		.compatible = "atmel,sama5d2-i2c",
 		.data = &sama5d2_config,
 	}, {
+		.compatible = "microchip,sam9x60-i2c",
+		.data = &sam9x60_config,
+	}, {
+
 		/* sentinel */
 	}
 };
