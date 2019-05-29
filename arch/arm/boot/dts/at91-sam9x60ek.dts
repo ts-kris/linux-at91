@@ -298,7 +298,7 @@
 				status = "okay";
 
 				i2c1: i2c@600 {
-					compatible = "atmel,sama5d2-i2c";
+					compatible = "microchip,sam9x60-i2c";
 					reg = <0x600 0x200>;
 					interrupts = <9 IRQ_TYPE_LEVEL_HIGH 7>;
 					#address-cells = <1>;
