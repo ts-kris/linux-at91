@@ -23,6 +23,9 @@ Optional properties:
 - enable-dig-filt: Enable the built-in digital filter on the i2c lines,
   specifically required depending on the hardware PCB/board and if the
   version of the controller includes it.
+- enable-ana-filt: Enable the built-in analogic filter on the i2c lines,
+  specifically required depending on the hardware PCB/board and if the
+  version of the controller includes it.
 - Child nodes conforming to i2c bus binding
 
 Examples :
@@ -60,6 +63,7 @@ i2c0: i2c@f8034600 {
 	atmel,fifo-size = <16>;
 	i2c-sda-hold-time-ns = <336>;
 	enable-dig-filt;
+	enable-ana-filt;
 
 	wm8731: wm8731@1a {
 		compatible = "wm8731";
