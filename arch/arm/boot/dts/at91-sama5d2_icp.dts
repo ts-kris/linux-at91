@@ -17,8 +17,8 @@
 	compatible = "microchip,sama5d2-icp", "atmel,sama5d2", "atmel,sama5";
 
 	aliases {
-		serial0 = &uart0;	/* DBGU */
-		serial1 = &uart1;	/* mikro BUS 1 */
+		serial0 = &uart0;	/* debug uart0 + mikro BUS 1 */
+		serial1 = &uart1;	/* mikro BUS 3 */
 		serial3 = &uart3;	/* mikro BUS 2 */
 		serial5 = &uart5;	/* flx2 */
 		i2c0	= &i2c0;
@@ -50,7 +50,7 @@
 
 	ahb {
 		usb0: gadget@300000 {
-			atmel,vbus-gpio = <&pioA PIN_PD23 GPIO_ACTIVE_LOW>;
+			atmel,vbus-gpio = <&pioA PIN_PD23 GPIO_ACTIVE_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usba_vbus>;
 			status = "okay";
@@ -489,7 +489,7 @@
 					compatible = "atmel,24c32";
 					reg = <0x50>;
 					pagesize = <16>;
-					status = "disabled";
+					status = "okay";
 				};
 
 				eeprom@52 {
