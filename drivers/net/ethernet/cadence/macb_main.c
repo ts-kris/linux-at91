@@ -1018,7 +1018,8 @@ static void discard_partial_frame(struct macb_queue *queue, unsigned int begin,
 	 */
 }
 
-static int gem_rx(struct macb_queue *queue, int budget)
+static int gem_rx(struct macb_queue *queue, struct napi_struct *napi,
+		  int budget)
 {
 	struct macb *bp = queue->bp;
 	unsigned int		len;
@@ -1100,7 +1101,7 @@ static int gem_rx(struct macb_queue *queue, int budget)
 			       skb->data, 32, true);
 #endif
 
-		netif_receive_skb(skb);
+		napi_gro_receive(napi, skb);
 	}
 
 	gem_rx_refill(queue);
@@ -1108,8 +1109,8 @@ static int gem_rx(struct macb_queue *queue, int budget)
 	return count;
 }
 
-static int macb_rx_frame(struct macb_queue *queue, unsigned int first_frag,
-			 unsigned int last_frag)
+static int macb_rx_frame(struct macb_queue *queue, struct napi_struct *napi,
+			 unsigned int first_frag, unsigned int last_frag)
 {
 	unsigned int len;
 	unsigned int frag;
@@ -1185,7 +1186,7 @@ static int macb_rx_frame(struct macb_queue *queue, unsigned int first_frag,
 	bp->dev->stats.rx_bytes += skb->len;
 	netdev_vdbg(bp->dev, "received skb of length %u, csum: %08x\n",
 		    skb->len, skb->csum);
-	netif_receive_skb(skb);
+	napi_gro_receive(napi, skb);
 
 	return 0;
 }
@@ -1208,7 +1209,8 @@ static inline void macb_init_rx_ring(struct macb_queue *queue)
 	queue->rx_tail = 0;
 }
 
-static int macb_rx(struct macb_queue *queue, int budget)
+static int macb_rx(struct macb_queue *queue, struct napi_struct *napi,
+		   int budget)
 {
 	struct macb *bp = queue->bp;
 	bool reset_rx_queue = false;
@@ -1245,7 +1247,7 @@ static int macb_rx(struct macb_queue *queue, int budget)
 				continue;
 			}
 
-			dropped = macb_rx_frame(queue, first_frag, tail);
+			dropped = macb_rx_frame(queue, napi, first_frag, tail);
 			first_frag = -1;
 			if (unlikely(dropped < 0)) {
 				reset_rx_queue = true;
@@ -1299,7 +1301,7 @@ static int macb_poll(struct napi_struct *napi, int budget)
 	netdev_vdbg(bp->dev, "poll: status = %08lx, budget = %d\n",
 		    (unsigned long)status, budget);
 
-	work_done = bp->macbgem_ops.mog_rx(queue, budget);
+	work_done = bp->macbgem_ops.mog_rx(queue, napi, budget);
 	if (work_done < budget) {
 		napi_complete_done(napi, work_done);
 
@@ -3514,7 +3516,7 @@ static int macb_init(struct platform_device *pdev)
 
 		queue = &bp->queues[q];
 		queue->bp = bp;
-		netif_napi_add(dev, &queue->napi, macb_poll, 64);
+		netif_napi_add(dev, &queue->napi, macb_poll, NAPI_POLL_WEIGHT);
 		if (hw_q) {
 			queue->ISR  = GEM_ISR(hw_q - 1);
 			queue->IER  = GEM_IER(hw_q - 1);
@@ -4206,15 +4208,13 @@ static int macb_probe(struct platform_device *pdev)
 		bp->rx_intr_mask |= MACB_BIT(RXUBR);
 
 	mac = of_get_mac_address(np);
-	if (mac) {
+	if (PTR_ERR(mac) == -EPROBE_DEFER) {
+		err = -EPROBE_DEFER;
+		goto err_out_free_netdev;
+	} else if (!IS_ERR_OR_NULL(mac)) {
 		ether_addr_copy(bp->dev->dev_addr, mac);
 	} else {
-		err = nvmem_get_mac_address(&pdev->dev, bp->dev->dev_addr);
-		if (err) {
-			if (err == -EPROBE_DEFER)
-				goto err_out_free_netdev;
-			macb_get_hwaddr(bp);
-		}
+		macb_get_hwaddr(bp);
 	}
 
 	err = of_get_phy_mode(np);
