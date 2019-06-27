@@ -49,6 +49,7 @@
 			};
 
 			i2c0: i2c@f8014000 {
+				enable-ana-filt;
 				status = "okay";
 			};
 
