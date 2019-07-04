@@ -387,6 +387,18 @@
 	};
 };
 
+&spi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default>;
+	status = "okay";
+
+	spidev@1 {
+		compatible = "rohm,dh2228fv", "linux,spidev";
+		reg = <1>;
+		spi-max-frequency = <10000000>;
+	};
+};
+
 &tcb0 {
 	timer0: timer@0 {
 		compatible = "atmel,tcb-timer";
