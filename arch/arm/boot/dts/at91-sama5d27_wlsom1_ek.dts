@@ -275,6 +275,14 @@
 		};
 	};
 
+	pinctrl_spi1_default: spi1_default {
+		pinmux = <PIN_PC1__SPI1_SPCK>,
+			 <PIN_PC2__SPI1_MOSI>,
+			 <PIN_PC3__SPI1_MISO>,
+			 <PIN_PC5__SPI1_NPCS1>;
+		bias-disable;
+	};
+
 	pinctrl_uart0_default: uart0_default {
 		pinmux = <PIN_PB26__URXD0>,
 			 <PIN_PB27__UTXD0>;
