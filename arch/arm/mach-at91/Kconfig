@@ -115,6 +115,7 @@ config SOC_SAM9X60
 	select ATMEL_SDRAMC
 	select CPU_ARM926T
 	select HAVE_AT91_GENERATED_CLK
+	select HAVE_AT91_SAM9X60_PLL
 	select MEMORY
 	select PINCTRL_AT91
 	select SOC_SAM_V4_V5
@@ -146,6 +147,9 @@ config HAVE_AT91_AUDIO_PLL
 	bool
 
 config HAVE_AT91_I2S_MUX_CLK
+	bool
+
+config HAVE_AT91_SAM9X60_PLL
 	bool
 
 config SOC_SAM_V4_V5
