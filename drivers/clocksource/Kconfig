@@ -453,6 +453,12 @@ config OXNAS_RPS_TIMER
 config SYS_SUPPORTS_SH_CMT
         bool
 
+config MICROCHIP_PIT64B
+	bool "Microchip PIT64B support"
+	depends on OF || COMPILE_TEST
+	help
+	  This option enables Microchip PIT64B timer.
+
 config MTK_TIMER
 	bool "Mediatek timer driver" if COMPILE_TEST
 	depends on HAS_IOMEM
