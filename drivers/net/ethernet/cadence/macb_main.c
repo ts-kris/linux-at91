@@ -4347,6 +4347,8 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
 			bp->pm_data.usrio = macb_or_gem_readl(bp, USRIO);
 
+		bp->pm_data.ncr = macb_readl(bp, NCR);
+
 		for (q = 0, queue = bp->queues; q < bp->num_queues;
 		     ++q, ++queue)
 			napi_disable(&queue->napi);
@@ -4389,6 +4391,8 @@ static int __maybe_unused macb_resume(struct device *dev)
 		phy_resume(netdev->phydev);
 		phy_init_hw(netdev->phydev);
 		phy_start(netdev->phydev);
+
+		macb_writel(bp, NCR, bp->pm_data.ncr & MACB_BIT(MPE));
 
 		if (netdev->hw_features & NETIF_F_NTUPLE)
 			gem_writel_n(bp, ETHT, SCRT2_ETHT, bp->pm_data.etht);
