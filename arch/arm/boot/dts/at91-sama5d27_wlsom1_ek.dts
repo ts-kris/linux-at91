@@ -110,6 +110,14 @@
 	status = "okay";
 };
 
+&qspi1 {
+	status = "okay";
+
+	qspi1_flash: spi_flash@0 {
+		status = "okay";
+	};
+};
+
 &pioA {
 	/*
 	 * There is no real pinmux for ADC, if the pin

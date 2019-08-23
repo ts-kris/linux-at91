@@ -41,6 +41,54 @@
 	atmel,osc-bypass;
 };
 
+&qspi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_qspi1_default>;
+	status = "disabled";
+
+	qspi1_flash: spi_flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <80000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		m25p,fast-read;
+		status = "disabled";
+
+		at91bootstrap@0 {
+			label = "at91bootstrap";
+			reg = <0x0 0x40000>;
+		};
+
+		bootloader@40000 {
+			label = "bootloader";
+			reg = <0x40000 0xc0000>;
+		};
+
+		bootloaderenvred@100000 {
+			label = "bootloader env redundant";
+			reg = <0x100000 0x40000>;
+		};
+
+		bootloaderenv@140000 {
+			label = "bootloader env";
+			reg = <0x140000 0x40000>;
+		};
+
+		dtb@180000 {
+			label = "device tree";
+			reg = <0x180000 0x80000>;
+		};
+
+		kernel@200000 {
+			label = "kernel";
+			reg = <0x200000 0x600000>;
+		};
+	};
+};
+
 &i2c1 {
 	dmas = <0>, <0>;
 	pinctrl-names = "default";
@@ -201,6 +249,16 @@
 	pinctrl_macb0_phy_irq: macb0_phy_irq {
 		pinmux = <PIN_PB24__GPIO>;
 		bias-disable;
+	};
+
+	pinctrl_qspi1_default: qspi1_default {
+		pinmux = <PIN_PB5__QSPI1_SCK>,
+			 <PIN_PB6__QSPI1_CS>,
+			 <PIN_PB7__QSPI1_IO0>,
+			 <PIN_PB8__QSPI1_IO1>,
+			 <PIN_PB9__QSPI1_IO2>,
+			 <PIN_PB10__QSPI1_IO3>;
+		bias-pull-up;
 	};
 
 	pinctrl_sdmmc1_default: sdmmc1_default {
