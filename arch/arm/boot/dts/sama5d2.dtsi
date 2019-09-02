@@ -494,7 +494,7 @@
 					interrupts = <AT91_PMC_LOCKA>;
 					clocks = <&main>;
 					reg = <0>;
-					atmel,clk-input-range = <12000000 12000000>;
+					atmel,clk-input-range = <12000000 24000000>;
 					#atmel,pll-clk-output-range-cells = <4>;
 					atmel,pll-clk-output-ranges = <600000000 1200000000 0 0>;
 				};
