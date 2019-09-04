@@ -499,7 +499,11 @@
 
 /* Bitfields in TISUBN */
 #define GEM_SUBNSINCR_OFFSET			0
-#define GEM_SUBNSINCR_SIZE			16
+#define GEM_SUBNSINCRL_OFFSET			24
+#define GEM_SUBNSINCRL_SIZE			8
+#define GEM_SUBNSINCRH_OFFSET			0
+#define GEM_SUBNSINCRH_SIZE			16
+#define GEM_SUBNSINCR_SIZE			24
 
 /* Bitfields in TI */
 #define GEM_NSINCR_OFFSET			0
@@ -837,6 +841,9 @@ struct gem_tx_ts {
 /* limit RX checksum offload to TCP and UDP packets */
 #define GEM_RX_CSUM_CHECKED_MASK		2
 
+/* Scaled PPM fraction */
+#define PPM_FRACTION	16
+
 /* struct macb_tx_skb - data about an skb which is being transmitted
  * @skb: skb currently being transmitted, only set for the last buffer
  *       of the frame
@@ -1081,6 +1088,11 @@ struct macb_ptp_info {
 			 struct ifreq *ifr, int cmd);
 };
 
+struct macb_pm_data {
+	u32 scrt2;
+	u32 usrio;
+};
+
 struct macb_config {
 	u32			caps;
 	unsigned int		dma_burst_length;
@@ -1221,6 +1233,8 @@ struct macb {
 	int	tx_bd_rd_prefetch;
 
 	u32	rx_intr_mask;
+
+	struct macb_pm_data pm_data;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
