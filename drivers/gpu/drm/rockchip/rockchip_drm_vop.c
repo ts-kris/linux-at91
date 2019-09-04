@@ -284,12 +284,9 @@ static void scl_vop_cal_scl_fac(struct vop *vop, const struct vop_win_data *win,
 	uint16_t yrgb_hor_scl_mode, yrgb_ver_scl_mode;
 	uint16_t cbcr_hor_scl_mode = SCALE_NONE;
 	uint16_t cbcr_ver_scl_mode = SCALE_NONE;
-	int hsub = drm_format_horz_chroma_subsampling(pixel_format);
-	int vsub = drm_format_vert_chroma_subsampling(pixel_format);
-	const struct drm_format_info *info;
 	bool is_yuv = false;
-	uint16_t cbcr_src_w = src_w / hsub;
-	uint16_t cbcr_src_h = src_h / vsub;
+	uint16_t cbcr_src_w = src_w / info->hsub;
+	uint16_t cbcr_src_h = src_h / info->vsub;
 	uint16_t vsu_mode;
 	uint16_t lb_mode;
 	uint32_t val;
@@ -773,9 +770,15 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	VOP_WIN_SET(vop, win, format, format);
 	VOP_WIN_SET(vop, win, yrgb_vir, DIV_ROUND_UP(fb->pitches[0], 4));
 	VOP_WIN_SET(vop, win, yrgb_mst, dma_addr);
-	if (fb->format->is_yuv) {
-		int hsub = drm_format_horz_chroma_subsampling(fb->format->format);
-		int vsub = drm_format_vert_chroma_subsampling(fb->format->format);
+	VOP_WIN_YUV2YUV_SET(vop, win_yuv2yuv, y2r_en, is_yuv);
+	VOP_WIN_SET(vop, win, y_mir_en,
+		    (state->rotation & DRM_MODE_REFLECT_Y) ? 1 : 0);
+	VOP_WIN_SET(vop, win, x_mir_en,
+		    (state->rotation & DRM_MODE_REFLECT_X) ? 1 : 0);
+
+	if (is_yuv) {
+		int hsub = fb->format->hsub;
+		int vsub = fb->format->vsub;
 		int bpp = fb->format->cpp[1];
 
 		uv_obj = fb->obj[1];

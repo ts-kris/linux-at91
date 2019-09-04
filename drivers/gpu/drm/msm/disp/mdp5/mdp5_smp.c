@@ -132,8 +132,8 @@ uint32_t mdp5_smp_calculate(struct mdp5_smp *smp,
 	u32 fmt = format->base.pixel_format;
 	uint32_t blkcfg = 0;
 
-	nplanes = drm_format_num_planes(fmt);
-	hsub = drm_format_horz_chroma_subsampling(fmt);
+	nplanes = info->num_planes;
+	hsub = info->hsub;
 
 	/* different if BWC (compressed framebuffer?) enabled: */
 	nlines = 2;

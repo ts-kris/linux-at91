@@ -265,11 +265,23 @@ static int vc4_plane_setup_clipping_and_scaling(struct drm_plane_state *state)
 	struct drm_framebuffer *fb = state->fb;
 	struct drm_gem_cma_object *bo = drm_fb_cma_get_gem_obj(fb, 0);
 	u32 subpixel_src_mask = (1 << 16) - 1;
-	u32 format = fb->format->format;
 	int num_planes = fb->format->num_planes;
-	u32 h_subsample = 1;
-	u32 v_subsample = 1;
-	int i;
+	struct drm_crtc_state *crtc_state;
+	u32 h_subsample = fb->format->hsub;
+	u32 v_subsample = fb->format->vsub;
+	int i, ret;
+
+	crtc_state = drm_atomic_get_existing_crtc_state(state->state,
+							state->crtc);
+	if (!crtc_state) {
+		DRM_DEBUG_KMS("Invalid crtc state\n");
+		return -EINVAL;
+	}
+
+	ret = drm_atomic_helper_check_plane_state(state, crtc_state, 1,
+						  INT_MAX, true, true);
+	if (ret)
+		return ret;
 
 	for (i = 0; i < num_planes; i++)
 		vc4_state->offsets[i] = bo->paddr + fb->offsets[i];
@@ -470,7 +482,9 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 	u32 ctl0_offset = vc4_state->dlist_count;
 	const struct hvs_format *format = vc4_get_hvs_format(fb->format->format);
 	u64 base_format_mod = fourcc_mod_broadcom_mod(fb->modifier);
-	int num_planes = drm_format_num_planes(format->drm);
+	int num_planes = fb->format->num_planes;
+	u32 h_subsample = fb->format->hsub;
+	u32 v_subsample = fb->format->vsub;
 	bool mix_plane_alpha;
 	bool covers_screen;
 	u32 scl0, scl1, pitch0;
@@ -515,6 +529,16 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 		scl0 = vc4_get_scl_field(state, 1);
 		scl1 = vc4_get_scl_field(state, 0);
 	}
+
+	rotation = drm_rotation_simplify(state->rotation,
+					 DRM_MODE_ROTATE_0 |
+					 DRM_MODE_REFLECT_X |
+					 DRM_MODE_REFLECT_Y);
+
+	/* We must point to the last line when Y reflection is enabled. */
+	src_y = vc4_state->src_y;
+	if (rotation & DRM_MODE_REFLECT_Y)
+		src_y += vc4_state->src_h[0] - 1;
 
 	switch (base_format_mod) {
 	case DRM_FORMAT_MOD_LINEAR:

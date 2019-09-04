@@ -68,8 +68,6 @@ drm_get_format_info(struct drm_device *dev,
 uint32_t drm_mode_legacy_fb_format(uint32_t bpp, uint32_t depth);
 int drm_format_num_planes(uint32_t format);
 int drm_format_plane_cpp(uint32_t format, int plane);
-int drm_format_horz_chroma_subsampling(uint32_t format);
-int drm_format_vert_chroma_subsampling(uint32_t format);
 int drm_format_plane_width(int width, uint32_t format, int plane);
 int drm_format_plane_height(int height, uint32_t format, int plane);
 const char *drm_get_format_name(uint32_t format, struct drm_format_name_buf *buf);
