@@ -232,6 +232,12 @@
 		bias-disable;
 	};
 
+	pinctrl_i2c0_default: i2c0_default {
+		pinmux = <PIN_PD21__TWD0>,
+			 <PIN_PD22__TWCK0>;
+		bias-disable;
+	};
+
 	pinctrl_macb0_default: macb0_default {
 		pinmux = <PIN_PB14__GTXCK>,
 			 <PIN_PB15__GTXEN>,
@@ -324,6 +330,12 @@
 		pinctrl-0 = <&pinctrl_flx1_default>;
 		pinctrl-names = "default";
 	};
+};
+
+&i2c0 {
+	pinctrl-0 = <&pinctrl_i2c0_default>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &sdmmc1 {
