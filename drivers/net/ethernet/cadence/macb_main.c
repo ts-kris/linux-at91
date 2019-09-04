@@ -2219,9 +2219,8 @@ static void macb_configure_dma(struct macb *bp)
 			else
 				dmacfg |= GEM_BF(RXBS, buffer_size);
 		}
-		if (bp->config->dma_burst_length)
-			dmacfg = GEM_BFINS(FBLDO, bp->config->dma_burst_length,
-					   dmacfg);
+		if (bp->dma_burst_length)
+			dmacfg = GEM_BFINS(FBLDO, bp->dma_burst_length, dmacfg);
 		dmacfg |= GEM_BIT(TXPBMS) | GEM_BF(RXBMS, -1L);
 		dmacfg &= ~GEM_BIT(ENDIA_PKT);
 
@@ -2278,8 +2277,8 @@ static void macb_init_hw(struct macb *bp)
 		config |= MACB_BIT(NBC);	/* No BroadCast */
 	config |= macb_dbw(bp);
 	macb_writel(bp, NCFGR, config);
-	if ((bp->caps & MACB_CAPS_JUMBO) && bp->config->jumbo_max_len)
-		gem_writel(bp, JML, bp->config->jumbo_max_len);
+	if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
+		gem_writel(bp, JML, bp->jumbo_max_len);
 	bp->speed = SPEED_10;
 	bp->duplex = DUPLEX_HALF;
 	bp->rx_frm_len_mask = MACB_RX_FRMLEN_MASK;
@@ -2886,13 +2885,9 @@ static int macb_get_ts_info(struct net_device *netdev,
 
 static void gem_enable_flow_filters(struct macb *bp, bool enable)
 {
-	struct net_device *netdev = bp->dev;
 	struct ethtool_rx_fs_item *item;
 	u32 t2_scr;
 	int num_t2_scr;
-
-	if (!(netdev->features & NETIF_F_NTUPLE))
-		return;
 
 	num_t2_scr = GEM_BFEXT(T2SCR, gem_readl(bp, DCFG8));
 
@@ -3053,7 +3048,8 @@ static int gem_add_flow_filter(struct net_device *netdev,
 	gem_prog_cmp_regs(bp, fs);
 	bp->rx_fs_list.count++;
 	/* enable filtering if NTUPLE on */
-	gem_enable_flow_filters(bp, 1);
+	if (netdev->features & NETIF_F_NTUPLE)
+		gem_enable_flow_filters(bp, 1);
 
 	spin_unlock_irqrestore(&bp->rx_fs_lock, flags);
 	return 0;
@@ -3241,50 +3237,6 @@ static int macb_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	}
 }
 
-static inline void macb_set_txcsum_feature(struct macb *bp,
-					   netdev_features_t features)
-{
-	u32 val;
-
-	if (!macb_is_gem(bp))
-		return;
-
-	val = gem_readl(bp, DMACFG);
-	if (features & NETIF_F_HW_CSUM)
-		val |= GEM_BIT(TXCOEN);
-	else
-		val &= ~GEM_BIT(TXCOEN);
-
-	gem_writel(bp, DMACFG, val);
-}
-
-static inline void macb_set_rxcsum_feature(struct macb *bp,
-					   netdev_features_t features)
-{
-	struct net_device *netdev = bp->dev;
-	u32 val;
-
-	if (!macb_is_gem(bp))
-		return;
-
-	val = gem_readl(bp, NCFGR);
-	if ((features & NETIF_F_RXCSUM) && !(netdev->flags & IFF_PROMISC))
-		val |= GEM_BIT(RXCOEN);
-	else
-		val &= ~GEM_BIT(RXCOEN);
-
-	gem_writel(bp, NCFGR, val);
-}
-
-static inline void macb_set_rxflow_feature(struct macb *bp,
-					   netdev_features_t features)
-{
-	if (!macb_is_gem(bp))
-		return;
-
-	gem_enable_flow_filters(bp, !!(features & NETIF_F_NTUPLE));
-}
-
 static int macb_set_features(struct net_device *netdev,
 			     netdev_features_t features)
 {
@@ -3292,33 +3244,37 @@ static int macb_set_features(struct net_device *netdev,
 	netdev_features_t changed = features ^ netdev->features;
 
 	/* TX checksum offload */
-	if (changed & NETIF_F_HW_CSUM)
-		macb_set_txcsum_feature(bp, features);
+	if ((changed & NETIF_F_HW_CSUM) && macb_is_gem(bp)) {
+		u32 dmacfg;
+
+		dmacfg = gem_readl(bp, DMACFG);
+		if (features & NETIF_F_HW_CSUM)
+			dmacfg |= GEM_BIT(TXCOEN);
+		else
+			dmacfg &= ~GEM_BIT(TXCOEN);
+		gem_writel(bp, DMACFG, dmacfg);
+	}
 
 	/* RX checksum offload */
-	if (changed & NETIF_F_RXCSUM)
-		macb_set_rxcsum_feature(bp, features);
+	if ((changed & NETIF_F_RXCSUM) && macb_is_gem(bp)) {
+		u32 netcfg;
+
+		netcfg = gem_readl(bp, NCFGR);
+		if (features & NETIF_F_RXCSUM &&
+		    !(netdev->flags & IFF_PROMISC))
+			netcfg |= GEM_BIT(RXCOEN);
+		else
+			netcfg &= ~GEM_BIT(RXCOEN);
+		gem_writel(bp, NCFGR, netcfg);
+	}
 
 	/* RX Flow Filters */
-	if (changed & NETIF_F_NTUPLE)
-		macb_set_rxflow_feature(bp, features);
+	if ((changed & NETIF_F_NTUPLE) && macb_is_gem(bp)) {
+		bool turn_on = features & NETIF_F_NTUPLE;
 
+		gem_enable_flow_filters(bp, turn_on);
+	}
 	return 0;
-}
-
-static void macb_restore_features(struct macb *bp)
-{
-	struct net_device *netdev = bp->dev;
-	netdev_features_t features = netdev->features;
-
-	/* TX checksum offload */
-	macb_set_txcsum_feature(bp, features);
-
-	/* RX checksum offload */
-	macb_set_rxcsum_feature(bp, features);
-
-	/* RX Flow Filters */
-	macb_set_rxflow_feature(bp, features);
 }
 
 static const struct net_device_ops macb_netdev_ops = {
@@ -3341,12 +3297,13 @@ static const struct net_device_ops macb_netdev_ops = {
 /* Configure peripheral capabilities according to device tree
  * and integration options used
  */
-static void macb_configure_caps(struct macb *bp)
+static void macb_configure_caps(struct macb *bp,
+				const struct macb_config *dt_conf)
 {
 	u32 dcfg;
 
-	if (bp->config)
-		bp->caps = bp->config->caps;
+	if (dt_conf)
+		bp->caps = dt_conf->caps;
 
 	if (hw_is_gem(bp->regs, bp->native_io)) {
 		bp->caps |= MACB_CAPS_MACB_IS_GEM;
@@ -4089,6 +4046,10 @@ static const struct macb_config default_gem_config = {
 static int macb_probe(struct platform_device *pdev)
 {
 	const struct macb_config *macb_config = &default_gem_config;
+	int (*clk_init)(struct platform_device *, struct clk **,
+			struct clk **, struct clk **,  struct clk **,
+			struct clk **) = macb_config->clk_init;
+	int (*init)(struct platform_device *) = macb_config->init;
 	struct device_node *np = pdev->dev.of_node;
 	struct clk *pclk, *hclk = NULL, *tx_clk = NULL, *rx_clk = NULL;
 	struct clk *tsu_clk = NULL;
@@ -4112,12 +4073,14 @@ static int macb_probe(struct platform_device *pdev)
 		const struct of_device_id *match;
 
 		match = of_match_node(macb_dt_ids, np);
-		if (match && match->data)
+		if (match && match->data) {
 			macb_config = match->data;
+			clk_init = macb_config->clk_init;
+			init = macb_config->init;
+		}
 	}
 
-	err = macb_config->clk_init(pdev, &pclk, &hclk, &tx_clk, &rx_clk,
-				    &tsu_clk);
+	err = clk_init(pdev, &pclk, &hclk, &tx_clk, &rx_clk, &tsu_clk);
 	if (err)
 		return err;
 
@@ -4143,7 +4106,6 @@ static int macb_probe(struct platform_device *pdev)
 	bp->pdev = pdev;
 	bp->dev = dev;
 	bp->regs = mem;
-	bp->config = macb_config;
 	bp->native_io = native_io;
 	if (native_io) {
 		bp->macb_reg_readl = hw_readl_native;
@@ -4154,11 +4116,15 @@ static int macb_probe(struct platform_device *pdev)
 	}
 	bp->num_queues = num_queues;
 	bp->queue_mask = queue_mask;
+	if (macb_config)
+		bp->dma_burst_length = macb_config->dma_burst_length;
 	bp->pclk = pclk;
 	bp->hclk = hclk;
 	bp->tx_clk = tx_clk;
 	bp->rx_clk = rx_clk;
 	bp->tsu_clk = tsu_clk;
+	if (macb_config)
+		bp->jumbo_max_len = macb_config->jumbo_max_len;
 
 	bp->wol = 0;
 	if (of_get_property(np, "magic-packet", NULL))
@@ -4168,7 +4134,7 @@ static int macb_probe(struct platform_device *pdev)
 	spin_lock_init(&bp->lock);
 
 	/* setup capabilities */
-	macb_configure_caps(bp);
+	macb_configure_caps(bp, macb_config);
 
 #ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	if (GEM_BFEXT(DAW64, gem_readl(bp, DCFG6))) {
@@ -4229,7 +4195,7 @@ static int macb_probe(struct platform_device *pdev)
 	}
 
 	/* IP specific init */
-	err = bp->config->init(pdev);
+	err = init(pdev);
 	if (err)
 		goto err_out_free_netdev;
 
@@ -4340,13 +4306,6 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		netif_device_detach(netdev);
 	} else {
 		netif_device_detach(netdev);
-
-		if (netdev->hw_features & NETIF_F_NTUPLE)
-			bp->pm_data.scrt2 = gem_readl_n(bp, ETHT, SCRT2_ETHT);
-
-		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
-			bp->pm_data.usrio = macb_or_gem_readl(bp, USRIO);
-
 		for (q = 0, queue = bp->queues; q < bp->num_queues;
 		     ++q, ++queue)
 			napi_disable(&queue->napi);
@@ -4389,18 +4348,11 @@ static int __maybe_unused macb_resume(struct device *dev)
 		phy_resume(netdev->phydev);
 		phy_init_hw(netdev->phydev);
 		phy_start(netdev->phydev);
-
-		if (netdev->hw_features & NETIF_F_NTUPLE)
-			gem_writel_n(bp, ETHT, SCRT2_ETHT, bp->pm_data.scrt2);
-
-		if (!(bp->caps & MACB_CAPS_USRIO_DISABLED))
-			macb_or_gem_writel(bp, USRIO, bp->pm_data.usrio);
 	}
 
 	bp->macbgem_ops.mog_init_rings(bp);
 	macb_init_hw(bp);
 	macb_set_rx_mode(netdev);
-	macb_restore_features(bp);
 	netif_device_attach(netdev);
 	if (bp->ptp_info)
 		bp->ptp_info->ptp_init(netdev);
