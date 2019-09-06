@@ -154,7 +154,6 @@ struct atmel_qspi {
 	void __iomem		*mem;
 	struct clk		*clk;
 	struct platform_device	*pdev;
-	resource_size_t		mmap_size;
 	u32			pending;
 	u32			scr;
 	struct completion	cmd_completion;
@@ -235,14 +234,6 @@ static int atmel_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	u32 dummy_cycles = 0;
 	u32 iar, icr, ifr, sr;
 	int err = 0;
-
-	/*
-	 * Check if the address exceeds the MMIO window size. An improvement
-	 * would be to add support for regular SPI mode and fall back to it
-	 * when the flash memories overrun the controller's memory space.
-	 */
-	if (op->addr.val + op->data.nbytes > aq->mmap_size)
-		return -EADDRNOTAVAIL;
 
 	iar = 0;
 	icr = QSPI_ICR_INST(op->cmd.opcode);
@@ -455,7 +446,6 @@ static int atmel_qspi_probe(struct platform_device *pdev)
 		err = PTR_ERR(aq->mem);
 		goto exit;
 	}
-	aq->mmap_size = resource_size(res);
 
 	/* Get the peripheral clock */
 	aq->clk = devm_clk_get(&pdev->dev, NULL);
