@@ -155,7 +155,6 @@ struct atmel_qspi {
 	struct clk		*clk;
 	struct platform_device	*pdev;
 	u32			pending;
-	u32			scr;
 	struct completion	cmd_completion;
 };
 
@@ -354,7 +353,7 @@ static int atmel_qspi_setup(struct spi_device *spi)
 	struct spi_controller *ctrl = spi->master;
 	struct atmel_qspi *aq = spi_controller_get_devdata(ctrl);
 	unsigned long src_rate;
-	u32 scbr;
+	u32 scr, scbr;
 
 	if (ctrl->busy)
 		return -EBUSY;
@@ -371,8 +370,8 @@ static int atmel_qspi_setup(struct spi_device *spi)
 	if (scbr > 0)
 		scbr--;
 
-	aq->scr = QSPI_SCR_SCBR(scbr);
-	writel_relaxed(aq->scr, aq->regs + QSPI_SCR);
+	scr = QSPI_SCR_SCBR(scbr);
+	qspi_writel(aq, QSPI_SCR, scr);
 
 	return 0;
 }
@@ -517,9 +516,6 @@ static int __maybe_unused atmel_qspi_resume(struct device *dev)
 	clk_prepare_enable(aq->clk);
 
 	atmel_qspi_init(aq);
-
-	writel_relaxed(aq->scr, aq->regs + QSPI_SCR);
-
 	return 0;
 }
 
