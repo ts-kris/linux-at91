@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <linux/clk.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
@@ -156,6 +157,12 @@ static int linux_sdio_probe(struct sdio_func *func,
 
 	wilc_bt_init(wilc);
 
+	wilc->rtc_clk = devm_clk_get(wilc->dt_dev, "rtc_clk");
+	if (PTR_ERR_OR_ZERO(wilc->rtc_clk) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+	else if (!IS_ERR(wilc->rtc_clk))
+		clk_prepare_enable(wilc->rtc_clk);
+
 	dev_info(&func->dev, "Driver Initializing success\n");
 	return 0;
 }
@@ -163,6 +170,9 @@ static int linux_sdio_probe(struct sdio_func *func,
 static void linux_sdio_remove(struct sdio_func *func)
 {
 	struct wilc *wilc = sdio_get_drvdata(func);
+
+	if (!IS_ERR(wilc->rtc_clk))
+		clk_disable_unprepare(wilc->rtc_clk);
 
 	wilc_netdev_cleanup(wilc);
 	wilc_bt_deinit();
@@ -201,6 +211,10 @@ static int wilc_sdio_suspend(struct device *dev)
 	int ret;
 
 	dev_info(&func->dev, "sdio suspend\n");
+
+	if (!IS_ERR(wilc->rtc_clk))
+		clk_disable_unprepare(wilc->rtc_clk);
+
 	mutex_lock(&wilc->hif_cs);
 
 	chip_wakeup(wilc, 0);
@@ -238,6 +252,9 @@ static int wilc_sdio_resume(struct device *dev)
 
 	if (mutex_is_locked(&wilc->hif_cs))
 		mutex_unlock(&wilc->hif_cs);
+
+	if (!IS_ERR(wilc->rtc_clk))
+		clk_prepare_enable(wilc->rtc_clk);
 
 	return 0;
 }

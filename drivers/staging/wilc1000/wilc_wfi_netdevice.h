@@ -197,6 +197,7 @@ struct wilc {
 #else
 	int gpio_irq;
 #endif
+	struct clk *rtc_clk;
 	bool initialized;
 	int dev_irq_num;
 	int close;
