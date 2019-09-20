@@ -295,6 +295,8 @@
 			interrupts = <31 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&sdmmc0_hclk>, <&sdmmc0_gclk>, <&main>;
 			clock-names = "hclock", "multclk", "baseclk";
+			assigned-clocks = <&sdmmc0_gclk>;
+			assigned-clock-rates = <480000000>;
 			status = "disabled";
 		};
 
@@ -304,6 +306,8 @@
 			interrupts = <32 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&sdmmc1_hclk>, <&sdmmc1_gclk>, <&main>;
 			clock-names = "hclock", "multclk", "baseclk";
+			assigned-clocks = <&sdmmc1_gclk>;
+			assigned-clock-rates = <480000000>;
 			status = "disabled";
 		};
 
