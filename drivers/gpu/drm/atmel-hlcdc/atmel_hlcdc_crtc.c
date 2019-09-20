@@ -127,14 +127,8 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 	} else {
 		int div_low = prate / mode_rate;
 
-		if (div_low >= 2 &&
-		    ((prate / div_low - mode_rate) <
-		     10 * (mode_rate - prate / div)))
-			/*
-			 * At least 10 times better when using a higher
-			 * frequency than requested, instead of a lower.
-			 * So, go with that.
-			 */
+		if (div_low >= 2 && abs(prate / div_low - mode_rate) <
+		    abs(prate / div - mode_rate))
 			div = div_low;
 	}
 
