@@ -196,6 +196,7 @@ static int sdhci_at91_set_clks_presets(struct device *dev)
 	caps1 |= ((clk_mul << SDHCI_CLOCK_MUL_SHIFT) & SDHCI_CLOCK_MUL_MASK);
 	/* Set capabilities in r/w mode. */
 	writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN, host->ioaddr + SDMMC_CACR);
+	writel(caps0, host->ioaddr + SDHCI_CAPABILITIES);
 	writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
 	/* Set capabilities in ro mode. */
 	writel(0, host->ioaddr + SDMMC_CACR);
