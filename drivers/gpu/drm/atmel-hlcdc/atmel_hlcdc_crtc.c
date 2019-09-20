@@ -104,7 +104,8 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 
 	prate = clk_get_rate(crtc->dc->hlcdc->sys_clk);
 	mode_rate = adj->crtc_clock * 1000;
-	if (!crtc->dc->desc->fixed_clksrc) {
+	div = prate / mode_rate;
+	if (!crtc->dc->desc->fixed_clksrc && div < 2) {
 		prate *= 2;
 		cfg |= ATMEL_HLCDC_CLKSEL;
 		mask |= ATMEL_HLCDC_CLKSEL;
@@ -115,7 +116,10 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 		div = 2;
 	} else if (ATMEL_HLCDC_CLKDIV(div) & ~ATMEL_HLCDC_CLKDIV_MASK) {
 		/* The divider ended up too big, try a lower base rate. */
-		cfg &= ~ATMEL_HLCDC_CLKSEL;
+		if (!crtc->dc->desc->fixed_clksrc) {
+			cfg &= ~ATMEL_HLCDC_CLKSEL;
+			mask &= ~ATMEL_HLCDC_CLKSEL;
+		}
 		prate /= 2;
 		div = DIV_ROUND_UP(prate, mode_rate);
 		if (ATMEL_HLCDC_CLKDIV(div) & ~ATMEL_HLCDC_CLKDIV_MASK)
@@ -123,14 +127,8 @@ static void atmel_hlcdc_crtc_mode_set_nofb(struct drm_crtc *c)
 	} else {
 		int div_low = prate / mode_rate;
 
-		if (div_low >= 2 &&
-		    ((prate / div_low - mode_rate) <
-		     10 * (mode_rate - prate / div)))
-			/*
-			 * At least 10 times better when using a higher
-			 * frequency than requested, instead of a lower.
-			 * So, go with that.
-			 */
+		if (div_low >= 2 && abs(prate / div_low - mode_rate) <
+		    abs(prate / div - mode_rate))
 			div = div_low;
 	}
 
