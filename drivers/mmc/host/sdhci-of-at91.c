@@ -38,7 +38,14 @@
 
 #define SDHCI_AT91_PRESET_COMMON_CONF	0x400 /* drv type B, programmable clock mode */
 
+struct sdhci_at91_soc_data {
+	const struct sdhci_pltfm_data *pdata;
+	bool baseclk_is_generated_internally;
+	unsigned int divider_for_baseclk;
+};
+
 struct sdhci_at91_priv {
+	const struct sdhci_at91_soc_data *soc_data;
 	struct clk *hclock;
 	struct clk *gck;
 	struct clk *mainck;
@@ -138,12 +145,24 @@ static const struct sdhci_ops sdhci_at91_sama5d2_ops = {
 	.set_power		= sdhci_at91_set_power,
 };
 
-static const struct sdhci_pltfm_data soc_data_sama5d2 = {
+static const struct sdhci_pltfm_data sdhci_sama5d2_pdata = {
 	.ops = &sdhci_at91_sama5d2_ops,
+};
+
+static const struct sdhci_at91_soc_data soc_data_sama5d2 = {
+	.pdata = &sdhci_sama5d2_pdata,
+	.baseclk_is_generated_internally = false,
+};
+
+static const struct sdhci_at91_soc_data soc_data_sam9x60 = {
+	.pdata = &sdhci_sama5d2_pdata,
+	.baseclk_is_generated_internally = true,
+	.divider_for_baseclk = 2,
 };
 
 static const struct of_device_id sdhci_at91_dt_match[] = {
 	{ .compatible = "atmel,sama5d2-sdhci", .data = &soc_data_sama5d2 },
+	{ .compatible = "microchip,sam9x60-sdhci", .data = &soc_data_sam9x60 },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdhci_at91_dt_match);
@@ -155,51 +174,47 @@ static int sdhci_at91_set_clks_presets(struct device *dev)
 	struct sdhci_at91_priv *priv = sdhci_pltfm_priv(pltfm_host);
 	unsigned int			caps0, caps1;
 	unsigned int			clk_base, clk_mul;
-	unsigned int			gck_rate;
+	unsigned int			gck_rate, clk_base_rate;
 	unsigned int			preset_div;
 
-	/*
-	 * The mult clock is provided by as a generated clock by the PMC
-	 * controller. In order to set the rate of gck, we have to get the
-	 * base clock rate and the clock mult from capabilities.
-	 */
 	clk_prepare_enable(priv->hclock);
 	caps0 = readl(host->ioaddr + SDHCI_CAPABILITIES);
 	caps1 = readl(host->ioaddr + SDHCI_CAPABILITIES_1);
 
-	/* Set capabilities in r/w mode. */
-	writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN, host->ioaddr + SDMMC_CACR);
 	/*
-	 * We experience some issues with SDR104. If the SD clock is higher
-	 * than 100 MHz, we can get data corruption. With a 100 MHz clock,
-	 * the tuning procedure may fail. For those reasons, it is useless to
-	 * advertise that we can use SDR104 mode, so remove it from
-	 * the capabilities.
-	 */
+	* We experience some issues with SDR104. If the SD clock is higher
+	* than 100 MHz, we can get data corruption. With a 100 MHz clock,
+	* the tuning procedure may fail. For those reasons, it is useless to
+	* advertise that we can use SDR104 mode, so remove it from
+	* the capabilities.
+	*/
+	writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN, host->ioaddr + SDMMC_CACR);
 	caps1 &= (~SDHCI_SUPPORT_SDR104);
 	writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
 	writel(0, host->ioaddr + SDMMC_CACR);
 
-	dev_info(dev, "mainck=%lu, gck=%lu\n", clk_get_rate(priv->mainck), clk_get_rate(priv->gck));
 	gck_rate = clk_get_rate(priv->gck);
-	if (priv->mainck)
-		clk_base = clk_get_rate(priv->mainck);
+	if (priv->soc_data->baseclk_is_generated_internally)
+		clk_base_rate = gck_rate / priv->soc_data->divider_for_baseclk;
 	else
-		clk_base = gck_rate / 2;
+		clk_base_rate = clk_get_rate(priv->mainck);
 
-	/* Compute values that need to be updated in the capabilities registers */
-	clk_base = gck_rate / 2;
-	clk_mul = gck_rate / clk_base - 1;
+	clk_base = clk_base_rate / 1000000;
+	clk_mul = gck_rate / clk_base_rate - 1;
+
 	caps0 &= (~SDHCI_CLOCK_V3_BASE_MASK);
-	caps0 |= (((clk_base / 1000000) << SDHCI_CLOCK_BASE_SHIFT) & SDHCI_CLOCK_V3_BASE_MASK);
+	caps0 |= ((clk_base << SDHCI_CLOCK_BASE_SHIFT) & SDHCI_CLOCK_V3_BASE_MASK);
 	caps1 &= (~SDHCI_CLOCK_MUL_MASK);
 	caps1 |= ((clk_mul << SDHCI_CLOCK_MUL_SHIFT) & SDHCI_CLOCK_MUL_MASK);
+	/* Set capabilities in r/w mode. */
+	writel(SDMMC_CACR_KEY | SDMMC_CACR_CAPWREN, host->ioaddr + SDMMC_CACR);
 	writel(caps0, host->ioaddr + SDHCI_CAPABILITIES);
 	writel(caps1, host->ioaddr + SDHCI_CAPABILITIES_1);
 	/* Set capabilities in ro mode. */
 	writel(0, host->ioaddr + SDMMC_CACR);
-	dev_info(dev, "update capabilities: clk_base=%uHz, clk_mul=%uHz, mul=%u\n",
-		 clk_base, gck_rate, clk_mul + 1);
+
+	dev_info(dev, "update clk mul to %u as gck rate is %u Hz and clk base is %u Hz\n",
+		 clk_mul, gck_rate, clk_base_rate);
 
 	/*
 	 * We have to set preset values because it depends on the clk_mul
@@ -281,12 +296,10 @@ static int sdhci_at91_runtime_resume(struct device *dev)
 		goto out;
 	}
 
-	if (priv->mainck) {
-		ret = clk_prepare_enable(priv->mainck);
-		if (ret) {
-			dev_err(dev, "can't enable mainck\n");
-			return ret;
-		}
+	ret = clk_prepare_enable(priv->mainck);
+	if (ret) {
+		dev_err(dev, "can't enable mainck\n");
+		return ret;
 	}
 
 	ret = clk_prepare_enable(priv->hclock);
@@ -316,7 +329,7 @@ static const struct dev_pm_ops sdhci_at91_dev_pm_ops = {
 static int sdhci_at91_probe(struct platform_device *pdev)
 {
 	const struct of_device_id	*match;
-	const struct sdhci_pltfm_data	*soc_data;
+	const struct sdhci_at91_soc_data	*soc_data;
 	struct sdhci_host		*host;
 	struct sdhci_pltfm_host		*pltfm_host;
 	struct sdhci_at91_priv		*priv;
@@ -327,17 +340,22 @@ static int sdhci_at91_probe(struct platform_device *pdev)
 		return -EINVAL;
 	soc_data = match->data;
 
-	host = sdhci_pltfm_init(pdev, soc_data, sizeof(*priv));
+	host = sdhci_pltfm_init(pdev, soc_data->pdata, sizeof(*priv));
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
 	pltfm_host = sdhci_priv(host);
 	priv = sdhci_pltfm_priv(pltfm_host);
+	priv->soc_data = soc_data;
 
 	priv->mainck = devm_clk_get(&pdev->dev, "baseclk");
 	if (IS_ERR(priv->mainck)) {
-		dev_warn(&pdev->dev, "baseclk missing, assume it is generated from multclk\n");
-		priv->mainck = NULL;
+		if (soc_data->baseclk_is_generated_internally) {
+			priv->mainck = NULL;
+		} else {
+			dev_err(&pdev->dev, "failed to get baseclk\n");
+			return PTR_ERR(priv->mainck);
+		}
 	}
 
 	priv->hclock = devm_clk_get(&pdev->dev, "hclock");
