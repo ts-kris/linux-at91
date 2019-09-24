@@ -1067,6 +1067,8 @@ static int atmel_hlcdc_dc_bind(struct device *dev)
 	if (ret)
 		goto out_register;
 
+	drm_fbdev_generic_setup(ddev, 24);
+
 	dev_info(ddev->dev, "DRM device successfully registered\n");
 	return 0;
 
