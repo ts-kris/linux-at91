@@ -658,6 +658,10 @@
 					reg = <0>;
 				};
 			};
+
+			watchdog: watchdog@ffffff80 {
+				status = "okay";
+			};
 		}; /* apb */
 	}; /*ahb */
 
