@@ -134,7 +134,7 @@
 
 		atmel,use-dma-rx;
 		atmel,use-dma-tx;
-		status = "okay";
+		status = "disabled"; /* Using SPI on mikro BUS 2 */
 	};
 };
 
@@ -390,7 +390,7 @@
 &spi1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi1_default>;
-	status = "okay";
+	status = "disabled"; /* Using I2C on mikro BUS 1 */
 
 	spidev@1 {
 		compatible = "rohm,dh2228fv", "linux,spidev";
