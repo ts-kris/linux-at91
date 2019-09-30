@@ -1717,6 +1717,8 @@ F:	arch/arm/boot/dts/sama*.dtsi
 F:	arch/arm/include/debug/at91.S
 F:	drivers/memory/atmel*
 F:	drivers/watchdog/sama5d4_wdt.c
+F:	drivers/watchdog/sam9x60_wdt.c
+F:	drivers/watchdog/sam9x60_wdt.h
 X:	drivers/input/touchscreen/atmel_mxt_ts.c
 X:	drivers/net/wireless/atmel/
 

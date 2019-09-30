@@ -307,6 +307,15 @@ config SAMA5D4_WATCHDOG
 	  Its Watchdog Timer Mode Register can be written more than once.
 	  This will reboot your system when the timeout is reached.
 
+config SAM9X60_WATCHDOG
+	tristate "Microchip SAM9X60 Watchdog Timer"
+	depends on ARCH_AT91 || COMPILE_TEST
+	select WATCHDOG_CORE
+	help
+	  Microchip SAM9X60 watchdog timer is embedded into SAM9X60 chips.
+	  Its Watchdog Timer Mode Register can be written more than once.
+	  This will reboot your system when the timeout is reached.
+
 config CADENCE_WATCHDOG
 	tristate "Cadence Watchdog Timer"
 	depends on HAS_IOMEM
