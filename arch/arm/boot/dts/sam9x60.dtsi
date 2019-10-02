@@ -366,11 +366,10 @@
 			};
 
 			trng: trng@f0030000 {
-				compatible = "atmel,at91sam9g45-trng";
+				compatible = "microchip,sam9x60-trng";
 				reg = <0xf0030000 0x100>;
 				interrupts = <38 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 38>;
-				status = "disabled";
 			};
 
 			aes: aes@f0034000 {
