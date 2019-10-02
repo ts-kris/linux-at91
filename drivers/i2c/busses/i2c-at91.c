@@ -50,6 +50,7 @@
 #define	AT91_TWI_SVDIS		BIT(5)	/* Slave Transfer Disable */
 #define	AT91_TWI_QUICK		BIT(6)	/* SMBus quick command */
 #define	AT91_TWI_SWRST		BIT(7)	/* Software Reset */
+#define	AT91_TWI_CLEAR		BIT(15) /* Bus clear command */
 #define	AT91_TWI_ACMEN		BIT(16) /* Alternative Command Mode Enable */
 #define	AT91_TWI_ACMDIS		BIT(17) /* Alternative Command Mode Disable */
 #define	AT91_TWI_THRCLR		BIT(24) /* Transmit Holding Register Clear */
@@ -76,6 +77,8 @@
 #define	AT91_TWI_UNRE		BIT(7)	/* Underrun Error */
 #define	AT91_TWI_NACK		BIT(8)	/* Not Acknowledged */
 #define	AT91_TWI_LOCK		BIT(23) /* TWI Lock due to Frame Errors */
+#define	AT91_TWI_SCL		BIT(24) /* TWI SCL status */
+#define	AT91_TWI_SDA		BIT(25) /* TWI SDA status */
 
 #define	AT91_TWI_INT_MASK \
 	(AT91_TWI_TXCOMP | AT91_TWI_RXRDY | AT91_TWI_TXRDY | AT91_TWI_NACK)
@@ -87,7 +90,8 @@
 #define	AT91_TWI_THR		0x0034	/* Transmit Holding Register */
 
 #define	AT91_TWI_ACR		0x0040	/* Alternative Command Register */
-#define	AT91_TWI_ACR_DATAL(len)	((len) & 0xff)
+#define	AT91_TWI_ACR_DATAL_MASK	GENMASK(15, 0)
+#define	AT91_TWI_ACR_DATAL(len)	((len) & AT91_TWI_ACR_DATAL_MASK)
 #define	AT91_TWI_ACR_DIR	BIT(8)
 
 #define AT91_TWI_FILTR		0x0044
@@ -124,6 +128,7 @@ struct at91_twi_pdata {
 	bool has_dig_filtr;
 	bool has_adv_dig_filtr;
 	bool has_ana_filtr;
+	bool has_clear_cmd;
 	struct at_dma_slave dma_slave;
 };
 
@@ -609,6 +614,7 @@ static int at91_do_twi_transfer(struct at91_twi_dev *dev)
 	unsigned long time_left;
 	bool has_unre_flag = dev->pdata->has_unre_flag;
 	bool has_alt_cmd = dev->pdata->has_alt_cmd;
+	bool has_clear_cmd = dev->pdata->has_clear_cmd;
 
 	/*
 	 * WARNING: the TXCOMP bit in the Status Register is NOT a clear on
@@ -769,6 +775,27 @@ error:
 		at91_twi_write(dev, AT91_TWI_CR,
 			       AT91_TWI_THRCLR | AT91_TWI_LOCKCLR);
 	}
+
+	/*
+	 * After timeout, some faulty I2C slave devices might hold SCL/SDA down;
+	 * we can send a bus clear command, hoping that the pins will be
+	 * released
+	 */
+	if (has_clear_cmd &&
+	    (!(dev->transfer_status & AT91_TWI_SDA) ||
+	     !(dev->transfer_status & AT91_TWI_SCL))) {
+		dev_dbg(dev->dev,
+			"SDA/SCL are down; sending bus clear command\n");
+		if (dev->use_alt_cmd) {
+			unsigned int acr;
+
+			acr = at91_twi_read(dev, AT91_TWI_ACR);
+			acr &= ~AT91_TWI_ACR_DATAL_MASK;
+			at91_twi_write(dev, AT91_TWI_ACR, acr);
+		}
+		at91_twi_write(dev, AT91_TWI_CR, AT91_TWI_CLEAR);
+	}
+
 	return ret;
 }
 
@@ -865,6 +892,7 @@ static struct at91_twi_pdata at91rm9200_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata at91sam9261_config = {
@@ -876,6 +904,7 @@ static struct at91_twi_pdata at91sam9261_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata at91sam9260_config = {
@@ -887,6 +916,7 @@ static struct at91_twi_pdata at91sam9260_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata at91sam9g20_config = {
@@ -898,6 +928,7 @@ static struct at91_twi_pdata at91sam9g20_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata at91sam9g10_config = {
@@ -909,6 +940,7 @@ static struct at91_twi_pdata at91sam9g10_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static const struct platform_device_id at91_twi_devtypes[] = {
@@ -942,6 +974,7 @@ static struct at91_twi_pdata at91sam9x5_config = {
 	.has_dig_filtr = false,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata sama5d4_config = {
@@ -953,6 +986,7 @@ static struct at91_twi_pdata sama5d4_config = {
 	.has_dig_filtr = true,
 	.has_adv_dig_filtr = false,
 	.has_ana_filtr = false,
+	.has_clear_cmd = false,
 };
 
 static struct at91_twi_pdata sama5d2_config = {
@@ -964,6 +998,7 @@ static struct at91_twi_pdata sama5d2_config = {
 	.has_dig_filtr = true,
 	.has_adv_dig_filtr = true,
 	.has_ana_filtr = true,
+	.has_clear_cmd = true,
 };
 
 static struct at91_twi_pdata sam9x60_config = {
@@ -975,6 +1010,7 @@ static struct at91_twi_pdata sam9x60_config = {
 	.has_dig_filtr = true,
 	.has_adv_dig_filtr = true,
 	.has_ana_filtr = true,
+	.has_clear_cmd = true,
 };
 
 static const struct of_device_id atmel_twi_dt_ids[] = {
