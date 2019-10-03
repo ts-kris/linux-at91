@@ -23,8 +23,8 @@
 #include "fbtft.h"
 
 #define DRVNAME		"fb_ssd1306"
-#define WIDTH		128
-#define HEIGHT		64
+#define WIDTH		96
+#define HEIGHT		39
 
 /*
  * write_reg() caveat:
@@ -46,6 +46,8 @@ static int init_display(struct fbtft_par *par)
 		mutex_lock(&par->gamma.lock);
 		if (par->info->var.yres == 64)
 			par->gamma.curves[0] = 0xCF;
+		else if (par->info->var.yres == 39)
+			par->gamma.curves[0] = 0xAF;
 		else
 			par->gamma.curves[0] = 0x8F;
 		mutex_unlock(&par->gamma.lock);
@@ -64,6 +66,8 @@ static int init_display(struct fbtft_par *par)
 		write_reg(par, 0x3F);
 	else if (par->info->var.yres == 48)
 		write_reg(par, 0x2F);
+	else if (par->info->var.yres == 39)
+		write_reg(par, 0x27);
 	else
 		write_reg(par, 0x1F);
 
@@ -81,16 +85,18 @@ static int init_display(struct fbtft_par *par)
 
 	/* Set Memory Addressing Mode */
 	write_reg(par, 0x20);
-	/* Vertical addressing mode  */
-	write_reg(par, 0x01);
+//	/* Vertical addressing mode  */
+//	write_reg(par, 0x01);
+	write_reg(par, 0x00);
 
 	/* Set Segment Re-map */
 	/* column address 127 is mapped to SEG0 */
 	write_reg(par, 0xA0 | 0x1);
 
 	/* Set COM Output Scan Direction */
-	/* remapped mode. Scan from COM[N-1] to COM0 */
-	write_reg(par, 0xC8);
+//	/* remapped mode. Scan from COM[N-1] to COM0 */
+//	write_reg(par, 0xC8);
+	write_reg(par, 0xC0);
 
 	/* Set COM Pins Hardware Configuration */
 	write_reg(par, 0xDA);
@@ -100,18 +106,23 @@ static int init_display(struct fbtft_par *par)
 	else if (par->info->var.yres == 48)
 		/* A[4]=1b, Alternative COM pin configuration */
 		write_reg(par, 0x12);
+	else if (par->info->var.yres == 39)
+		/* A[4]=1b, Alternative COM pin configuration */
+		write_reg(par, 0x12);
 	else
 		/* A[4]=0b, Sequential COM pin configuration */
 		write_reg(par, 0x02);
 
 	/* Set Pre-charge Period */
 	write_reg(par, 0xD9);
-	write_reg(par, 0xF1);
+//	write_reg(par, 0xF1);
+	write_reg(par, 0x25);
 
 	/* Set VCOMH Deselect Level */
 	write_reg(par, 0xDB);
 	/* according to the datasheet, this value is out of bounds */
-	write_reg(par, 0x40);
+//	write_reg(par, 0x40);
+	write_reg(par, 0x20);
 
 	/* Entire Display ON */
 	/* Resume to RAM content display. Output follows RAM content */
@@ -134,12 +145,12 @@ static void set_addr_win_64x48(struct fbtft_par *par)
 	/* Set Column Address */
 	write_reg(par, 0x21);
 	write_reg(par, 0x20);
-	write_reg(par, 0x5F);
+	write_reg(par, 0x7F);
 
 	/* Set Page Address */
 	write_reg(par, 0x22);
 	write_reg(par, 0x0);
-	write_reg(par, 0x5);
+	write_reg(par, 0x4);
 }
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
@@ -151,7 +162,7 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 	/* Set Display Start Line */
 	write_reg(par, 0x40 | 0x0);
 
-	if (par->info->var.xres == 64 && par->info->var.yres == 48)
+//	if (par->info->var.xres == 64 && par->info->var.yres == 48)
 		set_addr_win_64x48(par);
 }
 
