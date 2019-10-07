@@ -362,7 +362,7 @@
 				dma-names = "tx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
 				clock-names = "sha_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			trng: trng@f0030000 {
@@ -385,7 +385,7 @@
 				dma-names = "tx", "rx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
 				clock-names = "aes_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			tdes: tdes@f0038000 {
@@ -401,7 +401,7 @@
 				dma-names = "tx", "rx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 40>;
 				clock-names = "tdes_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			classd: classd@f003c000 {
