@@ -241,7 +241,7 @@ static int __init mchp_pit64b_pres_prepare(struct mchp_pit64b_common_data *cd,
 {
 	unsigned long pclk_rate, diff = 0, best_diff = ULONG_MAX;
 	long gclk_round = 0;
-	u32 pres, best_pres;
+	u32 pres, best_pres = 0;
 	int ret = 0;
 
 	pclk_rate = clk_get_rate(cd->pclk);
