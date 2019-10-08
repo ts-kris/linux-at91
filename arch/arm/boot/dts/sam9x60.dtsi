@@ -362,7 +362,7 @@
 				dma-names = "tx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
 				clock-names = "sha_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			trng: trng@f0030000 {
@@ -385,7 +385,7 @@
 				dma-names = "tx", "rx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
 				clock-names = "aes_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			tdes: tdes@f0038000 {
@@ -394,14 +394,14 @@
 				interrupts = <40 IRQ_TYPE_LEVEL_HIGH 0>;
 				dmas = <&dma0
 					(AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
-					 AT91_XDMAC_DT_PERID(30))>,
+					 AT91_XDMAC_DT_PERID(31))>,
 				       <&dma0
 					(AT91_XDMAC_DT_MEM_IF(0) | AT91_XDMAC_DT_PER_IF(1) |
-					 AT91_XDMAC_DT_PERID(31))>;
+					 AT91_XDMAC_DT_PERID(30))>;
 				dma-names = "tx", "rx";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 40>;
 				clock-names = "tdes_clk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			classd: classd@f003c000 {
@@ -630,7 +630,7 @@
 
 			sfr: sfr@f8050000 {
 				compatible = "microchip,sam9x60-sfr", "syscon";
-				reg = <0xf8050000 0x4000>;
+				reg = <0xf8050000 0x100>;
 			};
 
 			matrix: matrix@ffffde00 {
@@ -640,9 +640,8 @@
 
 			pmecc: ecc-engine@ffffe000 {
 				compatible = "atmel,at91sam9g45-pmecc";
-				reg = <0xffffe000 0x600>,
-				      <0xffffe600 0x200>,
-				      <0x100000 0x100000>;
+				reg = <0xffffe000 0x300>,
+				      <0xffffe600 0x100>;
 			};
 
 			mpddrc: mpddrc@ffffe800 {
@@ -654,7 +653,7 @@
 
 			smc: smc@ffffea00 {
 				compatible = "atmel,at91sam9260-smc", "syscon";
-				reg = <0xffffea00 0x200>;
+				reg = <0xffffea00 0x100>;
 			};
 
 			aic: interrupt-controller@fffff100 {
