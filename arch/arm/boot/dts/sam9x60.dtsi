@@ -641,8 +641,7 @@
 			pmecc: ecc-engine@ffffe000 {
 				compatible = "atmel,at91sam9g45-pmecc";
 				reg = <0xffffe000 0x600>,
-				      <0xffffe600 0x200>,
-				      <0x100000 0x100000>;
+				      <0xffffe600 0x200>;
 			};
 
 			mpddrc: mpddrc@ffffe800 {
