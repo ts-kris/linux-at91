@@ -2018,7 +2018,6 @@ static const struct of_device_id atmel_pmc_dt_ids[] = {
 	{ .compatible = "atmel,at91sam9g45-pmc" },
 	{ .compatible = "atmel,at91sam9rl-pmc" },
 	{ .compatible = "atmel,at91sam9x5-pmc" },
-	{ .compatible = "microchip,sam9x60-pmc" },
 	{ /* sentinel */ }
 };
 
@@ -2038,7 +2037,7 @@ static struct usba_ep * atmel_udc_of_init(struct platform_device *pdev,
 		return ERR_PTR(-EINVAL);
 
 	udc->caps = match->data;
-	if (udc->caps) {
+	if (udc->caps && (udc->caps->pulse_bias || udc->caps->toggle_bias)) {
 		pp = of_find_matching_node_and_match(NULL, atmel_pmc_dt_ids,
 						     NULL);
 		if (!pp)
