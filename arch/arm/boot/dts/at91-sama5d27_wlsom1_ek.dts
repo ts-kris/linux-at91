@@ -184,6 +184,12 @@
 		bias-disable;
 	};
 
+	pinctrl_pwm0_default: pwm0_default {
+		pinmux = <PIN_PA31__PWML0>,
+			 <PIN_PA30__PWMH0>;
+		bias-disable;
+	};
+
 	pinctrl_usb_default: usb_default {
 		pinmux = <PIN_PA14__GPIO>;
 		bias-disable;
@@ -241,6 +247,12 @@
 	pinctrl-0 = <&pinctrl_uart3_default>;
 	atmel,use-dma-rx;
 	atmel,use-dma-tx;
+	status = "okay";
+};
+
+&pwm0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm0_default>;
 	status = "okay";
 };
 
