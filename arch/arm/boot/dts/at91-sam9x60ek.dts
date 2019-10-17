@@ -311,6 +311,13 @@
 					pinctrl-0 = <&pinctrl_flx0_default>;
 					atmel,fifo-size = <16>;
 					status = "okay";
+					eeprom@53 {
+						compatible = "atmel,24c32";
+						reg = <0x53>;
+						pagesize = <16>;
+						size = <128>;
+						status = "okay";
+					};
 				};
 			};
 
