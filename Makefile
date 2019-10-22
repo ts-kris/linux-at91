@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 19
 SUBLEVEL = 78
-EXTRAVERSION = -linux4sam-6.2-rc4
+EXTRAVERSION = -linux4sam-6.2
 NAME = "People's Front"
 
 # *DOCUMENTATION*
