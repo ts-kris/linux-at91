@@ -39,15 +39,6 @@
 		};
 	};
 
-	wifi_pwrseq: wifi_pwrseq {
-		compatible = "mmc-pwrseq-wilc";
-		reset-gpios = <&pioA 8 GPIO_ACTIVE_HIGH>;
-		powerdown-gpios = <&pioA 78 GPIO_ACTIVE_LOW>;
-		pinctrl-0 = <&pinctrl_wilc_pwrseq_default>;
-		pinctrl-names = "default";
-		status = "okay"; /* Conflict with qspi1. */
-	};
-
 	ahb {
 		usb0: gadget@300000 {
 			atmel,vbus-gpio = <&pioA PIN_PD23 GPIO_ACTIVE_HIGH>;
@@ -74,26 +65,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc0_default>;
 			status = "okay";
-		};
-
-		sdmmc1: sdio-host@b0000000 {
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_sdmmc1_default>;
-			bus-width = <4>;
-			mmc-pwrseq = <&wifi_pwrseq>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			no-1-8-v;
-			non-removable;
-			status = "okay";
-
-			wilc: wilc@1 {
-				compatible = "microchip,wilc1000", "microchip,wilc3000";
-				reg = <1>;
-				bus-width = <4>;
-				irq-gpios = <&pioA 77 0>;
-				status = "okay";
-			};
 		};
 
 		apb {
@@ -597,22 +568,6 @@
 					};
 				};
 
-				pinctrl_sdmmc1_default: sdmmc1_default {
-					cmd_data {
-						pinmux = <PIN_PA18__SDMMC1_DAT0>,
-							 <PIN_PA19__SDMMC1_DAT1>,
-							 <PIN_PA20__SDMMC1_DAT2>,
-							 <PIN_PA21__SDMMC1_DAT3>;
-						bias-disable;
-					};
-
-					ck_cd {
-						pinmux = <PIN_PA22__SDMMC1_CK>,
-							 <PIN_PA28__SDMMC1_CMD>;
-						bias-disable;
-					};
-				};
-
 				pinctrl_mikrobus_i2c: mikrobus_i2c {
 					pinmux = <PIN_PD22__TWCK0>,
 						 <PIN_PD21__TWD0>;
@@ -782,12 +737,6 @@
 				pinctrl_macb0_rst: macb0_sw_rst {
 					pinmux = <PIN_PD4__GPIO>;
 					bias-disable;
-				};
-
-				pinctrl_wilc_pwrseq_default: wilc_pwrseq_default {
-					pinmux = <PIN_PA8__GPIO>,
-						 <PIN_PC15__GPIO>;
-					bias-pull-up;
 				};
 
 				pinctrl_flx2_default: flx2_default {
