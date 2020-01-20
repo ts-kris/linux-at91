@@ -14,30 +14,9 @@
 
 #include "pmc.h"
 
-#define PMC_PLL_CTRL0	0xc
-#define		PMC_PLL_CTRL0_DIV_MSK		GENMASK(7, 0)
-#define		PMC_PLL_CTRL0_ENPLL		BIT(28)
-#define		PMC_PLL_CTRL0_ENPLLCK		BIT(29)
-#define		PMC_PLL_CTRL0_ENLOCK		BIT(31)
-
-#define PMC_PLL_CTRL1	0x10
-#define		PMC_PLL_CTRL1_FRACR_MSK		GENMASK(21, 0)
-#define		PMC_PLL_CTRL1_MUL_MSK		GENMASK(31, 24)
-
-#define PMC_PLL_ACR	0x18
-#define		PMC_PLL_ACR_DEFAULT_UPLL	0x12020010UL
-#define		PMC_PLL_ACR_DEFAULT_PLLA	0x00020010UL
-#define		PMC_PLL_ACR_UTMIVR		BIT(12)
-#define		PMC_PLL_ACR_UTMIBG		BIT(13)
-#define		PMC_PLL_ACR_LOOP_FILTER_MSK	GENMASK(31, 24)
-
-#define PMC_PLL_UPDT	0x1c
-#define		PMC_PLL_UPDT_ID_MSK		GENMASK(3, 0)
-#define		PMC_PLL_UPDT_UPDATE		BIT(8)
-#define		PMC_PLL_UPDT_STUPTIM(n)		((n) << 16)
-#define		PMC_PMM_UPDT_STUPTIM_MSK	GENMASK(23, 16)
-
-#define PMC_PLL_ISR0	0xec
+#define	PMC_PLL_CTRL0_DIV_MSK	GENMASK(7, 0)
+#define	PMC_PLL_CTRL1_MUL_MSK	GENMASK(30, 24)
+#define PMC_PLL_CTRL1_FRACR_MSK	GENMASK(21, 0)
 
 #define PLL_DIV_MAX		(FIELD_GET(PMC_PLL_CTRL0_DIV_MSK, UINT_MAX) + 1)
 #define UPLL_DIV		2
@@ -73,7 +52,7 @@ static inline bool sam9x60_pll_ready(struct regmap *regmap, int id)
 {
 	unsigned int status;
 
-	regmap_read(regmap, PMC_PLL_ISR0, &status);
+	regmap_read(regmap, AT91_PMC_PLL_ISR0, &status);
 
 	return !!(status & BIT(id));
 }
@@ -103,8 +82,9 @@ static int sam9x60_frac_pll_prepare(struct clk_hw *hw)
 
 	spin_lock_irqsave(core->lock, flags);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, core->id);
-	regmap_read(regmap, PMC_PLL_CTRL1, &val);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   core->id);
+	regmap_read(regmap, AT91_PMC_PLL_CTRL1, &val);
 	cmul = (val & core->layout->mul_mask) >> core->layout->mul_shift;
 	cfrac = (val & core->layout->frac_mask) >> core->layout->frac_shift;
 
@@ -112,46 +92,48 @@ static int sam9x60_frac_pll_prepare(struct clk_hw *hw)
 	    (cmul == frac->mul && cfrac == frac->frac))
 		goto unlock;
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PMM_UPDT_STUPTIM_MSK | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_STUPTIM(0x3f) | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PMM_UPDT_STUPTIM_MSK |
+			   AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_STUPTIM(0x3f) | core->id);
 
-	/* Recommended value for PMC_PLL_ACR */
+	/* Recommended value for AT91_PMC_PLL_ACR */
 	if (core->characteristics->upll)
-		val = PMC_PLL_ACR_DEFAULT_UPLL;
+		val = AT91_PMC_PLL_ACR_DEFAULT_UPLL;
 	else
-		val = PMC_PLL_ACR_DEFAULT_PLLA;
-	regmap_write(regmap, PMC_PLL_ACR, val);
+		val = AT91_PMC_PLL_ACR_DEFAULT_PLLA;
+	regmap_write(regmap, AT91_PMC_PLL_ACR, val);
 
-	regmap_write(regmap, PMC_PLL_CTRL1,
+	regmap_write(regmap, AT91_PMC_PLL_CTRL1,
 		     (frac->mul << core->layout->mul_shift) |
 		     (frac->frac << core->layout->frac_shift));
 
 	if (core->characteristics->upll) {
 		/* Enable the UTMI internal bandgap */
-		val |= PMC_PLL_ACR_UTMIBG;
-		regmap_write(regmap, PMC_PLL_ACR, val);
+		val |= AT91_PMC_PLL_ACR_UTMIBG;
+		regmap_write(regmap, AT91_PMC_PLL_ACR, val);
 
 		udelay(10);
 
 		/* Enable the UTMI internal regulator */
-		val |= PMC_PLL_ACR_UTMIVR;
-		regmap_write(regmap, PMC_PLL_ACR, val);
+		val |= AT91_PMC_PLL_ACR_UTMIVR;
+		regmap_write(regmap, AT91_PMC_PLL_ACR, val);
 
 		udelay(10);
 	}
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PLL_UPDT_UPDATE | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_UPDATE | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PLL_UPDT_UPDATE | AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_UPDATE | core->id);
 
-	regmap_update_bits(regmap, PMC_PLL_CTRL0,
-			   PMC_PLL_CTRL0_ENLOCK | PMC_PLL_CTRL0_ENPLL,
-			   PMC_PLL_CTRL0_ENLOCK | PMC_PLL_CTRL0_ENPLL);
+	regmap_update_bits(regmap, AT91_PMC_PLL_CTRL0,
+			   AT91_PMC_PLL_CTRL0_ENLOCK | AT91_PMC_PLL_CTRL0_ENPLL,
+			   AT91_PMC_PLL_CTRL0_ENLOCK |
+			   AT91_PMC_PLL_CTRL0_ENPLL);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PLL_UPDT_UPDATE | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_UPDATE | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PLL_UPDT_UPDATE | AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_UPDATE | core->id);
 
 	while (!sam9x60_pll_ready(regmap, core->id))
 		cpu_relax();
@@ -170,17 +152,20 @@ static void sam9x60_frac_pll_unprepare(struct clk_hw *hw)
 
 	spin_lock_irqsave(core->lock, flags);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   core->id);
 
-	regmap_update_bits(regmap, PMC_PLL_CTRL0, PMC_PLL_CTRL0_ENPLL, 0);
+	regmap_update_bits(regmap, AT91_PMC_PLL_CTRL0,
+			   AT91_PMC_PLL_CTRL0_ENPLL, 0);
 
 	if (core->characteristics->upll)
-		regmap_update_bits(regmap, PMC_PLL_ACR,
-				   PMC_PLL_ACR_UTMIBG | PMC_PLL_ACR_UTMIVR, 0);
+		regmap_update_bits(regmap, AT91_PMC_PLL_ACR,
+				   AT91_PMC_PLL_ACR_UTMIBG |
+				   AT91_PMC_PLL_ACR_UTMIVR, 0);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PLL_UPDT_UPDATE | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_UPDATE | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PLL_UPDT_UPDATE | AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_UPDATE | core->id);
 
 	spin_unlock_irqrestore(core->lock, flags);
 }
@@ -271,22 +256,23 @@ static int sam9x60_div_pll_prepare(struct clk_hw *hw)
 	unsigned int val, cdiv;
 
 	spin_lock_irqsave(core->lock, flags);
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, core->id);
-	regmap_read(regmap, PMC_PLL_CTRL0, &val);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   core->id);
+	regmap_read(regmap, AT91_PMC_PLL_CTRL0, &val);
 	cdiv = (val & core->layout->div_mask) >> core->layout->div_shift;
 
 	/* Stop if enabled an nothing changed. */
 	if (!!(val & core->layout->endiv_mask) && (cdiv == div->div))
 		goto unlock;
 
-	regmap_update_bits(regmap, PMC_PLL_CTRL0,
+	regmap_update_bits(regmap, AT91_PMC_PLL_CTRL0,
 			   core->layout->div_mask | core->layout->endiv_mask,
 			   (div->div << core->layout->div_shift) |
 			   (1 << core->layout->endiv_shift));
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PLL_UPDT_UPDATE | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_UPDATE | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PLL_UPDT_UPDATE | AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_UPDATE | core->id);
 
 	while (!sam9x60_pll_ready(regmap, core->id))
 		cpu_relax();
@@ -305,14 +291,15 @@ static void sam9x60_div_pll_unprepare(struct clk_hw *hw)
 
 	spin_lock_irqsave(core->lock, flags);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   core->id);
 
-	regmap_update_bits(regmap, PMC_PLL_CTRL0,
+	regmap_update_bits(regmap, AT91_PMC_PLL_CTRL0,
 			   core->layout->endiv_mask, 0);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT,
-			   PMC_PLL_UPDT_UPDATE | PMC_PLL_UPDT_ID_MSK,
-			   PMC_PLL_UPDT_UPDATE | core->id);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+			   AT91_PMC_PLL_UPDT_UPDATE | AT91_PMC_PLL_UPDT_ID_MSK,
+			   AT91_PMC_PLL_UPDT_UPDATE | core->id);
 
 	spin_unlock_irqrestore(core->lock, flags);
 }
@@ -326,8 +313,9 @@ static int sam9x60_div_pll_is_prepared(struct clk_hw *hw)
 
 	spin_lock_irqsave(core->lock, flags);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, core->id);
-	regmap_read(regmap, PMC_PLL_CTRL0, &val);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   core->id);
+	regmap_read(regmap, AT91_PMC_PLL_CTRL0, &val);
 
 	spin_unlock_irqrestore(core->lock, flags);
 
@@ -441,9 +429,9 @@ sam9x60_clk_register_frac_pll(struct regmap *regmap, spinlock_t *lock,
 
 	spin_lock_irqsave(frac->core.lock, flags);
 	if (sam9x60_pll_ready(regmap, id)) {
-		regmap_update_bits(regmap, PMC_PLL_UPDT,
-				   PMC_PLL_UPDT_ID_MSK, id);
-		regmap_read(regmap, PMC_PLL_CTRL1, &val);
+		regmap_update_bits(regmap, AT91_PMC_PLL_UPDT,
+				   AT91_PMC_PLL_UPDT_ID_MSK, id);
+		regmap_read(regmap, AT91_PMC_PLL_CTRL1, &val);
 		frac->mul = FIELD_GET(PMC_PLL_CTRL1_MUL_MSK, val);
 		frac->frac = FIELD_GET(PMC_PLL_CTRL1_FRACR_MSK, val);
 	} else {
@@ -522,8 +510,9 @@ sam9x60_clk_register_div_pll(struct regmap *regmap, spinlock_t *lock,
 
 	spin_lock_irqsave(div->core.lock, flags);
 
-	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_ID_MSK, id);
-	regmap_read(regmap, PMC_PLL_CTRL0, &val);
+	regmap_update_bits(regmap, AT91_PMC_PLL_UPDT, AT91_PMC_PLL_UPDT_ID_MSK,
+			   id);
+	regmap_read(regmap, AT91_PMC_PLL_CTRL0, &val);
 	div->div = FIELD_GET(PMC_PLL_CTRL0_DIV_MSK, val);
 
 	spin_unlock_irqrestore(div->core.lock, flags);
