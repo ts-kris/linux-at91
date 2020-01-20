@@ -2527,6 +2527,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 						   &subdev_entity->notifier);
 		if (ret) {
 			dev_err(dev, "fail to register async notifier\n");
+			kfree(subdev_entity->asd);
 			goto cleanup_subdev;
 		}
 
