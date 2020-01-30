@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * at91-sama7g5ek.dts - Device Tree file for SAMA7G5-EK board
+ *
+ *  Copyright (c) 2020, Microchip Technology Inc. and its subsidiaries
+ *
+ *  Author: Eugen Hristev <eugen.hristev@microchip.com>
+ *
+ */
+/dts-v1/;
+#include "sama7g5.dtsi"
+
+/ {
+	model = "Microchip SAMA7G5-EK";
+	compatible = "microchip,sama7g5ek", "microchip,sama7g5", "microchip,sama7";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=16M init=/bin/sh";
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&pit64b0 {
+	status = "okay";
+};
+
+&pit64b1 {
+	status = "okay";
+};
+
+&gic {
+	status = "okay";
+};
+
+&sdmmc1 {
+	status = "okay";
+};
