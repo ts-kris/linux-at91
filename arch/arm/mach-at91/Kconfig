@@ -64,6 +64,13 @@ config AT91_VDEC_G1
 	  Select this if you are using the G1 video decoder embedded in SAMA5D4
 	  SoC family.
 
+config SOC_SAMA7G5
+	bool "SAMA7G5 family"
+	depends on ARCH_MULTI_V7
+	select SOC_SAMA7
+	help
+	  Select this if you are using one of Microchip's SAMA7G5 family SoC.
+
 config SOC_AT91RM9200
 	bool "AT91RM9200"
 	depends on ARCH_MULTI_V4T
@@ -198,4 +205,9 @@ config SOC_SAMA5
 config ATMEL_PM
 	bool
 
+config SOC_SAMA7
+	bool
+	select ARM_GIC
+	select MEMORY
+	select SOC_SAM_V7
 endif
