@@ -159,6 +159,14 @@
 				non-removable;
 				status = "disabled";
 			};
+
+			trng: trng@e2010000 {
+				compatible = "atmel,at91sam9g45-trng";
+				reg = <0xe2010000 0x100>;
+				interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&mck>;
+				status = "disabled";
+			};
 		};
 	};
 };
