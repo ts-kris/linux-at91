@@ -1,0 +1,13 @@
+#
+# Multimedia Video Miscellaneous device configuration
+#
+
+if VIDEO_V4L2
+
+menu "Miscellaneous helper chips"
+
+comment "Various helper chips"
+
+endmenu
+
+endif
