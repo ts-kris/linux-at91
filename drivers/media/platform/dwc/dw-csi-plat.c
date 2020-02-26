@@ -246,6 +246,15 @@ static int dw_mipi_csi_init_cfg(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int dw_mipi_csi_s_stream(struct v4l2_subdev *sd, int enable)
+{
+	struct dw_csi *dev = sd_to_mipi_csi_dev(sd);
+
+	if (dev->completed)
+		return v4l2_subdev_call(dev->input_sd, video, s_stream, enable);
+	return 0;
+}
+
 static struct v4l2_subdev_core_ops dw_mipi_csi_core_ops = {
 	.s_power = dw_mipi_csi_s_power,
 	.log_status = dw_mipi_csi_log_status,
@@ -261,9 +270,14 @@ static struct v4l2_subdev_pad_ops dw_mipi_csi_pad_ops = {
 	.set_fmt = dw_mipi_csi_set_fmt,
 };
 
+static struct v4l2_subdev_video_ops dw_mipi_csi_video_ops = {
+	.s_stream = dw_mipi_csi_s_stream,
+};
+
 static struct v4l2_subdev_ops dw_mipi_csi_subdev_ops = {
 	.core = &dw_mipi_csi_core_ops,
 	.pad = &dw_mipi_csi_pad_ops,
+	.video = &dw_mipi_csi_video_ops,
 };
 
 static irqreturn_t dw_mipi_csi_irq1(int irq, void *dev_id)
@@ -275,25 +289,61 @@ static irqreturn_t dw_mipi_csi_irq1(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int dw_async_bound(struct v4l2_async_notifier *notifier,
+				 struct v4l2_subdev *subdev,
+				 struct v4l2_async_subdev *asd)
+{
+	struct dw_csi *dw = container_of(notifier->v4l2_dev,
+					struct dw_csi, v4l2_dev);
+	dw->input_sd = subdev;
+
+	return 0;
+}
+
+static int dw_async_complete(struct v4l2_async_notifier *notifier)
+{
+	struct dw_csi *dw = container_of(notifier->v4l2_dev,
+					struct dw_csi, v4l2_dev);
+	int ret;
+
+	ret = v4l2_device_register_subdev_nodes(&dw->v4l2_dev);
+	if (ret < 0) {
+                v4l2_err(&dw->v4l2_dev, "Failed to register subdev nodes\n");
+                return ret;
+        }
+
+	dev_dbg(dw->dev, "async completed\n");
+	dw->completed = true;
+
+	return ret;
+}
+
+static const struct v4l2_async_notifier_operations csi2host_async_ops = {
+        .bound = dw_async_bound,
+        .complete = dw_async_complete,
+};
+
 static int
 dw_mipi_csi_parse_dt(struct platform_device *pdev, struct dw_csi *dev)
 {
-	struct device_node *node = pdev->dev.of_node;
+	struct device_node *node = pdev->dev.of_node, *input_node, *output_node,
+			   *input_parent;
 	struct v4l2_fwnode_endpoint ep = { .bus_type = V4L2_MBUS_CSI2_DPHY };
+	struct v4l2_fwnode_endpoint ep2 = { };
 	int ret = 0;
 
 	if (of_property_read_u32(node, "snps,output-type",
 				 &dev->hw.output))
 		dev->hw.output = 2;
 
-	node = of_graph_get_next_endpoint(node, NULL);
-	if (!node) {
+	input_node = of_graph_get_next_endpoint(node, NULL);
+	if (!input_node) {
 		dev_err(&pdev->dev, "No port node at %pOF\n",
 			pdev->dev.of_node);
 		return -EINVAL;
 	}
 	/* Get port node and validate MIPI-CSI channel id. */
-	ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(node), &ep);
+	ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(input_node), &ep);
 	if (ret)
 		goto err;
 
@@ -303,6 +353,49 @@ dw_mipi_csi_parse_dt(struct platform_device *pdev, struct dw_csi *dev)
 		goto err;
 	}
 	dev->hw.num_lanes = ep.bus.mipi_csi2.num_data_lanes;
+
+	input_parent = of_graph_get_remote_port_parent(input_node);
+	if (!input_parent) {
+		dev_err(&pdev->dev, "could not get input node's parent node.\n");
+		return -EINVAL;
+	}
+
+	output_node = of_graph_get_next_endpoint(node, input_node);
+	if (!node) {
+		dev_err(&pdev->dev, "No port 2 node at %s\n",
+				pdev->dev.of_node->full_name);
+		return -EINVAL;
+	}
+	ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(output_node), &ep2);
+	if (ret)
+		goto err;
+
+	v4l2_async_notifier_init(&dev->notifier);
+
+	dev->asd = kzalloc(sizeof(*dev->asd), GFP_KERNEL);
+	if (!dev->asd)
+		return -ENOMEM;
+
+	dev->asd->match_type = V4L2_ASYNC_MATCH_FWNODE;
+	dev->asd->match.fwnode = of_fwnode_handle(input_parent);
+
+	ret = v4l2_async_notifier_add_subdev(&dev->notifier, dev->asd);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to add async notifier.\n");
+		goto csi2host_prepare_notifier_err;
+	}
+
+	dev->notifier.ops = &csi2host_async_ops;
+
+	ret = v4l2_async_notifier_register(&dev->v4l2_dev, &dev->notifier);
+
+	if (ret) {
+		dev_err(&pdev->dev, "fail to register async notifier.\n");
+		goto csi2host_prepare_notifier_err;
+	}
+
+csi2host_prepare_notifier_err:
+	of_node_put(input_parent);
 err:
 	of_node_put(node);
 	return ret;
@@ -334,6 +427,14 @@ static int dw_csi_probe(struct platform_device *pdev)
 	spin_lock_init(&csi->slock);
 	csi->dev = dev;
 
+	ret = v4l2_device_register(&pdev->dev, &csi->v4l2_dev);
+	if (ret) {
+		dev_err(dev, "failed to register v4l2 device\n");
+		return ret;
+	}
+
+	dev_vdbg(dev, "v4l2.name: %s\n", csi->v4l2_dev.name);
+
 	if (dev->of_node) {
 		of_id = of_match_node(dw_mipi_csi_of_match, dev->of_node);
 		if (!of_id)
@@ -345,8 +446,9 @@ static int dw_csi_probe(struct platform_device *pdev)
 
 		csi->phy = devm_of_phy_get(dev, dev->of_node, NULL);
 		if (IS_ERR(csi->phy)) {
-			dev_err(dev, "No DPHY available\n");
-			return PTR_ERR(csi->phy);
+			dev_dbg(dev, "No DPHY available\n");
+			ret = -EPROBE_DEFER; /* attempt to defer */
+			goto csi2host_defer_err;
 		}
 	} else {
 		csi->phy = devm_phy_get(dev, phys[pdata->id].name);
@@ -397,6 +499,7 @@ static int dw_csi_probe(struct platform_device *pdev)
 	sd = &csi->sd;
 	v4l2_subdev_init(sd, &dw_mipi_csi_subdev_ops);
 	csi->sd.owner = THIS_MODULE;
+	csi->sd.fwnode = of_fwnode_handle(dev->of_node);
 
 	if (dev->of_node) {
 		snprintf(sd->name, sizeof(sd->name), "%s.%d",
@@ -428,15 +531,7 @@ static int dw_csi_probe(struct platform_device *pdev)
 		csi->hw.pclk = pdata->pclk;
 		csi->hw.fps = pdata->fps;
 		csi->hw.dphy_freq = pdata->hs_freq;
-
-		ret = v4l2_device_register(NULL, &csi->v4l2_dev);
-		if (ret) {
-			dev_err(dev, "failed to register v4l2 device\n");
-			goto end;
-		}
 	}
-	dev_vdbg(dev, "v4l2.name: %s\n", csi->v4l2_dev.name);
-
 	v4l2_set_subdevdata(&csi->sd, pdev);
 	platform_set_drvdata(pdev, &csi->sd);
 	dev_set_drvdata(dev, sd);
@@ -456,12 +551,16 @@ static int dw_csi_probe(struct platform_device *pdev)
 
 	phy_init(csi->phy);
 
+	ret = v4l2_async_register_subdev(&csi->sd);
 	return 0;
 end:
 #if IS_ENABLED(CONFIG_OF)
 	media_entity_cleanup(&csi->sd.entity);
-	return ret;
 #endif
+csi2host_defer_err:
+	v4l2_async_notifier_unregister(&csi->notifier);
+	v4l2_async_notifier_cleanup(&csi->notifier);
+
 	v4l2_device_unregister(csi->vdev.v4l2_dev);
 	return ret;
 }

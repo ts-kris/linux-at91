@@ -250,6 +250,12 @@ struct dw_csi {
 	u8 index;
 	u8 hw_version_major;
 	u16 hw_version_minor;
+
+	struct v4l2_async_subdev *asd;
+	struct v4l2_async_notifier notifier;
+
+	struct v4l2_subdev *input_sd;
+	bool completed;
 };
 
 static inline struct dw_csi *sd_to_mipi_csi_dev(struct v4l2_subdev *sdev)
