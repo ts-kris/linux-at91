@@ -170,7 +170,7 @@ dw_mipi_csi_set_fmt(struct v4l2_subdev *sd,
 			dev_vdbg(dev->dev, "Using data type %s\n",
 				 csi_dt[i].name);
 		}
-	return 0;
+	return v4l2_subdev_call(dev->input_sd, pad, set_fmt, cfg, fmt);
 }
 
 static int
@@ -262,6 +262,62 @@ static int dw_mipi_csi_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+static int dw_g_frame_interval(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_frame_interval *interval)
+{
+	struct dw_csi *dev = sd_to_mipi_csi_dev(sd);
+
+	if (!dev->completed) {
+		dev_dbg(dev->dev, "subdev not registered yet\n");
+		return 0;
+	}
+
+	return v4l2_subdev_call(dev->input_sd, video, g_frame_interval,
+				interval);
+}
+
+static int dw_s_frame_interval(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_frame_interval *interval)
+{
+	struct dw_csi *dev = sd_to_mipi_csi_dev(sd);
+
+	if (!dev->completed) {
+		dev_dbg(dev->dev, "subdev not registered yet\n");
+		return 0;
+	}
+
+	return v4l2_subdev_call(dev->input_sd, video, s_frame_interval,
+				interval);
+}
+
+static int dw_enum_frame_size(struct v4l2_subdev *sd,
+			       struct v4l2_subdev_pad_config *cfg,
+			       struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct dw_csi *dev = sd_to_mipi_csi_dev(sd);
+
+	if (!dev->completed) {
+		dev_dbg(dev->dev, "subdev not registered yet\n");
+		return 0;
+	}
+
+	return v4l2_subdev_call(dev->input_sd, pad, enum_frame_size, cfg, fse);
+}
+
+static int dw_enum_frame_interval(struct v4l2_subdev *sd,
+			       struct v4l2_subdev_pad_config *cfg,
+			       struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct dw_csi *dev = sd_to_mipi_csi_dev(sd);
+
+	if (!dev->completed) {
+		dev_dbg(dev->dev, "subdev not registered yet\n");
+		return 0;
+	}
+
+	return v4l2_subdev_call(dev->input_sd, pad, enum_frame_interval, cfg, fie);
+}
+
 static struct v4l2_subdev_core_ops dw_mipi_csi_core_ops = {
 	.s_power = dw_mipi_csi_s_power,
 	.log_status = dw_mipi_csi_log_status,
@@ -275,10 +331,14 @@ static struct v4l2_subdev_pad_ops dw_mipi_csi_pad_ops = {
 	.enum_mbus_code = dw_mipi_csi_enum_mbus_code,
 	.get_fmt = dw_mipi_csi_get_fmt,
 	.set_fmt = dw_mipi_csi_set_fmt,
+	.enum_frame_size = dw_enum_frame_size,
+	.enum_frame_interval = dw_enum_frame_interval,
 };
 
 static struct v4l2_subdev_video_ops dw_mipi_csi_video_ops = {
 	.s_stream = dw_mipi_csi_s_stream,
+	.g_frame_interval = dw_g_frame_interval,
+	.s_frame_interval = dw_s_frame_interval,
 };
 
 static struct v4l2_subdev_ops dw_mipi_csi_subdev_ops = {
