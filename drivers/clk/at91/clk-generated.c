@@ -18,8 +18,6 @@
 
 #define GENERATED_MAX_DIV	255
 
-#define GCK_INDEX_DT_AUDIO_PLL	5
-
 struct clk_generated {
 	struct clk_hw hw;
 	struct regmap *regmap;
@@ -29,7 +27,7 @@ struct clk_generated {
 	u32 gckdiv;
 	const struct clk_pcr_layout *layout;
 	u8 parent_id;
-	bool audio_pll_allowed;
+	int chg_pid;
 };
 
 #define to_clk_generated(hw) \
@@ -161,10 +159,10 @@ static int clk_generated_determine_rate(struct clk_hw *hw,
 	 * that the only clks able to modify gck rate are those of audio IPs.
 	 */
 
-	if (!gck->audio_pll_allowed)
+	if (gck->chg_pid < 0)
 		goto end;
 
-	parent = clk_hw_get_parent_by_index(hw, GCK_INDEX_DT_AUDIO_PLL);
+	parent = clk_hw_get_parent_by_index(hw, gck->chg_pid);
 	if (!parent)
 		goto end;
 
@@ -272,8 +270,8 @@ struct clk_hw * __init
 at91_clk_register_generated(struct regmap *regmap, spinlock_t *lock,
 			    const struct clk_pcr_layout *layout,
 			    const char *name, const char **parent_names,
-			    u8 num_parents, u8 id, bool pll_audio,
-			    const struct clk_range *range)
+			    u8 num_parents, u8 id,
+			    const struct clk_range *range, int chg_pid)
 {
 	struct clk_generated *gck;
 	struct clk_init_data init;
@@ -288,15 +286,16 @@ at91_clk_register_generated(struct regmap *regmap, spinlock_t *lock,
 	init.ops = &generated_ops;
 	init.parent_names = parent_names;
 	init.num_parents = num_parents;
-	init.flags = CLK_SET_RATE_GATE | CLK_SET_PARENT_GATE |
-		CLK_SET_RATE_PARENT;
+	init.flags = chg_pid < 0 ? 0 : CLK_SET_RATE_GATE |
+				       CLK_SET_PARENT_GATE |
+				       CLK_SET_RATE_PARENT;
 
 	gck->id = id;
 	gck->hw.init = &init;
 	gck->regmap = regmap;
 	gck->lock = lock;
 	gck->range = *range;
-	gck->audio_pll_allowed = pll_audio;
+	gck->chg_pid = chg_pid;
 	gck->layout = layout;
 
 	clk_generated_startup(gck);
