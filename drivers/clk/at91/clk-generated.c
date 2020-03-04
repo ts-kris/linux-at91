@@ -23,6 +23,7 @@ struct clk_generated {
 	struct regmap *regmap;
 	struct clk_range range;
 	spinlock_t *lock;
+	u32 *mux_table;
 	u32 id;
 	u32 gckdiv;
 	const struct clk_pcr_layout *layout;
@@ -198,7 +199,11 @@ static int clk_generated_set_parent(struct clk_hw *hw, u8 index)
 	if (index >= clk_hw_get_num_parents(hw))
 		return -EINVAL;
 
-	gck->parent_id = index;
+	if (gck->mux_table)
+		gck->parent_id = clk_mux_index_to_val(gck->mux_table, 0, index);
+	else
+		gck->parent_id = index;
+
 	return 0;
 }
 
@@ -270,8 +275,9 @@ struct clk_hw * __init
 at91_clk_register_generated(struct regmap *regmap, spinlock_t *lock,
 			    const struct clk_pcr_layout *layout,
 			    const char *name, const char **parent_names,
-			    u8 num_parents, u8 id,
-			    const struct clk_range *range, int chg_pid)
+			    u32 *mux_table, u8 num_parents, u8 id,
+			    const struct clk_range *range,
+			    int chg_pid)
 {
 	struct clk_generated *gck;
 	struct clk_init_data init;
@@ -297,6 +303,7 @@ at91_clk_register_generated(struct regmap *regmap, spinlock_t *lock,
 	gck->range = *range;
 	gck->chg_pid = chg_pid;
 	gck->layout = layout;
+	gck->mux_table = mux_table;
 
 	clk_generated_startup(gck);
 	hw = &gck->hw;
