@@ -97,6 +97,19 @@
 				#clock-cells = <1>;
 			};
 
+			sdmmc1: sdio-host@e1208000 {
+				compatible = "atmel,sama5d2-sdhci";
+				reg = <0xe1208000 0x300>;
+				bus-width = <4>;
+				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>, <&pmc PMC_TYPE_CORE PMC_MAIN>;
+				clock-names = "hclock", "multclk", "baseclk";
+				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
+				assigned-clock-rates = <100000000>;
+				no-1-8-v;
+				status = "disabled";
+			};
+
 			csi2host: csi2host@e1400000 {
 				compatible = "snps,dw-csi";
 				#address-cells = <1>;
@@ -192,17 +205,6 @@
 				};
 			};
 
-			gic: interrupt-controller@e8c11000 {
-				compatible = "arm,cortex-a7-gic";
-				#interrupt-cells = <3>;
-				#address-cells = <0>;
-				interrupt-controller;
-				interrupt-parent;
-				reg = <0xe8c11000 0x1000>,
-					<0xe8c12000 0x2000>;
-				status = "disabled";
-			};
-
 			pit64b0: timer@e1800000 {
 				compatible = "microchip,sam9x60-pit64b";
 				reg = <0xe1800000 0x4000>;
@@ -240,24 +242,22 @@
 				status = "disabled";
 			};
 
-			sdmmc1: sdio-host@e1208000 {
-				compatible = "atmel,sama5d2-sdhci";
-				reg = <0xe1208000 0x300>;
-				bus-width = <4>;
-				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>, <&pmc PMC_TYPE_CORE PMC_MAIN>;
-				clock-names = "hclock", "multclk", "baseclk";
-				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
-				assigned-clock-rates = <100000000>;
-				no-1-8-v;
-				status = "disabled";
-			};
-
 			trng: trng@e2010000 {
 				compatible = "atmel,at91sam9g45-trng";
 				reg = <0xe2010000 0x100>;
 				interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 97>;
+				status = "disabled";
+			};
+
+			gic: interrupt-controller@e8c11000 {
+				compatible = "arm,cortex-a7-gic";
+				#interrupt-cells = <3>;
+				#address-cells = <0>;
+				interrupt-controller;
+				interrupt-parent;
+				reg = <0xe8c11000 0x1000>,
+					<0xe8c12000 0x2000>;
 				status = "disabled";
 			};
 		};
