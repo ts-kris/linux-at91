@@ -9,6 +9,7 @@
  */
 /dts-v1/;
 #include "sama7g5.dtsi"
+#include <dt-bindings/mfd/atmel-flexcom.h>
 
 / {
 	model = "Microchip SAMA7G5-EK";
@@ -16,6 +17,10 @@
 
 	chosen {
 		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=16M";
+	};
+
+	aliases {
+		i2c0 = &i2c0;
 	};
 
 	clocks {
@@ -44,3 +49,23 @@
 &trng {
 	status = "okay";
 };
+
+&flx1 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c0: i2c@600 {
+		compatible = "microchip,sam9x60-i2c";
+		reg = <0x600 0x200>;
+		interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
+		atmel,fifo-size = <32>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
