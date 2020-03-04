@@ -123,9 +123,9 @@ static int clk_generated_determine_rate(struct clk_hw *hw,
 	struct clk_generated *gck = to_clk_generated(hw);
 	struct clk_hw *parent = NULL;
 	struct clk_rate_request req_parent = *req;
-	long best_rate = -EINVAL;
+	long best_rate = LONG_MIN;
 	unsigned long min_rate, parent_rate;
-	int best_diff = -1;
+	int best_diff = INT_MIN;
 	int i;
 	u32 div;
 
