@@ -16,7 +16,7 @@
 	compatible = "microchip,sama7g5ek", "microchip,sama7g5", "microchip,sama7";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=16M";
+		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=256m";
 	};
 
 	aliases {
