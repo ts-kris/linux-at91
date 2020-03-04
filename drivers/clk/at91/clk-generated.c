@@ -129,7 +129,7 @@ static int clk_generated_determine_rate(struct clk_hw *hw,
 	int i;
 	u32 div;
 
-	for (i = 0; i < clk_hw_get_num_parents(hw) - 1; i++) {
+	for (i = 0; i < clk_hw_get_num_parents(hw); i++) {
 		parent = clk_hw_get_parent_by_index(hw, i);
 		if (!parent)
 			continue;
