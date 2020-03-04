@@ -243,15 +243,13 @@
 			sdmmc1: sdio-host@e1208000 {
 				compatible = "atmel,sama5d2-sdhci";
 				reg = <0xe1208000 0x300>;
-				bus-width = <1>;
+				bus-width = <4>;
 				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>, <&pmc PMC_TYPE_CORE PMC_MAIN>;
 				clock-names = "hclock", "multclk", "baseclk";
 				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
 				assigned-clock-rates = <100000000>;
-				sd-uhs-sdr50;
 				no-1-8-v;
-				non-removable;
 				status = "disabled";
 			};
 
