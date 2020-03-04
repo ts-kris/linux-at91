@@ -10,8 +10,13 @@
  */
 #ifndef _ATMEL_ISC_H_
 
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_MAX_SUPPORT_WIDTH   2592
 #define ISC_MAX_SUPPORT_HEIGHT  1944
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_MAX_SUPPORT_WIDTH   3264
+#define ISC_MAX_SUPPORT_HEIGHT  2464
+#endif
 
 #define ISC_CLK_MAX_DIV		255
 
@@ -70,17 +75,20 @@ struct isc_format {
 };
 
 /* Pipeline bitmap */
-#define WB_ENABLE	BIT(0)
-#define CFA_ENABLE	BIT(1)
-#define CC_ENABLE	BIT(2)
-#define GAM_ENABLE	BIT(3)
-#define GAM_BENABLE	BIT(4)
-#define GAM_GENABLE	BIT(5)
-#define GAM_RENABLE	BIT(6)
-#define CSC_ENABLE	BIT(7)
-#define CBC_ENABLE	BIT(8)
-#define SUB422_ENABLE	BIT(9)
-#define SUB420_ENABLE	BIT(10)
+#define DPC_DPCENABLE	BIT(0)
+#define DPC_GDCENABLE	BIT(1)
+#define DPC_BLCENABLE	BIT(2)
+#define WB_ENABLE	BIT(3)
+#define CFA_ENABLE	BIT(4)
+#define CC_ENABLE	BIT(5)
+#define GAM_ENABLE	BIT(6)
+#define GAM_BENABLE	BIT(7)
+#define GAM_GENABLE	BIT(8)
+#define GAM_RENABLE	BIT(9)
+#define CSC_ENABLE	BIT(11)
+#define CBC_ENABLE	BIT(12)
+#define SUB422_ENABLE	BIT(13)
+#define SUB420_ENABLE	BIT(14)
 
 #define GAM_ENABLES	(GAM_RENABLE | GAM_GENABLE | GAM_BENABLE | GAM_ENABLE)
 
@@ -144,7 +152,7 @@ struct isc_ctrls {
 	u32 hist_minmax[HIST_BAYER][2];
 };
 
-#define ISC_PIPE_LINE_NODE_NUM	11
+#define ISC_PIPE_LINE_NODE_NUM	15
 
 /*
  * struct isc_device - ISC device driver data/config struct
@@ -152,6 +160,7 @@ struct isc_ctrls {
  * @hclock:		Hclock clock input (refer datasheet)
  * @ispck:		iscpck clock (refer datasheet)
  * @isc_clks:		ISC clocks
+ * @dcfg:		DMA master configuration, architecture dependant
  *
  * @dev:		Registered device driver
  * @v4l2_dev:		v4l2 registered device
@@ -192,6 +201,7 @@ struct isc_device {
 	struct clk		*hclock;
 	struct clk		*ispck;
 	struct isc_clk		isc_clks[2];
+	u32			dcfg;
 
 	struct device		*dev;
 	struct v4l2_device	v4l2_dev;
@@ -246,10 +256,14 @@ struct isc_device {
 	};
 };
 
-#define GAMMA_MAX	2
+#define GAMMA_MAX	3
 #define GAMMA_ENTRIES	64
 
-#define ATMEL_ISC_NAME "atmel-isc"
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
+#define ATMEL_ISC_NAME	"atmel-sama5d2-isc"
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ATMEL_ISC_NAME	"atmel-sama7g5-isc"
+#endif
 
 extern struct isc_format formats_list[];
 extern const struct isc_format controller_formats[];

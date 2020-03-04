@@ -66,6 +66,12 @@ const struct isc_format controller_formats[] = {
 		.fourcc		= V4L2_PIX_FMT_YUV420,
 	},
 	{
+		.fourcc		= V4L2_PIX_FMT_UYVY,
+	},
+	{
+		.fourcc		= V4L2_PIX_FMT_VYUY,
+	},
+	{
 		.fourcc		= V4L2_PIX_FMT_YUYV,
 	},
 	{
@@ -76,6 +82,9 @@ const struct isc_format controller_formats[] = {
 	},
 	{
 		.fourcc		= V4L2_PIX_FMT_Y10,
+	},
+	{
+		.fourcc		= V4L2_PIX_FMT_Y16,
 	},
 };
 
@@ -164,6 +173,11 @@ struct isc_format formats_list[] = {
 		.pfe_cfg0_bps	= ISC_PFE_CFG0_BPS_EIGHT,
 	},
 	{
+		.fourcc		= V4L2_PIX_FMT_UYVY,
+		.mbus_code	= MEDIA_BUS_FMT_YUYV8_2X8,
+		.pfe_cfg0_bps	= ISC_PFE_CFG0_BPS_EIGHT,
+	},
+	{
 		.fourcc		= V4L2_PIX_FMT_RGB565,
 		.mbus_code	= MEDIA_BUS_FMT_RGB565_2X8_LE,
 		.pfe_cfg0_bps	= ISC_PFE_CFG0_BPS_EIGHT,
@@ -216,6 +230,19 @@ const u32 isc_gamma_table[GAMMA_MAX + 1][GAMMA_ENTRIES] = {
 	  0x3820008, 0x38A0008, 0x3930008, 0x39B0008, 0x3A30008, 0x3AB0008,
 	  0x3B30008, 0x3BB0008, 0x3C30008, 0x3CB0007, 0x3D20008, 0x3DA0007,
 	  0x3E20007, 0x3E90007, 0x3F00008, 0x3F80007 },
+	/* 3 --> gamma bipartite */
+	{
+	      0x980,  0x4c0320,  0x650260,  0x7801e0,  0x8701a0,  0x940180,
+	   0xa00160,  0xab0120,  0xb40120,  0xbd0120,  0xc60100,  0xce0100,
+	   0xd600e0,  0xdd00e0,  0xe400e0,  0xeb00c0,  0xf100c0,  0xf700c0,
+	   0xfd00c0, 0x10300a0, 0x10800c0, 0x10e00a0, 0x11300a0, 0x11800a0,
+	  0x11d00a0, 0x12200a0, 0x12700a0, 0x12c0080, 0x13000a0, 0x1350080,
+	  0x13900a0, 0x13e0080, 0x1420076, 0x17d0062, 0x1ae0054, 0x1d8004a,
+	  0x1fd0044, 0x21f003e, 0x23e003a, 0x25b0036, 0x2760032, 0x28f0030,
+	  0x2a7002e, 0x2be002c, 0x2d4002c, 0x2ea0028, 0x2fe0028, 0x3120026,
+	  0x3250024, 0x3370024, 0x3490022, 0x35a0022, 0x36b0020, 0x37b0020,
+	  0x38b0020, 0x39b001e, 0x3aa001e, 0x3b9001c, 0x3c7001c, 0x3d5001c,
+	  0x3e3001c, 0x3f1001c, 0x3ff001a, 0x40c001a },
 };
 
 #define ISC_IS_FORMAT_RAW(mbus_code) \
@@ -319,8 +346,8 @@ static int isc_clk_enable(struct clk_hw *hw)
 	unsigned long flags;
 	unsigned int status;
 
-	dev_dbg(isc_clk->dev, "ISC CLK: %s, div = %d, parent id = %d\n",
-		__func__, isc_clk->div, isc_clk->parent_id);
+	dev_dbg(isc_clk->dev, "ISC CLK: %s, id = %d, div = %d, parent id = %d\n",
+		__func__, id, isc_clk->div, isc_clk->parent_id);
 
 	spin_lock_irqsave(&isc_clk->lock, flags);
 	regmap_update_bits(regmap, ISC_CLKCFG,
@@ -681,12 +708,23 @@ static void isc_set_pipeline(struct isc_device *isc, u32 pipeline)
 	isc_update_awb_ctrls(isc);
 	isc_update_v4l2_ctrls(isc);
 
-	regmap_write(regmap, ISC_CFA_CFG, bay_cfg | ISC_CFA_CFG_EITPOL);
+	regmap_write(regmap, ISC_CFA_CFG, bay_cfg | ISC_CFA_CFG_EITPOL | (2<<10));
 
 	gamma = &isc_gamma_table[ctrls->gamma_index][0];
 	regmap_bulk_write(regmap, ISC_GAM_BENTRY, gamma, GAMMA_ENTRIES);
 	regmap_bulk_write(regmap, ISC_GAM_GENTRY, gamma, GAMMA_ENTRIES);
 	regmap_bulk_write(regmap, ISC_GAM_RENTRY, gamma, GAMMA_ENTRIES);
+
+	if (ctrls->gamma_index == 3)
+		regmap_update_bits(regmap, ISC_GAM_CTRL, ISC_GAM_CTRL_BIPART,
+				   ISC_GAM_CTRL_BIPART);
+
+	regmap_write(regmap, ISC_CC_RR_RG, (1 << 8));
+	regmap_write(regmap, ISC_CC_RB_OR, 0);
+	regmap_write(regmap, ISC_CC_GR_GG, (1 << 8) << 16 );
+	regmap_write(regmap, ISC_CC_GB_OG, 0);
+	regmap_write(regmap, ISC_CC_BR_BG, 0);
+	regmap_write(regmap, ISC_CC_BB_OB, (1 << 8));
 
 	/* Convert RGB to YUV */
 	regmap_write(regmap, ISC_CSC_YR_YG, 0x42 | (0x81 << 16));
@@ -695,9 +733,26 @@ static void isc_set_pipeline(struct isc_device *isc, u32 pipeline)
 	regmap_write(regmap, ISC_CSC_CBB_OCB, 0x70 | (0x80 << 16));
 	regmap_write(regmap, ISC_CSC_CRR_CRG, 0x70 | (0xFA2 << 16));
 	regmap_write(regmap, ISC_CSC_CRB_OCR, 0xFEE | (0x80 << 16));
+#if 0
+	regmap_write(regmap, ISC_CSC_YR_YG, 0x4c | (0x96 << 16));
+	regmap_write(regmap, ISC_CSC_YB_OY, 0x1d | (0x0 << 16));
+	regmap_write(regmap, ISC_CSC_CBR_CBG, 0xfd5 | (0xFab << 16));
+	regmap_write(regmap, ISC_CSC_CBB_OCB, 0x80 | (0x80 << 16));
+	regmap_write(regmap, ISC_CSC_CRR_CRG, 0x80 | (0xF95 << 16));
+	regmap_write(regmap, ISC_CSC_CRB_OCR, 0xFec | (0x80 << 16));
+#endif
 
 	regmap_write(regmap, ISC_CBC_BRIGHT, ctrls->brightness);
 	regmap_write(regmap, ISC_CBC_CONTRAST, ctrls->contrast);
+
+	regmap_write(regmap, ISC_CBCHS_HUE, 0);
+
+	regmap_write(regmap, ISC_CBCHS_SAT, (1<<4));
+
+	regmap_update_bits(regmap, ISC_DPC_CFG, ISC_DPC_CFG_BLOFF_MASK,
+			   (64 << ISC_DPC_CFG_BLOFF_SHIFT));
+	regmap_update_bits(regmap, ISC_DPC_CFG, ISC_DPC_CFG_BAYCFG_MASK,
+			   (bay_cfg << ISC_DPC_CFG_BAYCFG_SHIFT));
 }
 
 static int isc_update_profile(struct isc_device *isc)
@@ -758,18 +813,17 @@ static int isc_configure(struct isc_device *isc)
 	rlp_mode = isc->config.rlp_cfg_mode;
 	pipeline = isc->config.bits_pipeline;
 
-	dcfg = isc->config.dcfg_imode |
-		       ISC_DCFG_YMBSIZE_BEATS8 | ISC_DCFG_CMBSIZE_BEATS8;
+	dcfg = isc->config.dcfg_imode | isc->dcfg;
 
 	pfe_cfg0  |= subdev->pfe_cfg0 | ISC_PFE_CFG0_MODE_PROGRESSIVE;
 	mask = ISC_PFE_CFG0_BPS_MASK | ISC_PFE_CFG0_HPOL_LOW |
 	       ISC_PFE_CFG0_VPOL_LOW | ISC_PFE_CFG0_PPOL_LOW |
 	       ISC_PFE_CFG0_MODE_MASK | ISC_PFE_CFG0_CCIR_CRC |
-		   ISC_PFE_CFG0_CCIR656;
+	       ISC_PFE_CFG0_CCIR656 | ISC_PFE_CFG0_MIPI;
 
 	regmap_update_bits(regmap, ISC_PFE_CFG0, mask, pfe_cfg0);
 
-	regmap_update_bits(regmap, ISC_RLP_CFG, ISC_RLP_CFG_MODE_MASK,
+	regmap_update_bits(regmap, ISC_RLP_CFG, ISC_RLP_CFG_MODE_MASK |ISC_RLP_CFG_LSH | ISC_RLP_CFG_YMODE_MASK,
 			   rlp_mode);
 
 	regmap_write(regmap, ISC_DCFG, dcfg);
@@ -1016,6 +1070,8 @@ static int isc_try_validate_formats(struct isc_device *isc)
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_YUV422P:
 	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_VYUY:
 		ret = 0;
 		yuv = true;
 		break;
@@ -1030,6 +1086,7 @@ static int isc_try_validate_formats(struct isc_device *isc)
 		break;
 	case V4L2_PIX_FMT_GREY:
 	case V4L2_PIX_FMT_Y10:
+	case V4L2_PIX_FMT_Y16:
 		ret = 0;
 		grey = true;
 		break;
@@ -1060,6 +1117,8 @@ static int isc_try_validate_formats(struct isc_device *isc)
  */
 static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 {
+	isc->try_config.rlp_cfg_mode = 0;
+
 	switch (isc->try_config.fourcc) {
 	case V4L2_PIX_FMT_SBGGR8:
 	case V4L2_PIX_FMT_SGBRG8:
@@ -1126,7 +1185,19 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.bpp = 16;
 		break;
 	case V4L2_PIX_FMT_YUYV:
-		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YYCC;
+		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_YUYV;
+		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
+		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
+		isc->try_config.bpp = 16;
+		break;
+	case V4L2_PIX_FMT_UYVY:
+		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_UYVY;
+		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
+		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
+		isc->try_config.bpp = 16;
+		break;
+	case V4L2_PIX_FMT_VYUY:
+		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_VYUY;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
@@ -1137,8 +1208,11 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 8;
 		break;
+	case V4L2_PIX_FMT_Y16:
+		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_DATY10 | ISC_RLP_CFG_LSH | (1<<4);
+		/* fall-through */
 	case V4L2_PIX_FMT_Y10:
-		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_DATY10;
+		isc->try_config.rlp_cfg_mode |= ISC_RLP_CFG_MODE_DATY10;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
@@ -1172,7 +1246,8 @@ static int isc_try_configure_pipeline(struct isc_device *isc)
 		/* if sensor format is RAW, we convert inside ISC */
 		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
 			isc->try_config.bits_pipeline = CFA_ENABLE |
-				WB_ENABLE | GAM_ENABLES;
+				WB_ENABLE | GAM_ENABLES | DPC_BLCENABLE |
+				CC_ENABLE;
 		} else {
 			isc->try_config.bits_pipeline = 0x0;
 		}
@@ -1181,8 +1256,9 @@ static int isc_try_configure_pipeline(struct isc_device *isc)
 		/* if sensor format is RAW, we convert inside ISC */
 		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
 			isc->try_config.bits_pipeline = CFA_ENABLE |
-				CSC_ENABLE | WB_ENABLE | GAM_ENABLES |
-				SUB420_ENABLE | SUB422_ENABLE | CBC_ENABLE;
+				CSC_ENABLE | GAM_ENABLES | WB_ENABLE |
+				SUB420_ENABLE | SUB422_ENABLE | CBC_ENABLE |
+				DPC_BLCENABLE;
 		} else {
 			isc->try_config.bits_pipeline = 0x0;
 		}
@@ -1192,33 +1268,40 @@ static int isc_try_configure_pipeline(struct isc_device *isc)
 		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
 			isc->try_config.bits_pipeline = CFA_ENABLE |
 				CSC_ENABLE | WB_ENABLE | GAM_ENABLES |
-				SUB422_ENABLE | CBC_ENABLE;
+				SUB422_ENABLE | CBC_ENABLE | DPC_BLCENABLE;
 		} else {
 			isc->try_config.bits_pipeline = 0x0;
 		}
 		break;
 	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_VYUY:
 		/* if sensor format is RAW, we convert inside ISC */
 		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
 			isc->try_config.bits_pipeline = CFA_ENABLE |
 				CSC_ENABLE | WB_ENABLE | GAM_ENABLES |
-				SUB422_ENABLE | CBC_ENABLE;
+				SUB422_ENABLE | CBC_ENABLE | DPC_BLCENABLE ;
 		} else {
 			isc->try_config.bits_pipeline = 0x0;
 		}
 		break;
 	case V4L2_PIX_FMT_GREY:
-		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
+	case V4L2_PIX_FMT_Y16:
 		/* if sensor format is RAW, we convert inside ISC */
+		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
 			isc->try_config.bits_pipeline = CFA_ENABLE |
 				CSC_ENABLE | WB_ENABLE | GAM_ENABLES |
-				CBC_ENABLE;
+				CBC_ENABLE | DPC_BLCENABLE;
 		} else {
 			isc->try_config.bits_pipeline = 0x0;
 		}
 		break;
 	default:
-		isc->try_config.bits_pipeline = 0x0;
+		if (ISC_IS_FORMAT_RAW(isc->try_config.sd_format->mbus_code)) {
+			isc->try_config.bits_pipeline = WB_ENABLE | DPC_BLCENABLE;
+		} else {
+			isc->try_config.bits_pipeline = 0x0;
+		}
 	}
 	return 0;
 }
@@ -1267,9 +1350,6 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 	u32 mbus_code;
 	int ret;
 	bool rlp_dma_direct_dump = false;
-
-	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-		return -EINVAL;
 
 	/* Step 1: find a RAW format that is supported */
 	for (i = 0; i < isc->num_user_formats; i++) {
@@ -1368,6 +1448,12 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 
 	v4l2_fill_pix_format(pixfmt, &format.format);
 
+	/* Limit to Atmel ISC hardware capabilities */
+	if (pixfmt->width > ISC_MAX_SUPPORT_WIDTH)
+		pixfmt->width = ISC_MAX_SUPPORT_WIDTH;
+	if (pixfmt->height > ISC_MAX_SUPPORT_HEIGHT)
+		pixfmt->height = ISC_MAX_SUPPORT_HEIGHT;
+
 	pixfmt->field = V4L2_FIELD_NONE;
 	pixfmt->bytesperline = (pixfmt->width * isc->try_config.bpp) >> 3;
 	pixfmt->sizeimage = pixfmt->bytesperline * pixfmt->height;
@@ -1402,6 +1488,12 @@ static int isc_set_fmt(struct isc_device *isc, struct v4l2_format *f)
 			       set_fmt, NULL, &format);
 	if (ret < 0)
 		return ret;
+
+	/* Limit to Atmel ISC hardware capabilities */
+	if (f->fmt.pix.width > ISC_MAX_SUPPORT_WIDTH)
+		f->fmt.pix.width = ISC_MAX_SUPPORT_WIDTH;
+	if (f->fmt.pix.height > ISC_MAX_SUPPORT_HEIGHT)
+		f->fmt.pix.height = ISC_MAX_SUPPORT_HEIGHT;
 
 	isc->fmt = *f;
 
@@ -2066,11 +2158,10 @@ static int isc_ctrl_init(struct isc_device *isc)
 		return ret;
 
 	ctrls->brightness = 0;
-	ctrls->contrast = 256;
-
+	ctrls->contrast = 16;
 	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_BRIGHTNESS, -1024, 1023, 1, 0);
-	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_CONTRAST, -2048, 2047, 1, 256);
-	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_GAMMA, 0, GAMMA_MAX, 1, 2);
+	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_CONTRAST, -2048, 2047, 1, 16);
+	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_GAMMA, 0, GAMMA_MAX, 1, 3);
 	isc->awb_ctrl = v4l2_ctrl_new_std(hdl, &isc_awb_ops,
 					  V4L2_CID_AUTO_WHITE_BALANCE,
 					  0, 1, 1, 1);
@@ -2340,6 +2431,9 @@ int isc_pipeline_init(struct isc_device *isc)
 
 	/* WB-->CFA-->CC-->GAM-->CSC-->CBC-->SUB422-->SUB420 */
 	const struct reg_field regfields[ISC_PIPE_LINE_NODE_NUM] = {
+		REG_FIELD(ISC_DPC_CTRL, 0, 0),
+		REG_FIELD(ISC_DPC_CTRL, 1, 1),
+		REG_FIELD(ISC_DPC_CTRL, 2, 2),
 		REG_FIELD(ISC_WB_CTRL, 0, 0),
 		REG_FIELD(ISC_CFA_CTRL, 0, 0),
 		REG_FIELD(ISC_CC_CTRL, 0, 0),
@@ -2347,6 +2441,7 @@ int isc_pipeline_init(struct isc_device *isc)
 		REG_FIELD(ISC_GAM_CTRL, 1, 1),
 		REG_FIELD(ISC_GAM_CTRL, 2, 2),
 		REG_FIELD(ISC_GAM_CTRL, 3, 3),
+		REG_FIELD(ISC_VHXS_CTRL, 0, 0),
 		REG_FIELD(ISC_CSC_CTRL, 0, 0),
 		REG_FIELD(ISC_CBC_CTRL, 0, 0),
 		REG_FIELD(ISC_SUB422_CTRL, 0, 0),
@@ -2365,7 +2460,7 @@ int isc_pipeline_init(struct isc_device *isc)
 }
 
 /* regmap configuration */
-#define ATMEL_ISC_REG_MAX    0xbfc
+#define ATMEL_ISC_REG_MAX    0xD5C
 const struct regmap_config isc_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,

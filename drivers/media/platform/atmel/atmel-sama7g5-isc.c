@@ -2,25 +2,27 @@
 /*
  * Microchip Image Sensor Controller (ISC) driver
  *
- * Copyright (C) 2016-2019 Microchip Technology, Inc.
+ * Copyright (C) 2019-2020 Microchip Technology, Inc. and its subsidiaries
  *
- * Author: Songjun Wu
  * Author: Eugen Hristev <eugen.hristev@microchip.com>
  *
- *
- * Sensor-->PFE-->WB-->CFA-->CC-->GAM-->CSC-->CBC-->SUB-->RLP-->DMA
+ * Sensor-->PFE-->DPC-->WB-->CFA-->CC-->GAM-->CSC-->CBHS-->SUB-->RLP-->DMA-->HIS
  *
  * ISC video pipeline integrates the following submodules:
  * PFE: Parallel Front End to sample the camera sensor input stream
+ * DPC: Defective Pixel Correction with black offset correction, green disparity
+ *      correction and defective pixel correction (3 modules total)
  *  WB: Programmable white balance in the Bayer domain
  * CFA: Color filter array interpolation module
  *  CC: Programmable color correction
  * GAM: Gamma correction
  * CSC: Programmable color space conversion
- * CBC: Contrast and Brightness control
+ *CBHS: Contrast Brightness Hue and Saturation control
  * SUB: This module performs YCbCr444 to YCbCr420 chrominance subsampling
  * RLP: This module performs rounding, range limiting
  *      and packing of the incoming data
+ * DMA: This module performs DMA master accesses to write frames to external RAM
+ * HIS: Histogram module performs statistic counters on the frames
  */
 
 #include <linux/clk.h>
@@ -49,20 +51,18 @@
 #include "atmel-isc-regs.h"
 #include "atmel-isc.h"
 
-#define ISC_MAX_SUPPORT_WIDTH   2592
-#define ISC_MAX_SUPPORT_HEIGHT  1944
-
-#define ISC_CLK_MAX_DIV		255
-
-static int isc_parse_dt(struct device *dev, struct isc_device *isc)
+static int xisc_parse_dt(struct device *dev, struct isc_device *isc)
 {
 	struct device_node *np = dev->of_node;
 	struct device_node *epn = NULL, *rem;
 	struct isc_subdev_entity *subdev_entity;
 	unsigned int flags;
 	int ret;
+	bool mipi_mode;
 
 	INIT_LIST_HEAD(&isc->subdev_entities);
+
+	mipi_mode = of_property_read_bool(np, "microchip,mipi-mode");
 
 	while (1) {
 		struct v4l2_fwnode_endpoint v4l2_epn = { .bus_type = 0 };
@@ -121,6 +121,9 @@ static int isc_parse_dt(struct device *dev, struct isc_device *isc)
 			subdev_entity->pfe_cfg0 |= ISC_PFE_CFG0_CCIR_CRC |
 					ISC_PFE_CFG0_CCIR656;
 
+		if (mipi_mode)
+			subdev_entity->pfe_cfg0 |= ISC_PFE_CFG0_MIPI;
+
 		subdev_entity->asd->match_type = V4L2_ASYNC_MATCH_FWNODE;
 		subdev_entity->asd->match.fwnode = of_fwnode_handle(rem);
 		list_add_tail(&subdev_entity->list, &isc->subdev_entities);
@@ -130,7 +133,7 @@ static int isc_parse_dt(struct device *dev, struct isc_device *isc)
 	return ret;
 }
 
-static int atmel_isc_probe(struct platform_device *pdev)
+static int microchip_xisc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct isc_device *isc;
@@ -139,6 +142,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	struct isc_subdev_entity *subdev_entity;
 	int irq;
 	int ret;
+	u32 ver;
 
 	isc = devm_kzalloc(dev, sizeof(*isc), GFP_KERNEL);
 	if (!isc)
@@ -160,8 +164,11 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		return irq;
+	if (irq < 0) {
+		ret = irq;
+		dev_err(dev, "failed to get irq: %d\n", ret);
+		return ret;
+	}
 
 	ret = devm_request_irq(dev, irq, isc_interrupt, 0,
 			       ATMEL_ISC_NAME, isc);
@@ -215,7 +222,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 		goto unprepare_clk;
 	}
 
-	ret = isc_parse_dt(dev, isc);
+	ret = xisc_parse_dt(dev, isc);
 	if (ret) {
 		dev_err(dev, "fail to parse device tree\n");
 		goto unregister_v4l2_device;
@@ -234,7 +241,6 @@ static int atmel_isc_probe(struct platform_device *pdev)
 						     subdev_entity->asd);
 		if (ret) {
 			fwnode_handle_put(subdev_entity->asd->match.fwnode);
-			kfree(subdev_entity->asd);
 			goto cleanup_subdev;
 		}
 
@@ -251,13 +257,15 @@ static int atmel_isc_probe(struct platform_device *pdev)
 			break;
 	}
 
-	/* sama5d2-isc - 8 bits per beat */
-	isc->dcfg = ISC_DCFG_YMBSIZE_BEATS8 | ISC_DCFG_CMBSIZE_BEATS8;
+	/* sama7g5-isc RAM access port is full AXI4 - 32 bits per beat */
+	isc->dcfg = ISC_DCFG_YMBSIZE_BEATS32 | ISC_DCFG_CMBSIZE_BEATS32;
 
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_request_idle(dev);
 
+	regmap_read(isc->regmap, ISC_VERSION, &ver);
+	dev_info(dev, "Microchip XISC version %x\n", ver);
 	return 0;
 
 cleanup_subdev:
@@ -276,25 +284,24 @@ unprepare_hclk:
 	return ret;
 }
 
-static int atmel_isc_remove(struct platform_device *pdev)
+static int microchip_xisc_remove(struct platform_device *pdev)
 {
 	struct isc_device *isc = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
+	clk_disable_unprepare(isc->ispck);
+	clk_disable_unprepare(isc->hclock);
 
 	isc_subdev_cleanup(isc);
 
 	v4l2_device_unregister(&isc->v4l2_dev);
-
-	clk_disable_unprepare(isc->ispck);
-	clk_disable_unprepare(isc->hclock);
 
 	isc_clk_cleanup(isc);
 
 	return 0;
 }
 
-static int __maybe_unused isc_runtime_suspend(struct device *dev)
+static int __maybe_unused xisc_runtime_suspend(struct device *dev)
 {
 	struct isc_device *isc = dev_get_drvdata(dev);
 
@@ -304,7 +311,7 @@ static int __maybe_unused isc_runtime_suspend(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused isc_runtime_resume(struct device *dev)
+static int __maybe_unused xisc_runtime_resume(struct device *dev)
 {
 	struct isc_device *isc = dev_get_drvdata(dev);
 	int ret;
@@ -313,38 +320,32 @@ static int __maybe_unused isc_runtime_resume(struct device *dev)
 	if (ret)
 		return ret;
 
-	ret = clk_prepare_enable(isc->ispck);
-	if (ret)
-		clk_disable_unprepare(isc->hclock);
-
-	return ret;
+	return clk_prepare_enable(isc->ispck);
 }
 
-static const struct dev_pm_ops atmel_isc_dev_pm_ops = {
-	SET_RUNTIME_PM_OPS(isc_runtime_suspend, isc_runtime_resume, NULL)
+static const struct dev_pm_ops microchip_xisc_dev_pm_ops = {
+	SET_RUNTIME_PM_OPS(xisc_runtime_suspend, xisc_runtime_resume, NULL)
 };
 
-#if IS_ENABLED(CONFIG_OF)
-static const struct of_device_id atmel_isc_of_match[] = {
-	{ .compatible = "atmel,sama5d2-isc" },
+static const struct of_device_id microchip_xisc_of_match[] = {
+	{ .compatible = "microchip,sama7g5-isc" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, atmel_isc_of_match);
-#endif
+MODULE_DEVICE_TABLE(of, microchip_xisc_of_match);
 
-static struct platform_driver atmel_isc_driver = {
-	.probe	= atmel_isc_probe,
-	.remove	= atmel_isc_remove,
+static struct platform_driver microchip_xisc_driver = {
+	.probe	= microchip_xisc_probe,
+	.remove	= microchip_xisc_remove,
 	.driver	= {
 		.name		= ATMEL_ISC_NAME,
-		.pm		= &atmel_isc_dev_pm_ops,
-		.of_match_table = of_match_ptr(atmel_isc_of_match),
+		.pm		= &microchip_xisc_dev_pm_ops,
+		.of_match_table = of_match_ptr(microchip_xisc_of_match),
 	},
 };
 
-module_platform_driver(atmel_isc_driver);
+module_platform_driver(microchip_xisc_driver);
 
-MODULE_AUTHOR("Songjun Wu");
-MODULE_DESCRIPTION("The V4L2 driver for Atmel-ISC");
+MODULE_AUTHOR("Eugen Hristev <eugen.hristev@microchip.com>");
+MODULE_DESCRIPTION("The V4L2 driver for Microchip-XISC");
 MODULE_LICENSE("GPL v2");
 MODULE_SUPPORTED_DEVICE("video");
