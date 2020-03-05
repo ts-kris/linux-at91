@@ -439,6 +439,8 @@ of_at91_clk_periph_setup(struct device_node *np, u8 type)
 		return;
 
 	for_each_child_of_node(np, periphclknp) {
+		int chg_pid = INT_MIN;
+
 		if (of_property_read_u32(periphclknp, "reg", &id))
 			continue;
 
@@ -447,6 +449,8 @@ of_at91_clk_periph_setup(struct device_node *np, u8 type)
 
 		if (of_property_read_string(np, "clock-output-names", &name))
 			name = periphclknp->name;
+
+		of_property_read_s32(np, "atmel,chg-pid", &chg_pid);
 
 		if (type == PERIPHERAL_AT91RM9200) {
 			hw = at91_clk_register_peripheral(regmap, name,
@@ -463,7 +467,8 @@ of_at91_clk_periph_setup(struct device_node *np, u8 type)
 								 &dt_pcr_layout,
 								 name,
 								 parent_name,
-								 id, &range);
+								 id, &range,
+								 chg_pid);
 		}
 
 		if (IS_ERR(hw))
