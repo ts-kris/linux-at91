@@ -124,7 +124,7 @@
 				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&mck>, <&gck>;
 				clock-names = "pclk", "gclk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			pit64b1: timer@e1804000 {
@@ -133,7 +133,7 @@
 				interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&mck>, <&gck>;
 				clock-names = "pclk", "gclk";
-				status = "disabled";
+				status = "okay";
 			};
 
 			uart0: serial@e1824200 {
