@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * sama7g5.dtsi - Device Tree Include file for SAMA7G5 family SoC
@@ -57,42 +58,15 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		mck: mainck {
+		slow_xtal: slow_xtal {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clock-frequency = <200000000>;
 		};
 
-		gck: gck {
+		main_xtal: main_xtal {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clock-frequency = <100000000>;
 		};
-
-		baseclk: baseclk{
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <100000000>;
-		};
-
-		multclk: multclk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <100000000>;
-		};
-
-		iscclk: iscclk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <100000000>;
-		};
-
-		hclk: hclk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <50000000>;
-		};
-
 	};
 
 	ahb {
@@ -106,6 +80,22 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+
+			pmc: pmc@e0018000 {
+				compatible = "microchip,sama7g5-pmc", "syscon";
+				reg = <0xe0018000 0x200>;
+				interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
+				#clock-cells = <2>;
+				clocks = <&clk32k 1>, <&clk32k 0>, <&main_xtal>;
+				clock-names = "td_slck", "md_slck", "main_xtal";
+			};
+
+			clk32k: sckc@e001d050 {
+				compatible = "microchip,sam9x60-sckc";
+				reg = <0xe001d050 0x4>;
+				clocks = <&slow_xtal>;
+				#clock-cells = <1>;
+			};
 
 			gic: interrupt-controller@e8c11000 {
 				compatible = "arm,cortex-a7-gic";
@@ -122,7 +112,7 @@
 				compatible = "microchip,sam9x60-pit64b";
 				reg = <0xe1800000 0x4000>;
 				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&mck>, <&gck>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 70>, <&pmc PMC_TYPE_GCK 70>;
 				clock-names = "pclk", "gclk";
 				status = "okay";
 			};
@@ -131,7 +121,7 @@
 				compatible = "microchip,sam9x60-pit64b";
 				reg = <0xe1804000 0x4000>;
 				interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&mck>, <&gck>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 71>, <&pmc PMC_TYPE_GCK 71>;
 				clock-names = "pclk", "gclk";
 				status = "okay";
 			};
@@ -140,7 +130,7 @@
 				compatible = "atmel,at91sam9260-usart";
 				reg = <0xe1824200 0x200>;
 				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&mck>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
 				clock-names = "usart";
 				status = "disabled";
 			};
@@ -150,10 +140,10 @@
 				reg = <0xe1208000 0x300>;
 				bus-width = <1>;
 				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&mck>, <&multclk>, <&baseclk>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>, <&pmc PMC_TYPE_CORE PMC_MAIN>;
 				clock-names = "hclock", "multclk", "baseclk";
-				assigned-clocks = <&multclk>;
-				assigned-clocks-rates = <100000000>;
+				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
+				assigned-clock-rates = <100000000>;
 				sd-uhs-sdr50;
 				no-1-8-v;
 				non-removable;
@@ -164,7 +154,7 @@
 				compatible = "atmel,at91sam9g45-trng";
 				reg = <0xe2010000 0x100>;
 				interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&mck>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 97>;
 				status = "disabled";
 			};
 		};
