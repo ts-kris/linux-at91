@@ -17,17 +17,11 @@
 	chosen {
 		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=16M";
 	};
+
+
 };
 
 &uart0 {
-	status = "okay";
-};
-
-&pit64b0 {
-	status = "okay";
-};
-
-&pit64b1 {
 	status = "okay";
 };
 
