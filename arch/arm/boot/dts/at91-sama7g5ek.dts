@@ -8,6 +8,7 @@
  *
  */
 /dts-v1/;
+#include "sama7g5-pinfunc.h"
 #include "sama7g5.dtsi"
 #include <dt-bindings/mfd/atmel-flexcom.h>
 
@@ -20,6 +21,7 @@
 	};
 
 	aliases {
+		serial0 = &uart0;
 		i2c0 = &i2c0;
 	};
 
@@ -60,15 +62,15 @@
 	status = "okay";
 };
 
-&uart0 {
-	status = "okay";
-};
-
 &gic {
 	status = "okay";
 };
 
 &sdmmc1 {
+	bus-width = <4>;
+	mmc-ddr-1_8v;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdmmc1_default>;
 	status = "okay";
 };
 
@@ -84,6 +86,8 @@
 		compatible = "microchip,sam9x60-i2c";
 		reg = <0x600 0x200>;
 		interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx1_default>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
@@ -91,6 +95,22 @@
 		i2c-analog-filter;
 		i2c-digital-filter;
 		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
+&flx3 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart0: serial@200 {
+		compatible = "atmel,at91sam9260-usart";
+		reg = <0x200 0x200>;
+		interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx3_default>;
+		clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
+		clock-names = "usart";
 		status = "okay";
 	};
 };
@@ -111,9 +131,13 @@
 		reg = <0x10>;
 		clocks = <&imx219_clk>;
 		clock-names = "xclk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sensor_power &pinctrl_sensor_reset>;
 		VANA-supply = <&vana_imx219>; /* 2.8v */
 		VDIG-supply = <&vdig_imx219>; /* 1.8v */
 		VDDL-supply = <&vddl_imx219>; /* 1.2v */
+		reset-gpios = <&pioA PIN_PC30 GPIO_ACTIVE_HIGH>,
+				<&pioA PIN_PC31 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 
 		imx219_clk: camera-clk {
@@ -169,3 +193,47 @@
 	};
 };
 
+&pioA {
+	pinctrl_flx1_default: flx1_default {
+		pinmux = <PIN_PC9__FLEXCOM1_IO0>,
+			 <PIN_PC10__FLEXCOM1_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_flx3_default: flx3_default {
+		pinmux = <PIN_PD16__FLEXCOM3_IO0>,
+			 <PIN_PD17__FLEXCOM3_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_sdmmc1_default: sdmmc0_default {
+		cmd_data {
+			pinmux = <PIN_PB29__SDMMC1_CMD>,
+				 <PIN_PB31__SDMMC1_DAT0>,
+				 <PIN_PC0__SDMMC1_DAT1>,
+				 <PIN_PC1__SDMMC1_DAT2>,
+				 <PIN_PC2__SDMMC1_DAT3>;
+			bias-disable;
+		};
+
+		ck_cd_rstn_vddsel {
+			pinmux = <PIN_PB30__SDMMC1_CK>,
+				 <PIN_PB28__SDMMC1_RSTN>,
+				 <PIN_PC5__SDMMC1_1V8SEL>,
+				 <PIN_PC4__SDMMC1_CD>;
+			bias-disable;
+		};
+	};
+};
+
+&pioA {
+	pinctrl_sensor_power: sensor_power {
+		pinmux = <PIN_PC30__GPIO>;
+		bias-disable;
+	};
+
+	pinctrl_sensor_reset: sensor_reset {
+		pinmux = <PIN_PC31__GPIO>;
+		bias-disable;
+	};
+};
