@@ -81,6 +81,21 @@
 			#size-cells = <1>;
 			ranges;
 
+			pioA: pinctrl@e0014000 {
+				compatible = "atmel,sama5d2-pinctrl";
+				reg = <0xe0014000 0x800>;
+				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 11>;
+			};
+
 			pmc: pmc@e0018000 {
 				compatible = "microchip,sama7g5-pmc", "syscon";
 				reg = <0xe0018000 0x200>;
