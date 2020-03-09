@@ -472,7 +472,7 @@ static void __init of_sam9x60_sckc_setup(struct device_node *np)
 		return;
 
 	slow_rc = clk_hw_register_fixed_rate_with_accuracy(NULL, parent_names[0],
-							   NULL, 0, 32768,
+							   NULL, 0, 18500,
 							   50000000);
 	if (IS_ERR(slow_rc))
 		return;
@@ -496,7 +496,7 @@ static void __init of_sam9x60_sckc_setup(struct device_node *np)
 	clk_data->num = 2;
 	clk_data->hws[0] = clk_hw_register_fixed_rate(NULL, "md_slck",
 						      parent_names[0],
-						      0, 32768);
+						      0, 18500);
 	if (IS_ERR(clk_data->hws[0]))
 		goto clk_data_free;
 
