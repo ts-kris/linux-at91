@@ -261,6 +261,38 @@
 				status = "disabled";
 			};
 
+			dma0: dma-controller@e2808000 {
+				compatible = "microchip,sama7g5-dma";
+				reg = <0xe2808000 0x1000>;
+				interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+				#dma-cells = <1>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 22>;
+				clock-names = "dma_clk";
+				status = "disabled";
+			};
+
+			dma1: dma-controller@e280c0000 {
+				compatible = "microchip,sama7g5-dma";
+				reg = <0xe280c000 0x1000>;
+				interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+				#dma-cells = <1>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 23>;
+				clock-names = "dma_clk";
+				status = "disabled";
+			};
+
+			/* Place dma2 here despite it's address */
+			dma2: dma-controller@e1200000 {
+				compatible = "microchip,sama7g5-dma";
+				reg = <0xe1200000 0x1000>;
+				interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
+				#dma-cells = <1>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 24>;
+				clock-names = "dma_clk";
+				dma-requests = <0>;
+				status = "disabled";
+			};
+
 			gic: interrupt-controller@e8c11000 {
 				compatible = "arm,cortex-a7-gic";
 				#interrupt-cells = <3>;
