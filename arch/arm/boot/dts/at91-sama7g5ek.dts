@@ -18,6 +18,7 @@
 
 	chosen {
 		bootargs = "console=ttyS0,115200 earlycon earlyprintk=serial,ttyS0 ignore_loglevel rw root=/dev/mmcblk0p2 memtest=0 rootfstype=ext4 rootwait cma=256m";
+		stdout-path = "serial0:115200n8";
 	};
 
 	aliases {
@@ -34,6 +35,18 @@
 			clock-frequency = <24000000>;
 		};
 	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&dma1 {
+	status = "okay";
+};
+
+&dma2 {
+	status = "okay";
 };
 
 &csi_dphy {
@@ -92,6 +105,12 @@
 		#size-cells = <0>;
 		clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
 		atmel,fifo-size = <32>;
+		dmas = <&dma0 AT91_XDMAC_DT_PERID(7)>,
+			<&dma0 AT91_XDMAC_DT_PERID(8)>;
+		dma-names = "rx", "tx";
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+
 		i2c-analog-filter;
 		i2c-digital-filter;
 		i2c-digital-filter-width-ns = <35>;
@@ -111,6 +130,12 @@
 		pinctrl-0 = <&pinctrl_flx3_default>;
 		clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
 		clock-names = "usart";
+		dmas = <&dma1 AT91_XDMAC_DT_PERID(12)>,
+			<&dma1 AT91_XDMAC_DT_PERID(11)>;
+		dma-names = "tx", "rx";
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+		atmel,fifo-size = <32>;
 		status = "okay";
 	};
 };
