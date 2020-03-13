@@ -1812,6 +1812,7 @@ static int at_xdmac_probe(struct platform_device *pdev)
 	int		irq, size, nr_channels, i, ret;
 	void __iomem	*base;
 	u32		reg;
+	bool		dev_m2m;
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -1946,6 +1947,16 @@ static int at_xdmac_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%d channels, mapped at 0x%p\n",
 		 nr_channels, atxdmac->regs);
+
+	dev_m2m = of_property_read_bool(pdev->dev.of_node, "microchip,m2m");
+
+	if (dev_m2m) {
+		at_xdmac_write(atxdmac, AT_XDMAC_GCFG, AT_XDMAC_GCFG_M2M);
+		at_xdmac_write(atxdmac, AT_XDMAC_GWAC, AT_XDMAC_GWAC_M2M);
+	} else {
+		at_xdmac_write(atxdmac, AT_XDMAC_GCFG, AT_XDMAC_GCFG_P2M);
+		at_xdmac_write(atxdmac, AT_XDMAC_GWAC, AT_XDMAC_GWAC_P2M);
+	}
 
 	return 0;
 

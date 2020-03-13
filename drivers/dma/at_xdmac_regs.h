@@ -25,7 +25,33 @@
 #define		AT_XDMAC_FIFO_SZ(i)	(((i) >> 5) & 0x7FF)		/* Number of Bytes */
 #define		AT_XDMAC_NB_REQ(i)	((((i) >> 16) & 0x3F) + 1)	/* Number of Peripheral Requests Minus One */
 #define AT_XDMAC_GCFG		0x04	/* Global Configuration Register */
+#define		AT_XDMAC_WRHP(i)	(((i) & 0xF) << 4)
+#define		AT_XDMAC_WRMP(i)	(((i) & 0xF) << 8)
+#define		AT_XDMAC_WRLP(i)	(((i) & 0xF) << 12)
+#define		AT_XDMAC_RDHP(i)	(((i) & 0xF) << 16)
+#define		AT_XDMAC_RDMP(i)	(((i) & 0xF) << 20)
+#define		AT_XDMAC_RDLP(i)	(((i) & 0xF) << 24)
+#define		AT_XDMAC_RDSG(i)	(((i) & 0xF) << 28)
+#if IS_ENABLED(CONFIG_AT_XDMAC_SAMA7G5)
+#define AT_XDMAC_GCFG_M2M	(AT_XDMAC_RDLP(0xF) | AT_XDMAC_WRLP(0xF))
+#define AT_XDMAC_GCFG_P2M	(AT_XDMAC_RDSG(0x1) | AT_XDMAC_RDHP(0x3) | \
+				AT_XDMAC_WRHP(0x5))
+#else
+#define AT_XDMAC_GCFG_M2M	0
+#define AT_XDMAC_GCFG_P2M	0
+#endif
 #define AT_XDMAC_GWAC		0x08	/* Global Weighted Arbiter Configuration Register */
+#define		AT_XDMAC_PW0(i)		(((i) & 0xF) << 0)
+#define		AT_XDMAC_PW1(i)		(((i) & 0xF) << 4)
+#define		AT_XDMAC_PW2(i)		(((i) & 0xF) << 8)
+#define		AT_XDMAC_PW3(i)		(((i) & 0xF) << 12)
+#if IS_ENABLED(CONFIG_AT_XDMAC_SAMA7G5)
+#define AT_XDMAC_GWAC_M2M	0
+#define AT_XDMAC_GWAC_P2M	(AT_XDMAC_PW0(0xF) | AT_XDMAC_PW2(0xF))
+#else
+#define AT_XDMAC_GWAC_M2M	0
+#define AT_XDMAC_GWAC_P2M	0
+#endif
 #define AT_XDMAC_GIE		0x0C	/* Global Interrupt Enable Register */
 #define AT_XDMAC_GID		0x10	/* Global Interrupt Disable Register */
 #define AT_XDMAC_GIM		0x14	/* Global Interrupt Mask Register */
