@@ -8,6 +8,17 @@
 #ifndef AT_XDMAC_REGS_H
 #define	AT_XDMAC_REGS_H
 
+/* Register map offsets compared to older versions of this regmap */
+#if IS_ENABLED(CONFIG_AT_XDMAC_SAMA7G5)
+#define AT_XDMAC_SAMA7G5_OFF1	0x8
+#define AT_XDMAC_SAMA7G5_OFF2	0xC
+#define AT_XDMAC_SAMA7G5_OFF3	0x10
+#else
+#define AT_XDMAC_SAMA7G5_OFF1	0x0
+#define AT_XDMAC_SAMA7G5_OFF2	0x0
+#define AT_XDMAC_SAMA7G5_OFF3	0x0
+#endif
+
 /* Global registers */
 #define AT_XDMAC_GTYPE		0x00	/* Global Type Register */
 #define		AT_XDMAC_NB_CH(i)	(((i) & 0x1F) + 1)		/* Number of Channels Minus One */
@@ -22,13 +33,20 @@
 #define AT_XDMAC_GE		0x1C	/* Global Channel Enable Register */
 #define AT_XDMAC_GD		0x20	/* Global Channel Disable Register */
 #define AT_XDMAC_GS		0x24	/* Global Channel Status Register */
-#define AT_XDMAC_GRS		0x28	/* Global Channel Read Suspend Register */
-#define AT_XDMAC_GWS		0x2C	/* Global Write Suspend Register */
-#define AT_XDMAC_GRWS		0x30	/* Global Channel Read Write Suspend Register */
-#define AT_XDMAC_GRWR		0x34	/* Global Channel Read Write Resume Register */
-#define AT_XDMAC_GSWR		0x38	/* Global Channel Software Request Register */
-#define AT_XDMAC_GSWS		0x3C	/* Global channel Software Request Status Register */
-#define AT_XDMAC_GSWF		0x40	/* Global Channel Software Flush Request Register */
+/* Global Channel Read Suspend Register */
+#define AT_XDMAC_GRS		(0x28 + AT_XDMAC_SAMA7G5_OFF1)
+/* Global Write Suspend Register */
+#define AT_XDMAC_GWS		(0x2C + AT_XDMAC_SAMA7G5_OFF2)
+/* Global Channel Read Write Suspend Register */
+#define AT_XDMAC_GRWS		(0x30 + AT_XDMAC_SAMA7G5_OFF3)
+/* Global Channel Read Write Resume Register */
+#define AT_XDMAC_GRWR		(0x34 + AT_XDMAC_SAMA7G5_OFF3)
+/* Global Channel Software Request Register */
+#define AT_XDMAC_GSWR		(0x38 + AT_XDMAC_SAMA7G5_OFF3)
+/* Global channel Software Request Status Register */
+#define AT_XDMAC_GSWS		(0x3C + AT_XDMAC_SAMA7G5_OFF3)
+/* Global Channel Software Flush Request Register */
+#define AT_XDMAC_GSWF		(0x40 + AT_XDMAC_SAMA7G5_OFF3)
 #define AT_XDMAC_VERSION	0xFFC	/* XDMAC Version Register */
 
 /* Channel relative registers offsets */
@@ -67,7 +85,11 @@
 #define AT_XDMAC_CSA		0x10	/* Channel Source Address Register */
 #define AT_XDMAC_CDA		0x14	/* Channel Destination Address Register */
 #define AT_XDMAC_CNDA		0x18	/* Channel Next Descriptor Address Register */
+#if IS_ENABLED(CONFIG_AT_XDMAC_SAMA7G5)
+#define		AT_XDMAC_CNDA_NDAIF(i)	0x0
+#else
 #define		AT_XDMAC_CNDA_NDAIF(i)	((i) & 0x1)			/* Channel x Next Descriptor Interface */
+#endif
 #define		AT_XDMAC_CNDA_NDA(i)	((i) & 0xfffffffc)		/* Channel x Next Descriptor Address */
 #define AT_XDMAC_CNDC		0x1C	/* Channel Next Descriptor Control Register */
 #define		AT_XDMAC_CNDC_NDE		(0x1 << 0)		/* Channel x Next Descriptor Enable */
@@ -108,8 +130,13 @@
 #define			AT_XDMAC_CC_DWIDTH_HALFWORD	0x1
 #define			AT_XDMAC_CC_DWIDTH_WORD		0x2
 #define			AT_XDMAC_CC_DWIDTH_DWORD	0x3
+#if IS_ENABLED(CONFIG_AT_XDMAC_SAMA7G5)
+#define		AT_XDMAC_CC_SIF(i)	0	/* Channel Source Interface Identifier */
+#define		AT_XDMAC_CC_DIF(i)	0	/* Channel Destination Interface Identifier */
+#else
 #define		AT_XDMAC_CC_SIF(i)	((0x1 & (i)) << 13)	/* Channel Source Interface Identifier */
 #define		AT_XDMAC_CC_DIF(i)	((0x1 & (i)) << 14)	/* Channel Destination Interface Identifier */
+#endif
 #define		AT_XDMAC_CC_SAM_MASK	(0x3 << 16)	/* Channel Source Addressing Mode */
 #define			AT_XDMAC_CC_SAM_FIXED_AM	(0x0 << 16)
 #define			AT_XDMAC_CC_SAM_INCREMENTED_AM	(0x1 << 16)
@@ -134,7 +161,7 @@
 #define AT_XDMAC_CSUS		0x30	/* Channel Source Microblock Stride */
 #define AT_XDMAC_CDUS		0x34	/* Channel Destination Microblock Stride */
 
-#define AT_XDMAC_CHAN_REG_BASE	0x50	/* Channel registers base address */
+#define AT_XDMAC_CHAN_REG_BASE	(0x50 + AT_XDMAC_SAMA7G5_OFF3)	/* Channel registers base address */
 
 /* Microblock control members */
 #define AT_XDMAC_MBR_UBC_UBLEN_MAX	0xFFFFFFUL	/* Maximum Microblock Length */

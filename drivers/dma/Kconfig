@@ -98,6 +98,13 @@ config AT_XDMAC
 	help
 	  Support the Atmel XDMA controller.
 
+config AT_XDMAC_SAMA7G5
+	tristate "Atmel XDMA SAMA7G5 support"
+	depends on ARCH_AT91
+	select DMA_ENGINE
+	help
+	  Support the Atmel XDMA controller for SAMA7G5 based SoCs
+
 config AXI_DMAC
 	tristate "Analog Devices AXI-DMAC DMA support"
 	depends on MICROBLAZE || NIOS2 || ARCH_ZYNQ || ARCH_ZYNQMP || ARCH_SOCFPGA || COMPILE_TEST
