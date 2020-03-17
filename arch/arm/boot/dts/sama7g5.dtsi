@@ -109,14 +109,13 @@
 			};
 
 			sdmmc1: sdio-host@e1208000 {
-				compatible = "atmel,sama5d2-sdhci";
+				compatible = "microchip,sam9x60-sdhci";
 				reg = <0xe1208000 0x300>;
 				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>, <&pmc PMC_TYPE_CORE PMC_MAIN>;
-				clock-names = "hclock", "multclk", "baseclk";
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>;
+				clock-names = "hclock", "multclk";
 				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
-				assigned-clock-rates = <100000000>;
-				no-1-8-v;
+				assigned-clock-rates = <200000000>;
 				status = "disabled";
 			};
 
