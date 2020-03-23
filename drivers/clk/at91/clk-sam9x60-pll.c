@@ -32,7 +32,10 @@
 #define		PMC_PLL_ACR_LOOP_FILTER_MSK	GENMASK(31, 24)
 
 #define PMC_PLL_UPDT	0x1c
+#define		PMC_PLL_UPDT_ID_MSK		GENMASK(3, 0)
 #define		PMC_PLL_UPDT_UPDATE		BIT(8)
+#define		PMC_PLL_UPDT_STUPTIM(n)		((n) << 16)
+#define		PMC_PMM_UPDT_STUPTIM_MSK	GENMASK(23, 16)
 
 #define PMC_PLL_ISR0	0xec
 
@@ -108,6 +111,10 @@ static int sam9x60_frac_pll_prepare(struct clk_hw *hw)
 	if (sam9x60_frac_pll_ready(regmap, core->id) &&
 	    (cmul == frac->mul && cfrac == frac->frac))
 		goto unlock;
+
+	regmap_update_bits(regmap, PMC_PLL_UPDT,
+			   PMC_PMM_UPDT_STUPTIM_MSK | PMC_PLL_UPDT_ID_MSK,
+			   PMC_PLL_UPDT_STUPTIM(0x3f) | core->id);
 
 	/* Recommended value for PMC_PLL_ACR */
 	if (core->characteristics->upll)
