@@ -515,7 +515,7 @@ static const struct {
 	  .pp = { "ethpll_divpmcck", },
 	  .pp_mux_table = { 10, },
 	  .pp_count = 1,
-	  .pp_chg_id = INT_MIN, },
+	  .pp_chg_id = 4, },
 
 	{ .n  = "gmac1_gclk",
 	  .id = 52,
