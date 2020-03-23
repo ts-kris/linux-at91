@@ -292,6 +292,22 @@
 				status = "disabled";
 			};
 
+			gmac0: ethernet@e2800000 {
+				compatible = "microchip,sama7g5-gem";
+				reg = <0xe2800000 0x1000>;
+				interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 51>, <&pmc PMC_TYPE_PERIPHERAL 51>, <&pmc PMC_TYPE_GCK 51>, <&pmc PMC_TYPE_GCK 53>;
+				clock-names = "pclk", "hclk", "tx_clk", "tsu_clk";
+				assigned-clocks = <&pmc PMC_TYPE_GCK 51>, <&pmc PMC_TYPE_GCK 53>;
+				assigned-clock-rates = <2500000>, <300000000>;
+				status = "disabled";
+			};
+
 			gic: interrupt-controller@e8c11000 {
 				compatible = "arm,cortex-a7-gic";
 				#interrupt-cells = <3>;
