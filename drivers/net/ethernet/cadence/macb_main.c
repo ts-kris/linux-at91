@@ -4104,6 +4104,10 @@ static int fu540_c000_clk_init(struct platform_device *pdev, struct clk **pclk,
 		return err;
 
 	tx_clk_mgmt = devm_kzalloc(&pdev->dev, sizeof(*tx_clk_mgmt), GFP_KERNEL);
+	if (!tx_clk_mgmt) {
+		err = -ENOMEM;
+		goto err_disable_clocks;
+	}
 
 	init.name = "sifive-gemgxl-mgmt";
 	init.ops = &fu540_c000_ops;
@@ -4113,14 +4117,29 @@ static int fu540_c000_clk_init(struct platform_device *pdev, struct clk **pclk,
 	tx_clk_mgmt->hw.init = &init;
 
 	*tx_clk = devm_clk_register(&pdev->dev, &tx_clk_mgmt->hw);
+	if (IS_ERR(*tx_clk)) {
+		err = PTR_ERR(*tx_clk);
+		goto err_disable_clocks;
+	}
 
 	err = clk_prepare_enable(*tx_clk);
-	if (err)
+	if (err) {
 		dev_err(&pdev->dev, "failed to enable tx_clk (%u)\n", err);
-	else
+		goto err_disable_clocks;
+	} else {
 		dev_info(&pdev->dev, "Registered clk switch '%s'\n", init.name);
+	}
 
 	return 0;
+
+err_disable_clocks:
+	clk_disable_unprepare(*tx_clk);
+	clk_disable_unprepare(*hclk);
+	clk_disable_unprepare(*pclk);
+	clk_disable_unprepare(*rx_clk);
+	clk_disable_unprepare(*tsu_clk);
+
+	return err;
 }
 
 static int fu540_c000_init(struct platform_device *pdev)
