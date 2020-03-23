@@ -102,7 +102,7 @@ static int sam9x60_frac_pll_prepare(struct clk_hw *hw)
 
 	regmap_write(regmap, PMC_PLL_UPDT, core->id);
 	regmap_read(regmap, PMC_PLL_CTRL1, &val);
-	cmul = (val & core->layout->div_mask) >> core->layout->div_shift;
+	cmul = (val & core->layout->mul_mask) >> core->layout->mul_shift;
 	cfrac = (val & core->layout->frac_mask) >> core->layout->frac_shift;
 
 	if (sam9x60_frac_pll_ready(regmap, core->id) &&
@@ -270,8 +270,7 @@ static int sam9x60_div_pll_prepare(struct clk_hw *hw)
 		goto unlock;
 
 	regmap_update_bits(regmap, PMC_PLL_CTRL0,
-			   (core->layout->div_mask << core->layout->div_shift) |
-			   (core->layout->endiv_mask << core->layout->endiv_shift),
+			   core->layout->div_mask | core->layout->endiv_mask,
 			   (div->div << core->layout->div_shift) |
 			   (1 << core->layout->endiv_shift));
 
@@ -298,7 +297,7 @@ static void sam9x60_div_pll_unprepare(struct clk_hw *hw)
 	regmap_write(regmap, PMC_PLL_UPDT, core->id);
 
 	regmap_update_bits(regmap, PMC_PLL_CTRL0,
-			   (core->layout->endiv_mask << core->layout->endiv_shift), 0);
+			   core->layout->endiv_mask, 0);
 
 	regmap_update_bits(regmap, PMC_PLL_UPDT, PMC_PLL_UPDT_UPDATE,
 			   PMC_PLL_UPDT_UPDATE);
