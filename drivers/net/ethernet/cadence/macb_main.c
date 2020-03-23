@@ -38,12 +38,12 @@
 #include <linux/pm_runtime.h>
 #include "macb.h"
 
-/* This structure is only used for MACB on SiFive FU540 devices */
-struct sifive_fu540_macb_mgmt {
+/* This structure is only used for MACB on SiFive FU540 and SAMA7G5 devices */
+static struct macb_tx_clk_mgmt {
 	void __iomem *reg;
 	unsigned long rate;
 	struct clk_hw hw;
-};
+} *tx_clk_mgmt;
 
 #define MACB_RX_BUFFER_SIZE	128
 #define RX_BUFFER_MULTIPLE	64  /* bytes */
@@ -3710,8 +3710,6 @@ static int macb_init(struct platform_device *pdev)
 /* max number of receive buffers */
 #define AT91ETHER_MAX_RX_DESCR	9
 
-static struct sifive_fu540_macb_mgmt *mgmt;
-
 /* Initialize and start the Receiver and Transmit subsystems */
 static int at91ether_start(struct net_device *dev)
 {
@@ -4047,7 +4045,7 @@ static int at91ether_init(struct platform_device *pdev)
 static unsigned long fu540_macb_tx_recalc_rate(struct clk_hw *hw,
 					       unsigned long parent_rate)
 {
-	return mgmt->rate;
+	return tx_clk_mgmt->rate;
 }
 
 static long fu540_macb_tx_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -4080,10 +4078,10 @@ static int fu540_macb_tx_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	rate = fu540_macb_tx_round_rate(hw, rate, &parent_rate);
 	if (rate != 125000000)
-		iowrite32(1, mgmt->reg);
+		iowrite32(1, tx_clk_mgmt->reg);
 	else
-		iowrite32(0, mgmt->reg);
-	mgmt->rate = rate;
+		iowrite32(0, tx_clk_mgmt->reg);
+	tx_clk_mgmt->rate = rate;
 
 	return 0;
 }
@@ -4105,21 +4103,16 @@ static int fu540_c000_clk_init(struct platform_device *pdev, struct clk **pclk,
 	if (err)
 		return err;
 
-	mgmt = devm_kzalloc(&pdev->dev, sizeof(*mgmt), GFP_KERNEL);
-	if (!mgmt)
-		return -ENOMEM;
+	tx_clk_mgmt = devm_kzalloc(&pdev->dev, sizeof(*tx_clk_mgmt), GFP_KERNEL);
 
 	init.name = "sifive-gemgxl-mgmt";
 	init.ops = &fu540_c000_ops;
 	init.flags = 0;
 	init.num_parents = 0;
 
-	mgmt->rate = 0;
-	mgmt->hw.init = &init;
+	tx_clk_mgmt->hw.init = &init;
 
-	*tx_clk = devm_clk_register(&pdev->dev, &mgmt->hw);
-	if (IS_ERR(*tx_clk))
-		return PTR_ERR(*tx_clk);
+	*tx_clk = devm_clk_register(&pdev->dev, &tx_clk_mgmt->hw);
 
 	err = clk_prepare_enable(*tx_clk);
 	if (err)
@@ -4132,9 +4125,9 @@ static int fu540_c000_clk_init(struct platform_device *pdev, struct clk **pclk,
 
 static int fu540_c000_init(struct platform_device *pdev)
 {
-	mgmt->reg = devm_platform_ioremap_resource(pdev, 1);
-	if (IS_ERR(mgmt->reg))
-		return PTR_ERR(mgmt->reg);
+	tx_clk_mgmt->reg = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(tx_clk_mgmt->reg))
+		return PTR_ERR(tx_clk_mgmt->reg);
 
 	return macb_init(pdev);
 }
