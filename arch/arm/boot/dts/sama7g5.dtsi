@@ -101,6 +101,12 @@
 				clock-names = "td_slck", "md_slck", "main_xtal";
 			};
 
+			reset_controller: rstc@e001d000 {
+				compatible = "microchip,sama7g5-rstc", "microchip,sam9x60-rstc";
+				reg = <0xe001d000 0x10>;
+				clocks = <&clk32k 0>;
+			};
+
 			clk32k: sckc@e001d050 {
 				compatible = "microchip,sam9x60-sckc";
 				reg = <0xe001d050 0x4>;
