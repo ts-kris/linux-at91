@@ -114,6 +114,13 @@
 				#clock-cells = <1>;
 			};
 
+			rtc: rtc@e001d0a8 {
+				compatible = "atmel,at91rm9200-rtc";
+				reg = <0xe001d0a8 0x30>;
+				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clk32k 1>;
+			};
+
 			sdmmc1: sdio-host@e1208000 {
 				compatible = "microchip,sam9x60-sdhci";
 				reg = <0xe1208000 0x300>;
