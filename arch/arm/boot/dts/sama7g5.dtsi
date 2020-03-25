@@ -121,6 +121,14 @@
 				clocks = <&clk32k 1>;
 			};
 
+			ps_wdt: watchdog@e001d180 {
+				compatible = "microchip,sam9x60-wdt";
+				reg = <0xe001d180 0x24>;
+				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clk32k 0>;
+				status = "disabled";
+			};
+
 			sdmmc1: sdio-host@e1208000 {
 				compatible = "microchip,sam9x60-sdhci";
 				reg = <0xe1208000 0x300>;
