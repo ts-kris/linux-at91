@@ -308,3 +308,7 @@
 		bias-disable;
 	};
 };
+
+&ps_wdt {
+	status = "okay";
+};
