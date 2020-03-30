@@ -329,6 +329,16 @@
 				status = "disabled";
 			};
 
+			gmac1: ethernet@e2804000 {
+				compatible = "microchip,sama7g5-emac";
+				reg = <0xe2804000 0x1000>;
+				interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 52>, <&pmc PMC_TYPE_PERIPHERAL 52>;
+				clock-names = "pclk", "hclk";
+				status = "disabled";
+			};
+
 			gic: interrupt-controller@e8c11000 {
 				compatible = "arm,cortex-a7-gic";
 				#interrupt-cells = <3>;
