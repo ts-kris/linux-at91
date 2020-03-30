@@ -100,6 +100,21 @@
 	};
 };
 
+&gmac1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
+	phy-mode = "rmii";
+	status = "okay";
+
+	ethernet-phy@0 {
+		reg = <0x0>;
+		interrupt-parent = <&pioA>;
+		interrupts = <PIN_PD31 IRQ_TYPE_LEVEL_LOW>;
+	};
+};
+
 &sdmmc1 {
 	bus-width = <4>;
 	mmc-ddr-1_8v;
@@ -274,6 +289,25 @@
 
 	pinctrl_gmac0_phy_irq: gmac0_phy_irq {
 		pinmux = <PIN_PA31__GPIO>;
+		bias-disable;
+	};
+
+	pinctrl_gmac1_default: gmac1_default {
+		pinmux = <PIN_PD30__G1_TXCK>,
+			 <PIN_PD22__G1_TX0>,
+			 <PIN_PD23__G1_TX1>,
+			 <PIN_PD21__G1_TXEN>,
+			 <PIN_PD25__G1_RX0>,
+			 <PIN_PD26__G1_RX1>,
+			 <PIN_PD27__G1_RXER>,
+			 <PIN_PD24__G1_RXDV>,
+			 <PIN_PD28__G1_MDC>,
+			 <PIN_PD29__G1_MDIO>;
+		bias-disable;
+	};
+
+	pinctrl_gmac1_phy_irq: gmac1_phy_irq {
+		pinmux = <PIN_PD31__GPIO>;
 		bias-disable;
 	};
 
