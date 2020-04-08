@@ -78,7 +78,7 @@
 			ranges;
 
 			pioA: pinctrl@e0014000 {
-				compatible = "atmel,sama5d2-pinctrl";
+				compatible = "microchip,sama7g5-pinctrl";
 				reg = <0xe0014000 0x800>;
 				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
