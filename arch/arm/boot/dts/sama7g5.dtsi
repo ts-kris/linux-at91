@@ -235,6 +235,11 @@
 				};
 			};
 
+			sfr: sfr@e1624000 {
+				compatible = "microchip,sama7g5-sfr", "syscon";
+				reg = <0xe1624000 0x4000>;
+			};
+
 			pit64b0: timer@e1800000 {
 				compatible = "microchip,sam9x60-pit64b";
 				reg = <0xe1800000 0x4000>;
