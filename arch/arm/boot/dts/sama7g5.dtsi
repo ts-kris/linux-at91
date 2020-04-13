@@ -63,6 +63,12 @@
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
+
+		usb_clk: usb_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <48000000>;
+		};
 	};
 
 	ahb {
@@ -70,6 +76,24 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
+
+		usb1: ohci@400000 {
+			compatible = "microchip,sama7g5-ohci", "usb-ohci";
+			reg = <0x00400000 0x100000>;
+			interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&pmc PMC_TYPE_PERIPHERAL 106>, <&pmc PMC_TYPE_PERIPHERAL 106>, <&usb_clk>;
+			clock-names = "ohci_clk", "hclk", "uhpck";
+			status = "disabled";
+		};
+
+		usb2: ehci@500000 {
+			compatible = "atmel,at91sam9g45-ehci", "usb-ehci";
+			reg = <0x00500000 0x100000>;
+			interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&pmc PMC_TYPE_CORE PMC_UTMI>, <&pmc PMC_TYPE_PERIPHERAL 106>;
+			clock-names = "usb_clk", "ehci_clk";
+			status = "disabled";
+		};
 
 		apb {
 			compatible = "simple-bus";
