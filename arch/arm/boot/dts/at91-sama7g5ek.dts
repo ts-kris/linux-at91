@@ -329,6 +329,11 @@
 			bias-disable;
 		};
 	};
+
+	pinctrl_usb_default: usb_default {
+		pinmux = <PIN_PE2__GPIO>;
+		bias-disable;
+	};
 };
 
 &pioA {
@@ -344,5 +349,20 @@
 };
 
 &ps_wdt {
+	status = "okay";
+};
+
+&usb1 {
+	num-ports = <3>;
+	atmel,vbus-gpio = <0
+			   &pioA PIN_PE2 GPIO_ACTIVE_HIGH
+			   0
+			  >;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usb_default>;
+	status = "okay";
+};
+
+&usb2 {
 	status = "okay";
 };
