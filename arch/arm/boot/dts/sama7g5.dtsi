@@ -102,8 +102,8 @@
 			};
 
 			reset_controller: rstc@e001d000 {
-				compatible = "microchip,sama7g5-rstc", "microchip,sam9x60-rstc";
-				reg = <0xe001d000 0x10>;
+				compatible = "microchip,sama7g5-rstc", "microchip,sam9x60-rstc", "syscon";
+				reg = <0xe001d000 0x100>;
 				clocks = <&clk32k 0>;
 			};
 
