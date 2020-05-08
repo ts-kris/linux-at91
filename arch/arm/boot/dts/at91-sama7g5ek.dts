@@ -125,7 +125,7 @@
 
 &sdmmc1 {
 	bus-width = <4>;
-	mmc-ddr-1_8v;
+	mmc-ddr-3_3v;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdmmc1_default>;
 	status = "okay";
@@ -349,7 +349,7 @@
 				 <PIN_PC0__SDMMC1_DAT1>,
 				 <PIN_PC1__SDMMC1_DAT2>,
 				 <PIN_PC2__SDMMC1_DAT3>;
-			bias-disable;
+			bias-pull-up;
 		};
 
 		ck_cd_rstn_vddsel {
@@ -357,7 +357,7 @@
 				 <PIN_PB28__SDMMC1_RSTN>,
 				 <PIN_PC5__SDMMC1_1V8SEL>,
 				 <PIN_PC4__SDMMC1_CD>;
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
