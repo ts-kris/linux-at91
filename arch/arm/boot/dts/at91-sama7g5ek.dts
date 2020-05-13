@@ -11,6 +11,7 @@
 #include "sama7g5-pinfunc.h"
 #include "sama7g5.dtsi"
 #include <dt-bindings/mfd/atmel-flexcom.h>
+#include <dt-bindings/input/input.h>
 
 / {
 	model = "Microchip SAMA7G5-EK";
@@ -33,6 +34,20 @@
 
 		main_xtal {
 			clock-frequency = <24000000>;
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_key_gpio_default>;
+
+		bp1 {
+			label = "PB_USER";
+			gpios = <&pioA PIN_PC17 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_PROG1>;
+			wakeup-source;
 		};
 	};
 };
@@ -317,6 +332,11 @@
 	pinctrl_gmac1_phy_irq: gmac1_phy_irq {
 		pinmux = <PIN_PD31__GPIO>;
 		bias-disable;
+	};
+
+	pinctrl_key_gpio_default: key_gpio_default {
+		pinmux = <PIN_PC17__GPIO>;
+		bias-pull-up;
 	};
 
 	pinctrl_sdmmc0_default: sdmmc0_default {
