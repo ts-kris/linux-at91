@@ -199,6 +199,28 @@
 	};
 };
 
+&flx11 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
+	status = "okay";
+
+	spi0: spi@400 {
+		compatible = "atmel,at91rm9200-spi";
+		reg = <0x400 0x200>;
+		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&pmc PMC_TYPE_PERIPHERAL 49>;
+		clock-names = "spi_clk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mikrobus1_spi &pinctrl_mikrobus1_spi_cs>;
+		atmel,fifo-size = <32>;
+		dmas = <&dma0 AT91_XDMAC_DT_PERID(27)>,
+			    <&dma0 AT91_XDMAC_DT_PERID(28)>;
+		dma-names = "rx", "tx";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};
+
 &i2c0 {
 	/*
 	 * Camera sensor add-on board Raspberry Pi v2.1 Camera extension
@@ -337,6 +359,18 @@
 	pinctrl_key_gpio_default: key_gpio_default {
 		pinmux = <PIN_PC17__GPIO>;
 		bias-pull-up;
+	};
+
+	pinctrl_mikrobus1_spi_cs: mikrobus1_spi_cs {
+		pinmux = <PIN_PB6__FLEXCOM11_IO3>;
+		bias-disable;
+	};
+
+	pinctrl_mikrobus1_spi: mikrobus1_spi {
+		pinmux = <PIN_PB3__FLEXCOM11_IO0>,
+			 <PIN_PB4__FLEXCOM11_IO1>,
+			 <PIN_PB5__FLEXCOM11_IO2>;
+		bias-disable;
 	};
 
 	pinctrl_sdmmc0_default: sdmmc0_default {
