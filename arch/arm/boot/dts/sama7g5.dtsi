@@ -315,6 +315,16 @@
 				status = "disabled";
 			};
 
+			flx11: flexcom@e2824000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <0xe2824000 0x200>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 49>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe2824000 0x800>;
+				status = "disabled";
+			};
+
 			trng: trng@e2010000 {
 				compatible = "atmel,at91sam9g45-trng";
 				reg = <0xe2010000 0x100>;
