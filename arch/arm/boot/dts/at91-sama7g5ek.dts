@@ -218,6 +218,13 @@
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		spidev0: spidev@0 {
+			compatible = "microchip,spidev";
+			spi-max-frequency = <120000000>;
+			reg = <0>;
+			status = "okay";
+		};
 	};
 };
 
