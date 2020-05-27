@@ -24,6 +24,8 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
 		i2c0 = &i2c0;
 	};
 
@@ -199,6 +201,50 @@
 	};
 };
 
+&flx4 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart1: serial@200 {
+		compatible = "atmel,at91sam9260-usart";
+		reg = <0x200 0x200>;
+		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx4_default>;
+		clocks = <&pmc PMC_TYPE_PERIPHERAL 42>;
+		clock-names = "usart";
+		dmas = <&dma1 AT91_XDMAC_DT_PERID(14)>,
+			<&dma1 AT91_XDMAC_DT_PERID(13)>;
+		dma-names = "tx", "rx";
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+		atmel,fifo-size = <16>;
+		status = "okay";
+	};
+};
+
+&flx7 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	uart2: serial@200 {
+		compatible = "atmel,at91sam9260-usart";
+		reg = <0x200 0x200>;
+		interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx7_default>;
+		clocks = <&pmc PMC_TYPE_PERIPHERAL 45>;
+		clock-names = "usart";
+		dmas = <&dma1 AT91_XDMAC_DT_PERID(20)>,
+			<&dma1 AT91_XDMAC_DT_PERID(19)>;
+		dma-names = "tx", "rx";
+		atmel,use-dma-rx;
+		atmel,use-dma-tx;
+		atmel,fifo-size = <16>;
+		status = "okay";
+	};
+};
+
 &flx11 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
 	status = "okay";
@@ -309,6 +355,18 @@
 	pinctrl_flx3_default: flx3_default {
 		pinmux = <PIN_PD16__FLEXCOM3_IO0>,
 			 <PIN_PD17__FLEXCOM3_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_flx4_default: flx4_default {
+		pinmux = <PIN_PD18__FLEXCOM4_IO0>,
+			 <PIN_PD19__FLEXCOM4_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_flx7_default: flx7_default {
+		pinmux = <PIN_PC7__FLEXCOM7_IO0>,
+			 <PIN_PC8__FLEXCOM7_IO1>;
 		bias-disable;
 	};
 
