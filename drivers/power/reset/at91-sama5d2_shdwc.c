@@ -29,7 +29,7 @@
 
 #include <soc/at91/at91sam9_ddrsdr.h>
 
-#define SLOW_CLOCK_FREQ	32768
+#define SLOW_CLOCK_FREQ	18500
 
 #define AT91_SHDW_CR	0x00		/* Shut Down Control Register */
 #define AT91_SHDW_SHDW		BIT(0)			/* Shut Down command */
