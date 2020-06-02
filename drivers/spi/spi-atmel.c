@@ -1489,9 +1489,11 @@ static void atmel_spi_init(struct atmel_spi *as)
 
 	if (as->caps.has_wdrbt) {
 		spi_writel(as, MR, SPI_BIT(WDRBT) | SPI_BIT(MODFDIS)
+					| SPI_BIT(LLB)
 				| SPI_BIT(MSTR));
 	} else {
-		spi_writel(as, MR, SPI_BIT(MSTR) | SPI_BIT(MODFDIS));
+		spi_writel(as, MR, SPI_BIT(MSTR) | SPI_BIT(MODFDIS)
+					| SPI_BIT(LLB));
 	}
 
 	if (as->use_pdc)
