@@ -38,12 +38,12 @@
 #include <linux/pm_runtime.h>
 #include "macb.h"
 
-/* This structure is only used for MACB on SiFive FU540 devices */
-struct sifive_fu540_macb_mgmt {
+/* This structure is only used for MACB on SiFive FU540 and SAMA7G5 devices */
+static struct macb_tx_clk_mgmt {
 	void __iomem *reg;
 	unsigned long rate;
 	struct clk_hw hw;
-};
+} *tx_clk_mgmt;
 
 #define MACB_RX_BUFFER_SIZE	128
 #define RX_BUFFER_MULTIPLE	64  /* bytes */
@@ -3681,15 +3681,15 @@ static int macb_init(struct platform_device *pdev)
 	if (!(bp->caps & MACB_CAPS_USRIO_DISABLED)) {
 		val = 0;
 		if (bp->phy_interface == PHY_INTERFACE_MODE_RGMII)
-			val = GEM_BIT(RGMII);
+			val = bp->usrio->rgmii;
 		else if (bp->phy_interface == PHY_INTERFACE_MODE_RMII &&
 			 (bp->caps & MACB_CAPS_USRIO_DEFAULT_IS_MII_GMII))
-			val = MACB_BIT(RMII);
+			val = bp->usrio->rmii;
 		else if (!(bp->caps & MACB_CAPS_USRIO_DEFAULT_IS_MII_GMII))
-			val = MACB_BIT(MII);
+			val = bp->usrio->mii;
 
 		if (bp->caps & MACB_CAPS_USRIO_HAS_CLKEN)
-			val |= MACB_BIT(CLKEN);
+			val |= bp->usrio->refclk;
 
 		macb_or_gem_writel(bp, USRIO, val);
 	}
@@ -3709,8 +3709,6 @@ static int macb_init(struct platform_device *pdev)
 #define AT91ETHER_MAX_RBUFF_SZ	0x600
 /* max number of receive buffers */
 #define AT91ETHER_MAX_RX_DESCR	9
-
-static struct sifive_fu540_macb_mgmt *mgmt;
 
 /* Initialize and start the Receiver and Transmit subsystems */
 static int at91ether_start(struct net_device *dev)
@@ -4047,7 +4045,7 @@ static int at91ether_init(struct platform_device *pdev)
 static unsigned long fu540_macb_tx_recalc_rate(struct clk_hw *hw,
 					       unsigned long parent_rate)
 {
-	return mgmt->rate;
+	return tx_clk_mgmt->rate;
 }
 
 static long fu540_macb_tx_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -4080,10 +4078,10 @@ static int fu540_macb_tx_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	rate = fu540_macb_tx_round_rate(hw, rate, &parent_rate);
 	if (rate != 125000000)
-		iowrite32(1, mgmt->reg);
+		iowrite32(1, tx_clk_mgmt->reg);
 	else
-		iowrite32(0, mgmt->reg);
-	mgmt->rate = rate;
+		iowrite32(0, tx_clk_mgmt->reg);
+	tx_clk_mgmt->rate = rate;
 
 	return 0;
 }
@@ -4105,39 +4103,190 @@ static int fu540_c000_clk_init(struct platform_device *pdev, struct clk **pclk,
 	if (err)
 		return err;
 
-	mgmt = devm_kzalloc(&pdev->dev, sizeof(*mgmt), GFP_KERNEL);
-	if (!mgmt)
-		return -ENOMEM;
+	tx_clk_mgmt = devm_kzalloc(&pdev->dev, sizeof(*tx_clk_mgmt), GFP_KERNEL);
+	if (!tx_clk_mgmt) {
+		err = -ENOMEM;
+		goto err_disable_clocks;
+	}
 
 	init.name = "sifive-gemgxl-mgmt";
 	init.ops = &fu540_c000_ops;
 	init.flags = 0;
 	init.num_parents = 0;
 
-	mgmt->rate = 0;
-	mgmt->hw.init = &init;
+	tx_clk_mgmt->hw.init = &init;
 
-	*tx_clk = devm_clk_register(&pdev->dev, &mgmt->hw);
-	if (IS_ERR(*tx_clk))
-		return PTR_ERR(*tx_clk);
+	*tx_clk = devm_clk_register(&pdev->dev, &tx_clk_mgmt->hw);
+	if (IS_ERR(*tx_clk)) {
+		err = PTR_ERR(*tx_clk);
+		goto err_disable_clocks;
+	}
 
 	err = clk_prepare_enable(*tx_clk);
-	if (err)
+	if (err) {
 		dev_err(&pdev->dev, "failed to enable tx_clk (%u)\n", err);
-	else
+		goto err_disable_clocks;
+	} else {
 		dev_info(&pdev->dev, "Registered clk switch '%s'\n", init.name);
+	}
 
 	return 0;
+
+err_disable_clocks:
+	clk_disable_unprepare(*tx_clk);
+	clk_disable_unprepare(*hclk);
+	clk_disable_unprepare(*pclk);
+	clk_disable_unprepare(*rx_clk);
+	clk_disable_unprepare(*tsu_clk);
+
+	return err;
 }
 
 static int fu540_c000_init(struct platform_device *pdev)
 {
-	mgmt->reg = devm_platform_ioremap_resource(pdev, 1);
-	if (IS_ERR(mgmt->reg))
-		return PTR_ERR(mgmt->reg);
+	tx_clk_mgmt->reg = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(tx_clk_mgmt->reg))
+		return PTR_ERR(tx_clk_mgmt->reg);
 
 	return macb_init(pdev);
 }
+
+static unsigned long macb_sama7g5_tx_clk_recalc_rate(struct clk_hw *hw,
+						     unsigned long parent_rate)
+{
+	return tx_clk_mgmt->rate;
+}
+
+static int macb_sama7g5_tx_clk_determine_rate(struct clk_hw *hw,
+					      struct clk_rate_request *req)
+{
+	if (req->rate <= 2500000)
+		req->rate = 2500000;
+	else if (req->rate > 2500000 && req->rate <= 25000000)
+		req->rate = 25000000;
+	else if (req->rate > 25000000 && req->rate <= 125000000)
+		req->rate = 125000000;
+	else
+		return -EINVAL;
+
+	tx_clk_mgmt->rate = req->rate;
+
+	return 0;
+}
+
+static int macb_sama7g5_tx_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+					unsigned long parent_rate)
+{
+	struct clk *parent = clk_hw_get_parent(hw)->clk;
+	bool reenable = false;
+	int ret;
+
+	if (__clk_is_enabled(hw->clk)) {
+		reenable = true;
+		/* This will also disable the parent. */
+		clk_disable_unprepare(hw->clk);
+	}
+
+	ret = clk_set_rate(parent, rate);
+	if (ret)
+		return ret;
+
+	if (reenable) {
+		/* This will also enable the parent. */
+		ret = clk_prepare_enable(hw->clk);
+	}
+
+	return ret;
+}
+
+static const struct clk_ops sama7g5_tx_clk_ops = {
+	.recalc_rate = macb_sama7g5_tx_clk_recalc_rate,
+	.determine_rate = macb_sama7g5_tx_clk_determine_rate,
+	.set_rate = macb_sama7g5_tx_clk_set_rate,
+};
+
+static int macb_sama7g5_clk_init(struct platform_device *pdev,
+				 struct clk **pclk, struct clk **hclk,
+				 struct clk **tx_clk, struct clk **rx_clk,
+				 struct clk **tsu_clk)
+{
+	struct clk_init_data init;
+	const char *parents[1];
+	int ret;
+
+	ret = macb_clk_init(pdev, pclk, hclk, tx_clk, rx_clk, tsu_clk);
+	if (ret)
+		return ret;
+
+	if (!tx_clk) {
+		ret = -EINVAL;
+		goto err_disable_clks;
+	}
+
+	tx_clk_mgmt = devm_kzalloc(&pdev->dev, sizeof(*tx_clk_mgmt), GFP_KERNEL);
+	if (!tx_clk_mgmt) {
+		ret = -ENOMEM;
+		goto err_disable_tx_clk;
+	}
+
+	/* Disable it here. It will be handled via macb_tx_clk. */
+	clk_disable_unprepare(*tx_clk);
+
+	parents[0] = __clk_get_name(*tx_clk);
+	init.name = "macb_tx_clk";
+	init.ops = &sama7g5_tx_clk_ops;
+	init.flags = 0;
+	init.num_parents = 1;
+	init.parent_names = parents;
+
+	tx_clk_mgmt->hw.init = &init;
+	tx_clk_mgmt->rate = clk_get_rate(*tx_clk);
+	*tx_clk = devm_clk_register(&pdev->dev, &tx_clk_mgmt->hw);
+	if (IS_ERR(*tx_clk)) {
+		ret = PTR_ERR(*tx_clk);
+		goto err_disable_clks;
+	}
+
+	ret = clk_prepare_enable(*tx_clk);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to enable macb_tx_clk (%u)\n", ret);
+		goto err_disable_clks;
+	}
+
+	return ret;
+
+err_disable_tx_clk:
+	clk_disable_unprepare(*tx_clk);
+err_disable_clks:
+	clk_disable_unprepare(*hclk);
+	clk_disable_unprepare(*pclk);
+	clk_disable_unprepare(*rx_clk);
+	clk_disable_unprepare(*tsu_clk);
+
+	return ret;
+}
+
+static const struct macb_usrio_config macb_default_usrio = {
+	.mii = MACB_BIT(MII),
+	.rmii = MACB_BIT(RMII),
+	.rgmii = GEM_BIT(RGMII),
+	.refclk = MACB_BIT(CLKEN),
+};
+
+static const struct macb_usrio_config sama7g5_usrio = {
+	.mii = 1,
+	.rmii = 0,
+	.rgmii = 2,
+	.refclk = BIT(2),
+	.hdctrl = BIT(6),
+};
+
+static const struct macb_usrio_config sama7g5_usrio_emac = {
+	.mii = 0,
+	.rmii = 1,
+	.refclk = BIT(2),
+	.hdctrl = BIT(6),
+};
 
 static const struct macb_config fu540_c000_config = {
 	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE | MACB_CAPS_JUMBO |
@@ -4146,12 +4295,14 @@ static const struct macb_config fu540_c000_config = {
 	.clk_init = fu540_c000_clk_init,
 	.init = fu540_c000_init,
 	.jumbo_max_len = 10240,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config at91sam9260_config = {
 	.caps = MACB_CAPS_USRIO_HAS_CLKEN | MACB_CAPS_USRIO_DEFAULT_IS_MII_GMII,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config sama5d3macb_config = {
@@ -4159,6 +4310,7 @@ static const struct macb_config sama5d3macb_config = {
 	      | MACB_CAPS_USRIO_HAS_CLKEN | MACB_CAPS_USRIO_DEFAULT_IS_MII_GMII,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config pc302gem_config = {
@@ -4166,6 +4318,7 @@ static const struct macb_config pc302gem_config = {
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config sama5d2_config = {
@@ -4173,6 +4326,7 @@ static const struct macb_config sama5d2_config = {
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config sama5d3_config = {
@@ -4182,6 +4336,7 @@ static const struct macb_config sama5d3_config = {
 	.clk_init = macb_clk_init,
 	.init = macb_init,
 	.jumbo_max_len = 10240,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config sama5d4_config = {
@@ -4189,18 +4344,21 @@ static const struct macb_config sama5d4_config = {
 	.dma_burst_length = 4,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config emac_config = {
 	.caps = MACB_CAPS_NEEDS_RSTONUBR | MACB_CAPS_MACB_IS_EMAC,
 	.clk_init = at91ether_clk_init,
 	.init = at91ether_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config np4_config = {
 	.caps = MACB_CAPS_USRIO_DISABLED,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config zynqmp_config = {
@@ -4211,6 +4369,7 @@ static const struct macb_config zynqmp_config = {
 	.clk_init = macb_clk_init,
 	.init = macb_init,
 	.jumbo_max_len = 10240,
+	.usrio = &macb_default_usrio,
 };
 
 static const struct macb_config zynq_config = {
@@ -4219,6 +4378,23 @@ static const struct macb_config zynq_config = {
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
+	.usrio = &macb_default_usrio,
+};
+
+static const struct macb_config sama7g5_gem_config = {
+	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE,
+	.dma_burst_length = 16,
+	.clk_init = macb_sama7g5_clk_init,
+	.init = macb_init,
+	.usrio = &sama7g5_usrio,
+};
+
+static const struct macb_config sama7g5_emac_config = {
+	.caps = MACB_CAPS_USRIO_DEFAULT_IS_MII_GMII | MACB_CAPS_USRIO_HAS_CLKEN,
+	.dma_burst_length = 16,
+	.clk_init = macb_clk_init,
+	.init = macb_init,
+	.usrio = &sama7g5_usrio_emac,
 };
 
 static const struct of_device_id macb_dt_ids[] = {
@@ -4238,6 +4414,8 @@ static const struct of_device_id macb_dt_ids[] = {
 	{ .compatible = "cdns,zynqmp-gem", .data = &zynqmp_config},
 	{ .compatible = "cdns,zynq-gem", .data = &zynq_config },
 	{ .compatible = "sifive,fu540-c000-gem", .data = &fu540_c000_config },
+	{ .compatible = "microchip,sama7g5-gem", .data = &sama7g5_gem_config },
+	{ .compatible = "microchip,sama7g5-emac", .data = &sama7g5_emac_config },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, macb_dt_ids);
@@ -4339,6 +4517,8 @@ static int macb_probe(struct platform_device *pdev)
 	if (of_get_property(np, "magic-packet", NULL))
 		bp->wol |= MACB_WOL_HAS_MAGIC_PACKET;
 	device_init_wakeup(&pdev->dev, bp->wol & MACB_WOL_HAS_MAGIC_PACKET);
+
+	bp->usrio = macb_config->usrio;
 
 	spin_lock_init(&bp->lock);
 
