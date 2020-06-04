@@ -478,6 +478,11 @@
 		pinmux = <PIN_PE2__GPIO>;
 		bias-disable;
 	};
+
+	pinctrl_usba_vbus: usba_vbus {
+		pinmux = <PIN_PC14__GPIO>;
+		bias-disable;
+	};
 };
 
 &pioA {
@@ -493,6 +498,13 @@
 };
 
 &ps_wdt {
+	status = "okay";
+};
+
+&usb0 {
+	atmel,vbus-gpio = <&pioA PIN_PC14 GPIO_ACTIVE_HIGH>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usba_vbus>;
 	status = "okay";
 };
 
