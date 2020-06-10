@@ -4159,16 +4159,9 @@ static const struct macb_usrio_config macb_default_usrio = {
 };
 
 static const struct macb_usrio_config sama7g5_usrio = {
-	.mii = 1,
-	.rmii = 0,
-	.rgmii = 2,
-	.refclk = BIT(2),
-	.hdctrl = BIT(6),
-};
-
-static const struct macb_usrio_config sama7g5_usrio_emac = {
 	.mii = 0,
 	.rmii = 1,
+	.rgmii = 2,
 	.refclk = BIT(2),
 	.hdctrl = BIT(6),
 };
@@ -4279,7 +4272,7 @@ static const struct macb_config sama7g5_emac_config = {
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
-	.usrio = &sama7g5_usrio_emac,
+	.usrio = &sama7g5_usrio,
 };
 
 static const struct of_device_id macb_dt_ids[] = {
