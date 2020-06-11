@@ -4151,121 +4151,6 @@ static int fu540_c000_init(struct platform_device *pdev)
 	return macb_init(pdev);
 }
 
-static unsigned long macb_sama7g5_tx_clk_recalc_rate(struct clk_hw *hw,
-						     unsigned long parent_rate)
-{
-	return tx_clk_mgmt->rate;
-}
-
-static int macb_sama7g5_tx_clk_determine_rate(struct clk_hw *hw,
-					      struct clk_rate_request *req)
-{
-	if (req->rate <= 2500000)
-		req->rate = 2500000;
-	else if (req->rate > 2500000 && req->rate <= 25000000)
-		req->rate = 25000000;
-	else if (req->rate > 25000000 && req->rate <= 125000000)
-		req->rate = 125000000;
-	else
-		return -EINVAL;
-
-	tx_clk_mgmt->rate = req->rate;
-
-	return 0;
-}
-
-static int macb_sama7g5_tx_clk_set_rate(struct clk_hw *hw, unsigned long rate,
-					unsigned long parent_rate)
-{
-	struct clk *parent = clk_hw_get_parent(hw)->clk;
-	bool reenable = false;
-	int ret;
-
-	if (__clk_is_enabled(hw->clk)) {
-		reenable = true;
-		/* This will also disable the parent. */
-		clk_disable_unprepare(hw->clk);
-	}
-
-	ret = clk_set_rate(parent, rate);
-	if (ret)
-		return ret;
-
-	if (reenable) {
-		/* This will also enable the parent. */
-		ret = clk_prepare_enable(hw->clk);
-	}
-
-	return ret;
-}
-
-static const struct clk_ops sama7g5_tx_clk_ops = {
-	.recalc_rate = macb_sama7g5_tx_clk_recalc_rate,
-	.determine_rate = macb_sama7g5_tx_clk_determine_rate,
-	.set_rate = macb_sama7g5_tx_clk_set_rate,
-};
-
-static int macb_sama7g5_clk_init(struct platform_device *pdev,
-				 struct clk **pclk, struct clk **hclk,
-				 struct clk **tx_clk, struct clk **rx_clk,
-				 struct clk **tsu_clk)
-{
-	struct clk_init_data init;
-	const char *parents[1];
-	int ret;
-
-	ret = macb_clk_init(pdev, pclk, hclk, tx_clk, rx_clk, tsu_clk);
-	if (ret)
-		return ret;
-
-	if (!tx_clk) {
-		ret = -EINVAL;
-		goto err_disable_clks;
-	}
-
-	tx_clk_mgmt = devm_kzalloc(&pdev->dev, sizeof(*tx_clk_mgmt), GFP_KERNEL);
-	if (!tx_clk_mgmt) {
-		ret = -ENOMEM;
-		goto err_disable_tx_clk;
-	}
-
-	/* Disable it here. It will be handled via macb_tx_clk. */
-	clk_disable_unprepare(*tx_clk);
-
-	parents[0] = __clk_get_name(*tx_clk);
-	init.name = "macb_tx_clk";
-	init.ops = &sama7g5_tx_clk_ops;
-	init.flags = 0;
-	init.num_parents = 1;
-	init.parent_names = parents;
-
-	tx_clk_mgmt->hw.init = &init;
-	tx_clk_mgmt->rate = clk_get_rate(*tx_clk);
-	*tx_clk = devm_clk_register(&pdev->dev, &tx_clk_mgmt->hw);
-	if (IS_ERR(*tx_clk)) {
-		ret = PTR_ERR(*tx_clk);
-		goto err_disable_clks;
-	}
-
-	ret = clk_prepare_enable(*tx_clk);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to enable macb_tx_clk (%u)\n", ret);
-		goto err_disable_clks;
-	}
-
-	return ret;
-
-err_disable_tx_clk:
-	clk_disable_unprepare(*tx_clk);
-err_disable_clks:
-	clk_disable_unprepare(*hclk);
-	clk_disable_unprepare(*pclk);
-	clk_disable_unprepare(*rx_clk);
-	clk_disable_unprepare(*tsu_clk);
-
-	return ret;
-}
-
 static const struct macb_usrio_config macb_default_usrio = {
 	.mii = MACB_BIT(MII),
 	.rmii = MACB_BIT(RMII),
@@ -4274,16 +4159,9 @@ static const struct macb_usrio_config macb_default_usrio = {
 };
 
 static const struct macb_usrio_config sama7g5_usrio = {
-	.mii = 1,
-	.rmii = 0,
-	.rgmii = 2,
-	.refclk = BIT(2),
-	.hdctrl = BIT(6),
-};
-
-static const struct macb_usrio_config sama7g5_usrio_emac = {
 	.mii = 0,
 	.rmii = 1,
+	.rgmii = 2,
 	.refclk = BIT(2),
 	.hdctrl = BIT(6),
 };
@@ -4384,7 +4262,7 @@ static const struct macb_config zynq_config = {
 static const struct macb_config sama7g5_gem_config = {
 	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE,
 	.dma_burst_length = 16,
-	.clk_init = macb_sama7g5_clk_init,
+	.clk_init = macb_clk_init,
 	.init = macb_init,
 	.usrio = &sama7g5_usrio,
 };
@@ -4394,7 +4272,7 @@ static const struct macb_config sama7g5_emac_config = {
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
-	.usrio = &sama7g5_usrio_emac,
+	.usrio = &sama7g5_usrio,
 };
 
 static const struct of_device_id macb_dt_ids[] = {
