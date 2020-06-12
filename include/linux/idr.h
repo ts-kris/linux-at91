@@ -169,10 +169,7 @@ static inline bool idr_is_empty(const struct idr *idr)
  * Each idr_preload() should be matched with an invocation of this
  * function.  See idr_preload() for details.
  */
-static inline void idr_preload_end(void)
-{
-	preempt_enable();
-}
+void idr_preload_end(void);
 
 /**
  * idr_for_each_entry() - Iterate over an IDR's elements of a given type.
@@ -185,7 +182,7 @@ static inline void idr_preload_end(void)
  * is convenient for a "not found" value.
  */
 #define idr_for_each_entry(idr, entry, id)			\
-	for (id = 0; ((entry) = idr_get_next(idr, &(id))) != NULL; ++id)
+	for (id = 0; ((entry) = idr_get_next(idr, &(id))) != NULL; id += 1U)
 
 /**
  * idr_for_each_entry_ul() - Iterate over an IDR's elements of a given type.

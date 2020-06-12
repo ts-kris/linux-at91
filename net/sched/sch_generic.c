@@ -575,8 +575,24 @@ struct Qdisc noop_qdisc = {
 	.ops		=	&noop_qdisc_ops,
 	.q.lock		=	__SPIN_LOCK_UNLOCKED(noop_qdisc.q.lock),
 	.dev_queue	=	&noop_netdev_queue,
+#ifdef CONFIG_PREEMPT_RT_BASE
+	.running	=	__SEQLOCK_UNLOCKED(noop_qdisc.running),
+#else
 	.running	=	SEQCNT_ZERO(noop_qdisc.running),
+#endif
 	.busylock	=	__SPIN_LOCK_UNLOCKED(noop_qdisc.busylock),
+	.gso_skb = {
+		.next = (struct sk_buff *)&noop_qdisc.gso_skb,
+		.prev = (struct sk_buff *)&noop_qdisc.gso_skb,
+		.qlen = 0,
+		.lock = __SPIN_LOCK_UNLOCKED(noop_qdisc.gso_skb.lock),
+	},
+	.skb_bad_txq = {
+		.next = (struct sk_buff *)&noop_qdisc.skb_bad_txq,
+		.prev = (struct sk_buff *)&noop_qdisc.skb_bad_txq,
+		.qlen = 0,
+		.lock = __SPIN_LOCK_UNLOCKED(noop_qdisc.skb_bad_txq.lock),
+	},
 };
 EXPORT_SYMBOL(noop_qdisc);
 
@@ -864,9 +880,17 @@ struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
 	lockdep_set_class(&sch->busylock,
 			  dev->qdisc_tx_busylock ?: &qdisc_tx_busylock);
 
+#ifdef CONFIG_PREEMPT_RT_BASE
+	seqlock_init(&sch->running);
+	lockdep_set_class(&sch->running.seqcount,
+			  dev->qdisc_running_key ?: &qdisc_running_key);
+	lockdep_set_class(&sch->running.lock,
+			  dev->qdisc_running_key ?: &qdisc_running_key);
+#else
 	seqcount_init(&sch->running);
 	lockdep_set_class(&sch->running,
 			  dev->qdisc_running_key ?: &qdisc_running_key);
+#endif
 
 	sch->ops = ops;
 	sch->flags = ops->static_flags;
@@ -1192,7 +1216,7 @@ void dev_deactivate_many(struct list_head *head)
 	/* Wait for outstanding qdisc_run calls. */
 	list_for_each_entry(dev, head, close_list) {
 		while (some_qdisc_is_busy(dev))
-			yield();
+			msleep(1);
 		/* The new qdisc is assigned at this point so we can safely
 		 * unwind stale skb lists and qdisc statistics
 		 */
@@ -1253,8 +1277,6 @@ static void dev_init_scheduler_queue(struct net_device *dev,
 
 	rcu_assign_pointer(dev_queue->qdisc, qdisc);
 	dev_queue->qdisc_sleeping = qdisc;
-	__skb_queue_head_init(&qdisc->gso_skb);
-	__skb_queue_head_init(&qdisc->skb_bad_txq);
 }
 
 void dev_init_scheduler(struct net_device *dev)
