@@ -600,7 +600,8 @@ static void macb_mac_link_up(struct phylink_config *config, unsigned int mode,
 	unsigned int q;
 
 	if (!(bp->caps & MACB_CAPS_MACB_IS_EMAC)) {
-		macb_set_tx_clk(bp->tx_clk, bp->speed, ndev);
+		if (!(bp->caps & MACB_CAPS_CLK_FIXED))
+			macb_set_tx_clk(bp->tx_clk, bp->speed, ndev);
 
 		/* Initialize rings & buffers as clearing MACB_BIT(TE) in link down
 		 * cleared the pipeline and control registers.
@@ -4260,7 +4261,7 @@ static const struct macb_config zynq_config = {
 };
 
 static const struct macb_config sama7g5_gem_config = {
-	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE,
+	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE | MACB_CAPS_CLK_FIXED,
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
