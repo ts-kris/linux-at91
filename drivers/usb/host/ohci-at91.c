@@ -93,6 +93,30 @@ static void at91_manage_phy(struct ohci_at91_priv *ohci_at91, bool enable)
 	usleep_range(45, 150);
 }
 
+static void at91_utmi_config(struct ohci_at91_priv *ohci_at91, int port)
+{
+	if (!ohci_at91->sfr_regmap) return;
+
+	/* Set TXPREEMPAMPTUNE acording to the datasheet to 1X*/
+	switch(port) {
+	case 0:
+		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R0,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	case 1:
+		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R1,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	case 2:
+		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R2,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	}
+}
+
 static void at91_start_clock(struct ohci_at91_priv *ohci_at91)
 {
 	if (ohci_at91->clocked)
@@ -133,6 +157,8 @@ static void at91_start_hc(struct platform_device *pdev)
 	 * Start the USB clocks.
 	 */
 	at91_start_clock(ohci_at91);
+
+	at91_utmi_config(ohci_at91, 2);
 
 	/*
 	 * The USB host controller must remain in reset.
