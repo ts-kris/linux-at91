@@ -1906,6 +1906,30 @@ static void signal_vbus(struct usba_udc *udc, int port, bool enable)
 	}
 }
 
+static void utmi_config(struct usba_udc *udc, int port)
+{
+	if (!udc->sfr) return;
+
+	/* Set TXPREEMPAMPTUNE acording to the datasheet to 1X*/
+	switch(port) {
+	case 0:
+		regmap_update_bits(udc->sfr, AT91_SFR_UTMI0R0,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	case 1:
+		regmap_update_bits(udc->sfr, AT91_SFR_UTMI0R1,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	case 2:
+		regmap_update_bits(udc->sfr, AT91_SFR_UTMI0R2,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
+				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
+		break;
+	}
+}
+
 static int start_clock(struct usba_udc *udc)
 {
 	int ret;
@@ -2372,6 +2396,8 @@ static int usba_udc_probe(struct platform_device *pdev)
 	clk_disable_unprepare(pclk);
 
 	udc->usba_ep = atmel_udc_of_init(pdev, udc);
+
+	utmi_config(udc, 0);
 
 	toggle_bias(udc, 0);
 
