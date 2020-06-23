@@ -26,6 +26,8 @@
 #define AT91_SFR_UTMI0R2	0x2048	/* UTMI0 Configuration Register */
 #define AT91_SFR_UTMI0RX_VBUS	BIT(25) /* VBUS Valid bit */
 
+#define AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X	BIT(23) /* Set TXPREEMPAMPTUNE 1x */
+
 /* Field definitions */
 #define AT91_SFR_CCFG_EBI_CSA(cs, val)		((val) << (cs))
 #define AT91_SFR_CCFG_EBI_DBPUC			BIT(8)
