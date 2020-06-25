@@ -53,6 +53,29 @@
 			wakeup-source;
 		};
 	};
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_led_gpio_default>;
+		status = "okay";
+
+		red {
+			label = "red";
+			gpios = <&pioA PIN_PB8 GPIO_ACTIVE_HIGH>;
+		};
+
+		green {
+			label = "green";
+			gpios = <&pioA PIN_PA13 GPIO_ACTIVE_HIGH>;
+		};
+
+		blue {
+			label = "blue";
+			gpios = <&pioA PIN_PD20 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
 };
 
 &dma0 {
@@ -423,6 +446,13 @@
 
 	pinctrl_key_gpio_default: key_gpio_default {
 		pinmux = <PIN_PC17__GPIO>;
+		bias-pull-up;
+	};
+
+	pinctrl_led_gpio_default: led_gpio_default {
+		pinmux = <PIN_PA13__GPIO>,
+			 <PIN_PB8__GPIO>,
+			 <PIN_PD20__GPIO>;
 		bias-pull-up;
 	};
 
