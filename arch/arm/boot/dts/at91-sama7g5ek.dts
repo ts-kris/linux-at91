@@ -179,33 +179,6 @@
 	status = "okay";
 };
 
-&flx1 {
-	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
-	status = "okay";
-
-	i2c0: i2c@600 {
-		compatible = "microchip,sam9x60-i2c";
-		reg = <0x600 0x200>;
-		interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_flx1_default>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
-		atmel,fifo-size = <32>;
-		dmas = <&dma0 AT91_XDMAC_DT_PERID(7)>,
-			<&dma0 AT91_XDMAC_DT_PERID(8)>;
-		dma-names = "rx", "tx";
-		atmel,use-dma-rx;
-		atmel,use-dma-tx;
-
-		i2c-analog-filter;
-		i2c-digital-filter;
-		i2c-digital-filter-width-ns = <35>;
-		status = "okay";
-	};
-};
-
 &flx3 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
@@ -267,6 +240,20 @@
 		atmel,use-dma-rx;
 		atmel,use-dma-tx;
 		atmel,fifo-size = <16>;
+		status = "okay";
+	};
+};
+
+&flx8 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c0: i2c@600 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c0_default>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
 		status = "okay";
 	};
 };
@@ -379,12 +366,6 @@
 };
 
 &pioA {
-	pinctrl_flx1_default: flx1_default {
-		pinmux = <PIN_PC9__FLEXCOM1_IO0>,
-			 <PIN_PC10__FLEXCOM1_IO1>;
-		bias-disable;
-	};
-
 	pinctrl_flx3_default: flx3_default {
 		pinmux = <PIN_PD16__FLEXCOM3_IO0>,
 			 <PIN_PD17__FLEXCOM3_IO1>;
@@ -444,6 +425,12 @@
 
 	pinctrl_gmac1_phy_irq: gmac1_phy_irq {
 		pinmux = <PIN_PD31__GPIO>;
+		bias-disable;
+	};
+
+	pinctrl_i2c0_default: i2c0_default {
+		pinmux = <PIN_PC14__FLEXCOM8_IO0>,
+			 <PIN_PC13__FLEXCOM8_IO1>;
 		bias-disable;
 	};
 
