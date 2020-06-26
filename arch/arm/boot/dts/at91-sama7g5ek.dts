@@ -308,8 +308,8 @@
 		VANA-supply = <&vana_imx219>; /* 2.8v */
 		VDIG-supply = <&vdig_imx219>; /* 1.8v */
 		VDDL-supply = <&vddl_imx219>; /* 1.2v */
-		reset-gpios = <&pioA PIN_PC30 GPIO_ACTIVE_HIGH>,
-				<&pioA PIN_PC31 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&pioA PIN_PE1 GPIO_ACTIVE_HIGH>,
+				<&pioA PIN_PE2 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 
 		imx219_clk: camera-clk {
@@ -513,12 +513,12 @@
 
 &pioA {
 	pinctrl_sensor_power: sensor_power {
-		pinmux = <PIN_PC30__GPIO>;
+		pinmux = <PIN_PE1__GPIO>;
 		bias-disable;
 	};
 
 	pinctrl_sensor_reset: sensor_reset {
-		pinmux = <PIN_PC31__GPIO>;
+		pinmux = <PIN_PE2__GPIO>;
 		bias-disable;
 	};
 };
