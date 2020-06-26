@@ -48,7 +48,7 @@
 
 		bp1 {
 			label = "PB_USER";
-			gpios = <&pioA PIN_PC17 GPIO_ACTIVE_LOW>;
+			gpios = <&pioA PIN_PA12 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_PROG1>;
 			wakeup-source;
 		};
