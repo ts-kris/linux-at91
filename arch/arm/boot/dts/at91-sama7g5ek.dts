@@ -514,12 +514,12 @@
 	};
 
 	pinctrl_usb_default: usb_default {
-		pinmux = <PIN_PE2__GPIO>;
+		pinmux = <PIN_PC6__GPIO>;
 		bias-disable;
 	};
 
 	pinctrl_usba_vbus: usba_vbus {
-		pinmux = <PIN_PC14__GPIO>;
+		pinmux = <PIN_PD11__GPIO>;
 		bias-disable;
 	};
 };
@@ -541,7 +541,7 @@
 };
 
 &usb0 {
-	atmel,vbus-gpio = <&pioA PIN_PC14 GPIO_ACTIVE_HIGH>;
+	atmel,vbus-gpio = <&pioA PIN_PD11 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usba_vbus>;
 	status = "okay";
@@ -550,7 +550,7 @@
 &usb1 {
 	num-ports = <3>;
 	atmel,vbus-gpio = <0
-			   &pioA PIN_PE2 GPIO_ACTIVE_HIGH
+			   &pioA PIN_PC6 GPIO_ACTIVE_HIGH
 			   0
 			  >;
 	pinctrl-names = "default";
