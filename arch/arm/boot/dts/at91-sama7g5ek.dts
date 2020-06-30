@@ -152,7 +152,7 @@
 	ethernet-phy@0 {
 		reg = <0x0>;
 		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PD31 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
 	};
 };
 
@@ -395,7 +395,6 @@
 			 <PIN_PA29__G0_RX3>,
 			 <PIN_PA15__G0_TXEN>,
 			 <PIN_PA24__G0_TXCK>,
-			 <PIN_PA21__G0_RXER>,
 			 <PIN_PA30__G0_RXCK>,
 			 <PIN_PA18__G0_RXDV>,
 			 <PIN_PA22__G0_MDC>,
@@ -424,7 +423,7 @@
 	};
 
 	pinctrl_gmac1_phy_irq: gmac1_phy_irq {
-		pinmux = <PIN_PD31__GPIO>;
+		pinmux = <PIN_PA21__GPIO>;
 		bias-disable;
 	};
 
