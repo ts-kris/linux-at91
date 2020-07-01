@@ -382,8 +382,8 @@
 	};
 
 	pinctrl_flx7_default: flx7_default {
-		pinmux = <PIN_PC7__FLEXCOM7_IO0>,
-			 <PIN_PC8__FLEXCOM7_IO1>;
+		pinmux = <PIN_PC23__FLEXCOM7_IO0>,
+			 <PIN_PC24__FLEXCOM7_IO1>;
 		bias-disable;
 	};
 
