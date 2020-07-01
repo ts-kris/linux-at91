@@ -159,6 +159,9 @@
 &sdmmc0 {
 	bus-width = <8>;
 	mmc-ddr-1_8v;
+	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	non-removable;
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
@@ -474,8 +477,7 @@
 		ck_cd_rstn_vddsel {
 			pinmux = <PIN_PA0__SDMMC0_CK>,
 				 <PIN_PA2__SDMMC0_RSTN>,
-				 <PIN_PA11__SDMMC0_DS>,
-				 <PIN_PA14__SDMMC0_CD>;
+				 <PIN_PA11__SDMMC0_DS>;
 			bias-pull-up;
 		};
 	};
