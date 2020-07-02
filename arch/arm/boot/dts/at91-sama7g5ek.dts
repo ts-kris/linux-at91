@@ -29,6 +29,7 @@
 		serial2 = &uart2;
 		i2c0 = &i2c1;
 		i2c1 = &i2c8;
+		i2c2 = &i2c9;
 	};
 
 	clocks {
@@ -277,6 +278,20 @@
 	};
 };
 
+&flx9 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c9: i2c@600 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c9_default>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
 &flx11 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
 	status = "okay";
@@ -455,6 +470,12 @@
 	pinctrl_i2c8_default: i2c8_default {
 		pinmux = <PIN_PC14__FLEXCOM8_IO0>,
 			 <PIN_PC13__FLEXCOM8_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_i2c9_default: i2c9_default {
+		pinmux = <PIN_PC18__FLEXCOM9_IO0>,
+			 <PIN_PC19__FLEXCOM9_IO1>;
 		bias-disable;
 	};
 
