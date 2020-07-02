@@ -28,6 +28,7 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		i2c0 = &i2c0;
+		i2c1 = &i2c1;
 	};
 
 	clocks {
@@ -182,6 +183,21 @@
 	status = "okay";
 };
 
+&flx1 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c0: i2c@600 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c0_default>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
+
 &flx3 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
@@ -251,9 +267,9 @@
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 	status = "okay";
 
-	i2c0: i2c@600 {
+	i2c1: i2c@600 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c0_default>;
+		pinctrl-0 = <&pinctrl_i2c1_default>;
 		i2c-analog-filter;
 		i2c-digital-filter;
 		i2c-digital-filter-width-ns = <35>;
@@ -290,7 +306,7 @@
 	};
 };
 
-&i2c0 {
+&i2c1 {
 	/*
 	 * Camera sensor add-on board Raspberry Pi v2.1 Camera extension
 	 *
@@ -431,6 +447,12 @@
 	};
 
 	pinctrl_i2c0_default: i2c0_default {
+		pinmux = <PIN_PC9__FLEXCOM1_IO0>,
+			 <PIN_PC10__FLEXCOM1_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_i2c1_default: i2c1_default {
 		pinmux = <PIN_PC14__FLEXCOM8_IO0>,
 			 <PIN_PC13__FLEXCOM8_IO1>;
 		bias-disable;
