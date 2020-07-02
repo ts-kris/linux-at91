@@ -438,7 +438,7 @@
 				ranges = <0x0 0xe181c000 0x800>;
 				status = "disabled";
 
-				i2c0: i2c@600 {
+				i2c1: i2c@600 {
 					compatible = "microchip,sam9x60-i2c";
 					reg = <0x600 0x200>;
 					interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
@@ -493,7 +493,7 @@
 				ranges = <0x0 0xe2818000 0x800>;
 				status = "disabled";
 
-				i2c1: i2c@600 {
+				i2c8: i2c@600 {
 					compatible = "microchip,sam9x60-i2c";
 					reg = <0x600 0x200>;
 					interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
