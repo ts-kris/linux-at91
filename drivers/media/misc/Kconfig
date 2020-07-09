@@ -8,13 +8,6 @@ menu "Miscellaneous helper chips"
 
 comment "Various helper chips"
 
-config VIDEO_MICROCHIP_CSI2DC
-	tristate "Microchip CSI2 Demux Controller"
-	depends on VIDEO_V4L2
-	help
-	  CSI2 Demux Controller driver. CSI2DC is a helper chip
-	  that converts IDI interface byte stream to a parallel pixel stream.
-
 endmenu
 
 endif
