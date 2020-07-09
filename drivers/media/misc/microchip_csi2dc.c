@@ -30,10 +30,6 @@
 #define CSI2DC_GCFG_HLC(v)		((v) << 4)
 #define CSI2DC_GCFG_HLC_MASK		GENMASK(7, 4)
 
-/* Global control register */
-#define CSI2DC_GCTLR			0x04
-#define CSI2DC_GCTLR_SWRST		BIT(0)
-
 /* Global status register */
 #define CSI2DC_GS			0x08
 
@@ -274,17 +270,7 @@ static int csi2dc_s_power(struct v4l2_subdev *csi2dc_sd, int on)
 	if (ret)
 		dev_err(csi2dc->dev, "failed to enable scck: %d\n", ret);
 
-	/* if powering up, deassert reset line */
-	if (on)
-		csi2dc_writel(csi2dc, CSI2DC_GCTLR, CSI2DC_GCTLR_SWRST);
-
-	ret = v4l2_subdev_call(csi2dc->input_sd, core, s_power, on);
-
-	/* if powering down, assert reset line */
-	if (!on)
-		csi2dc_writel(csi2dc, CSI2DC_GCTLR, !CSI2DC_GCTLR_SWRST);
-
-	return ret;
+	return v4l2_subdev_call(csi2dc->input_sd, core, s_power, on);
 }
 
 static int csi2dc_s_stream(struct v4l2_subdev *csi2dc_sd, int enable)
