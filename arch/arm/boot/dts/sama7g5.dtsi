@@ -286,11 +286,12 @@
 			};
 
 			sdmmc0: sdio-host@e1204000 {
-				compatible = "microchip,sam9x60-sdhci";
+				compatible = "microchip,sama7g5-sdhci";
 				reg = <0xe1204000 0x4000>;
 				interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 80>, <&pmc PMC_TYPE_GCK 80>;
 				clock-names = "hclock", "multclk";
+				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_SYSPLL>;
 				assigned-clocks = <&pmc PMC_TYPE_GCK 80>;
 				assigned-clock-rates = <200000000>;
 				microchip,sdcal-inverted;
@@ -298,11 +299,12 @@
 			};
 
 			sdmmc1: sdio-host@e1208000 {
-				compatible = "microchip,sam9x60-sdhci";
+				compatible = "microchip,sama7g5-sdhci";
 				reg = <0xe1208000 0x4000>;
 				interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 81>, <&pmc PMC_TYPE_GCK 81>;
 				clock-names = "hclock", "multclk";
+				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_SYSPLL>;
 				assigned-clocks = <&pmc PMC_TYPE_GCK 81>;
 				assigned-clock-rates = <200000000>;
 				microchip,sdcal-inverted;
@@ -435,6 +437,21 @@
 				#size-cells = <1>;
 				ranges = <0x0 0xe181c000 0x800>;
 				status = "disabled";
+
+				i2c1: i2c@600 {
+					compatible = "microchip,sam9x60-i2c";
+					reg = <0x600 0x200>;
+					interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
+					atmel,fifo-size = <32>;
+					dmas = <&dma0 AT91_XDMAC_DT_PERID(7)>,
+						<&dma0 AT91_XDMAC_DT_PERID(8)>;
+					dma-names = "rx", "tx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+				};
 			};
 
 			flx3: flexcom@e1824000 {
@@ -465,6 +482,56 @@
 				#size-cells = <1>;
 				ranges = <0x0 0xe2024000 0x800>;
 				status = "disabled";
+			};
+
+			flx8: flexcom@e2818000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <0xe2818000 0x200>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 46>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe2818000 0x800>;
+				status = "disabled";
+
+				i2c8: i2c@600 {
+					compatible = "microchip,sam9x60-i2c";
+					reg = <0x600 0x200>;
+					interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 46>;
+					atmel,fifo-size = <32>;
+					dmas = <&dma0 AT91_XDMAC_DT_PERID(21)>,
+						<&dma0 AT91_XDMAC_DT_PERID(22)>;
+					dma-names = "rx", "tx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+				};
+			};
+
+			flx9: flexcom@e281c000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <0xe281c000 0x200>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 47>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe281c000 0x800>;
+				status = "disabled";
+
+				i2c9: i2c@600 {
+					compatible = "microchip,sam9x60-i2c";
+					reg = <0x600 0x200>;
+					interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 47>;
+					atmel,fifo-size = <32>;
+					dmas = <&dma0 AT91_XDMAC_DT_PERID(23)>,
+						<&dma0 AT91_XDMAC_DT_PERID(24)>;
+					dma-names = "rx", "tx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+				};
 			};
 
 			flx11: flexcom@e2824000 {

@@ -27,7 +27,9 @@
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
-		i2c0 = &i2c0;
+		i2c0 = &i2c1;
+		i2c1 = &i2c8;
+		i2c2 = &i2c9;
 	};
 
 	clocks {
@@ -48,9 +50,32 @@
 
 		bp1 {
 			label = "PB_USER";
-			gpios = <&pioA PIN_PC17 GPIO_ACTIVE_LOW>;
+			gpios = <&pioA PIN_PA12 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_PROG1>;
 			wakeup-source;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_led_gpio_default>;
+		status = "okay";
+
+		red {
+			label = "red";
+			gpios = <&pioA PIN_PB8 GPIO_ACTIVE_HIGH>;
+		};
+
+		green {
+			label = "green";
+			gpios = <&pioA PIN_PA13 GPIO_ACTIVE_HIGH>;
+		};
+
+		blue {
+			label = "blue";
+			gpios = <&pioA PIN_PD20 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
 		};
 	};
 };
@@ -129,13 +154,19 @@
 	ethernet-phy@0 {
 		reg = <0x0>;
 		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PD31 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
 	};
 };
 
 &sdmmc0 {
 	bus-width = <8>;
-	mmc-ddr-3_3v;
+	mmc-ddr-1_8v;
+	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	non-removable;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdmmc0_default>;
 	status = "okay";
@@ -157,28 +188,16 @@
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 	status = "okay";
 
-	i2c0: i2c@600 {
-		compatible = "microchip,sam9x60-i2c";
-		reg = <0x600 0x200>;
-		interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+	i2c1: i2c@600 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_flx1_default>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		clocks = <&pmc PMC_TYPE_PERIPHERAL 39>;
-		atmel,fifo-size = <32>;
-		dmas = <&dma0 AT91_XDMAC_DT_PERID(7)>,
-			<&dma0 AT91_XDMAC_DT_PERID(8)>;
-		dma-names = "rx", "tx";
-		atmel,use-dma-rx;
-		atmel,use-dma-tx;
-
+		pinctrl-0 = <&pinctrl_i2c1_default>;
 		i2c-analog-filter;
 		i2c-digital-filter;
 		i2c-digital-filter-width-ns = <35>;
 		status = "okay";
 	};
 };
+
 
 &flx3 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
@@ -245,6 +264,34 @@
 	};
 };
 
+&flx8 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c8: i2c@600 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c8_default>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
+&flx9 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
+	status = "okay";
+
+	i2c9: i2c@600 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c9_default>;
+		i2c-analog-filter;
+		i2c-digital-filter;
+		i2c-digital-filter-width-ns = <35>;
+		status = "okay";
+	};
+};
+
 &flx11 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
 	status = "okay";
@@ -274,7 +321,7 @@
 	};
 };
 
-&i2c0 {
+&i2c8 {
 	/*
 	 * Camera sensor add-on board Raspberry Pi v2.1 Camera extension
 	 *
@@ -295,8 +342,8 @@
 		VANA-supply = <&vana_imx219>; /* 2.8v */
 		VDIG-supply = <&vdig_imx219>; /* 1.8v */
 		VDDL-supply = <&vddl_imx219>; /* 1.2v */
-		reset-gpios = <&pioA PIN_PC30 GPIO_ACTIVE_HIGH>,
-				<&pioA PIN_PC31 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&pioA PIN_PE1 GPIO_ACTIVE_HIGH>,
+				<&pioA PIN_PE2 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 
 		imx219_clk: camera-clk {
@@ -353,12 +400,6 @@
 };
 
 &pioA {
-	pinctrl_flx1_default: flx1_default {
-		pinmux = <PIN_PC9__FLEXCOM1_IO0>,
-			 <PIN_PC10__FLEXCOM1_IO1>;
-		bias-disable;
-	};
-
 	pinctrl_flx3_default: flx3_default {
 		pinmux = <PIN_PD16__FLEXCOM3_IO0>,
 			 <PIN_PD17__FLEXCOM3_IO1>;
@@ -372,8 +413,8 @@
 	};
 
 	pinctrl_flx7_default: flx7_default {
-		pinmux = <PIN_PC7__FLEXCOM7_IO0>,
-			 <PIN_PC8__FLEXCOM7_IO1>;
+		pinmux = <PIN_PC23__FLEXCOM7_IO0>,
+			 <PIN_PC24__FLEXCOM7_IO1>;
 		bias-disable;
 	};
 
@@ -388,7 +429,6 @@
 			 <PIN_PA29__G0_RX3>,
 			 <PIN_PA15__G0_TXEN>,
 			 <PIN_PA24__G0_TXCK>,
-			 <PIN_PA21__G0_RXER>,
 			 <PIN_PA30__G0_RXCK>,
 			 <PIN_PA18__G0_RXDV>,
 			 <PIN_PA22__G0_MDC>,
@@ -417,12 +457,37 @@
 	};
 
 	pinctrl_gmac1_phy_irq: gmac1_phy_irq {
-		pinmux = <PIN_PD31__GPIO>;
+		pinmux = <PIN_PA21__GPIO>;
+		bias-disable;
+	};
+
+	pinctrl_i2c1_default: i2c1_default {
+		pinmux = <PIN_PC9__FLEXCOM1_IO0>,
+			 <PIN_PC10__FLEXCOM1_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_i2c8_default: i2c8_default {
+		pinmux = <PIN_PC14__FLEXCOM8_IO0>,
+			 <PIN_PC13__FLEXCOM8_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_i2c9_default: i2c9_default {
+		pinmux = <PIN_PC18__FLEXCOM9_IO0>,
+			 <PIN_PC19__FLEXCOM9_IO1>;
 		bias-disable;
 	};
 
 	pinctrl_key_gpio_default: key_gpio_default {
 		pinmux = <PIN_PC17__GPIO>;
+		bias-pull-up;
+	};
+
+	pinctrl_led_gpio_default: led_gpio_default {
+		pinmux = <PIN_PA13__GPIO>,
+			 <PIN_PB8__GPIO>,
+			 <PIN_PD20__GPIO>;
 		bias-pull-up;
 	};
 
@@ -455,8 +520,7 @@
 		ck_cd_rstn_vddsel {
 			pinmux = <PIN_PA0__SDMMC0_CK>,
 				 <PIN_PA2__SDMMC0_RSTN>,
-				 <PIN_PA13__SDMMC0_1V8SEL>,
-				 <PIN_PA14__SDMMC0_CD>;
+				 <PIN_PA11__SDMMC0_DS>;
 			bias-pull-up;
 		};
 	};
@@ -481,24 +545,24 @@
 	};
 
 	pinctrl_usb_default: usb_default {
-		pinmux = <PIN_PE2__GPIO>;
+		pinmux = <PIN_PC6__GPIO>;
 		bias-disable;
 	};
 
 	pinctrl_usba_vbus: usba_vbus {
-		pinmux = <PIN_PC14__GPIO>;
+		pinmux = <PIN_PD11__GPIO>;
 		bias-disable;
 	};
 };
 
 &pioA {
 	pinctrl_sensor_power: sensor_power {
-		pinmux = <PIN_PC30__GPIO>;
+		pinmux = <PIN_PE1__GPIO>;
 		bias-disable;
 	};
 
 	pinctrl_sensor_reset: sensor_reset {
-		pinmux = <PIN_PC31__GPIO>;
+		pinmux = <PIN_PE2__GPIO>;
 		bias-disable;
 	};
 };
@@ -508,7 +572,7 @@
 };
 
 &usb0 {
-	atmel,vbus-gpio = <&pioA PIN_PC14 GPIO_ACTIVE_HIGH>;
+	atmel,vbus-gpio = <&pioA PIN_PD11 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usba_vbus>;
 	status = "okay";
@@ -517,7 +581,7 @@
 &usb1 {
 	num-ports = <3>;
 	atmel,vbus-gpio = <0
-			   &pioA PIN_PE2 GPIO_ACTIVE_HIGH
+			   &pioA PIN_PC6 GPIO_ACTIVE_HIGH
 			   0
 			  >;
 	pinctrl-names = "default";
