@@ -252,9 +252,6 @@ const u32 isc_gamma_table[GAMMA_MAX + 1][GAMMA_ENTRIES] = {
 	(((mbus_code) == MEDIA_BUS_FMT_Y10_1X10) | \
 	(((mbus_code) == MEDIA_BUS_FMT_Y8_1X8)))
 
-#define ISC_CTRL_ISC_TO_V4L2(x) ((x) == ISC_WB_O_ZERO_VAL ? 0 : (x))
-#define ISC_CTRL_V4L2_TO_ISC(x) ((x) ? (x) : ISC_WB_O_ZERO_VAL)
-
 static inline void isc_update_v4l2_ctrls(struct isc_device *isc)
 {
 	struct isc_ctrls *ctrls = &isc->ctrls;
@@ -265,14 +262,10 @@ static inline void isc_update_v4l2_ctrls(struct isc_device *isc)
 	v4l2_ctrl_s_ctrl(isc->gr_gain_ctrl, ctrls->gain[ISC_HIS_CFG_MODE_GR]);
 	v4l2_ctrl_s_ctrl(isc->gb_gain_ctrl, ctrls->gain[ISC_HIS_CFG_MODE_GB]);
 
-	v4l2_ctrl_s_ctrl(isc->r_off_ctrl,
-			 ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_R]));
-	v4l2_ctrl_s_ctrl(isc->b_off_ctrl,
-			 ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_B]));
-	v4l2_ctrl_s_ctrl(isc->gr_off_ctrl,
-			 ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_GR]));
-	v4l2_ctrl_s_ctrl(isc->gb_off_ctrl,
-			 ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_GB]));
+	v4l2_ctrl_s_ctrl(isc->r_off_ctrl, ctrls->offset[ISC_HIS_CFG_MODE_R]);
+	v4l2_ctrl_s_ctrl(isc->b_off_ctrl, ctrls->offset[ISC_HIS_CFG_MODE_B]);
+	v4l2_ctrl_s_ctrl(isc->gr_off_ctrl, ctrls->offset[ISC_HIS_CFG_MODE_GR]);
+	v4l2_ctrl_s_ctrl(isc->gb_off_ctrl, ctrls->offset[ISC_HIS_CFG_MODE_GB]);
 }
 
 static inline void isc_update_awb_ctrls(struct isc_device *isc)
@@ -282,11 +275,11 @@ static inline void isc_update_awb_ctrls(struct isc_device *isc)
 	/* In here we set our actual hw pipeline config */
 
 	regmap_write(isc->regmap, ISC_WB_O_RGR,
-		     (ISC_WB_O_ZERO_VAL - (ctrls->offset[ISC_HIS_CFG_MODE_R])) |
-		     ((ISC_WB_O_ZERO_VAL - ctrls->offset[ISC_HIS_CFG_MODE_GR]) << 16));
+		     ((ctrls->offset[ISC_HIS_CFG_MODE_R])) |
+		     ((ctrls->offset[ISC_HIS_CFG_MODE_GR]) << 16));
 	regmap_write(isc->regmap, ISC_WB_O_BGB,
-		     (ISC_WB_O_ZERO_VAL - (ctrls->offset[ISC_HIS_CFG_MODE_B])) |
-		     ((ISC_WB_O_ZERO_VAL - ctrls->offset[ISC_HIS_CFG_MODE_GB]) << 16));
+		     ((ctrls->offset[ISC_HIS_CFG_MODE_B])) |
+		     ((ctrls->offset[ISC_HIS_CFG_MODE_GB]) << 16));
 	regmap_write(isc->regmap, ISC_WB_G_RGR,
 		     ctrls->gain[ISC_HIS_CFG_MODE_R] |
 		     (ctrls->gain[ISC_HIS_CFG_MODE_GR] << 16));
@@ -302,12 +295,8 @@ static inline void isc_reset_awb_ctrls(struct isc_device *isc)
 	for (c = ISC_HIS_CFG_MODE_GR; c <= ISC_HIS_CFG_MODE_B; c++) {
 		/* gains have a fixed point at 9 decimals */
 		isc->ctrls.gain[c] = 1 << 9;
-		/* offsets are in 2's complements, the value
-		 * will be substracted from ISC_WB_O_ZERO_VAL to obtain
-		 * 2's complement of a value between 0 and
-		 * ISC_WB_O_ZERO_VAL >> 1
-		 */
-		isc->ctrls.offset[c] = ISC_WB_O_ZERO_VAL;
+		/* offsets are in 2's complements */
+		isc->ctrls.offset[c] = 0;
 	}
 }
 
@@ -1866,9 +1855,12 @@ static void isc_wb_update(struct isc_ctrls *ctrls)
 		 */
 		ctrls->offset[c] = (offset[c] - 1) << 3;
 
-		/* the offset is then taken and converted to 2's complements */
-		if (!ctrls->offset[c])
-			ctrls->offset[c] = ISC_WB_O_ZERO_VAL;
+		/*
+		 * the offset is then taken and converted to 2's complements,
+		 * and must be negative, as we subtract this value from the
+		 * color components
+		 */
+		ctrls->offset[c] = -ctrls->offset[c];
 
 		/*
 		 * the stretch gain is the total number of histogram bins
@@ -2030,17 +2022,13 @@ static int isc_s_awb_ctrl(struct v4l2_ctrl *ctrl)
 			ctrls->gain[ISC_HIS_CFG_MODE_GB] = isc->gb_gain_ctrl->val;
 
 		if (ctrl->cluster[ISC_CTRL_R_OFF]->is_new)
-			ctrls->offset[ISC_HIS_CFG_MODE_R] =
-				ISC_CTRL_V4L2_TO_ISC(isc->r_off_ctrl->val);
+			ctrls->offset[ISC_HIS_CFG_MODE_R] = isc->r_off_ctrl->val;
 		if (ctrl->cluster[ISC_CTRL_B_OFF]->is_new)
-			ctrls->offset[ISC_HIS_CFG_MODE_B] =
-				ISC_CTRL_V4L2_TO_ISC(isc->b_off_ctrl->val);
+			ctrls->offset[ISC_HIS_CFG_MODE_B] = isc->b_off_ctrl->val;
 		if (ctrl->cluster[ISC_CTRL_GR_OFF]->is_new)
-			ctrls->offset[ISC_HIS_CFG_MODE_GR] =
-				ISC_CTRL_V4L2_TO_ISC(isc->gr_off_ctrl->val);
+			ctrls->offset[ISC_HIS_CFG_MODE_GR] = isc->gr_off_ctrl->val;
 		if (ctrl->cluster[ISC_CTRL_GB_OFF]->is_new)
-			ctrls->offset[ISC_HIS_CFG_MODE_GB] =
-				ISC_CTRL_V4L2_TO_ISC(isc->gb_off_ctrl->val);
+			ctrls->offset[ISC_HIS_CFG_MODE_GB] = isc->gb_off_ctrl->val;
 
 		isc_update_awb_ctrls(isc);
 
@@ -2102,13 +2090,13 @@ static int isc_g_volatile_awb_ctrl(struct v4l2_ctrl *ctrl)
 					ctrls->gain[ISC_HIS_CFG_MODE_GB];
 
 		ctrl->cluster[ISC_CTRL_R_OFF]->val =
-			ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_R]);
+			ctrls->offset[ISC_HIS_CFG_MODE_R];
 		ctrl->cluster[ISC_CTRL_B_OFF]->val =
-			ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_B]);
+			ctrls->offset[ISC_HIS_CFG_MODE_B];
 		ctrl->cluster[ISC_CTRL_GR_OFF]->val =
-			ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_GR]);
+			ctrls->offset[ISC_HIS_CFG_MODE_GR];
 		ctrl->cluster[ISC_CTRL_GB_OFF]->val =
-			ISC_CTRL_ISC_TO_V4L2(ctrls->offset[ISC_HIS_CFG_MODE_GB]);
+			ctrls->offset[ISC_HIS_CFG_MODE_GB];
 		break;
 	}
 	return 0;
