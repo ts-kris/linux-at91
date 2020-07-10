@@ -17,9 +17,18 @@
 #define PMC_MCK			1
 #define PMC_UTMI		2
 #define PMC_MAIN		3
-#define PMC_MCK2		4
-#define PMC_I2S0_MUX		5
-#define PMC_I2S1_MUX		6
+#define PMC_MCK2		(PMC_MAIN + 1)
+#define PMC_I2S0_MUX		(PMC_MAIN + 2)
+#define PMC_I2S1_MUX		(PMC_MAIN + 3)
+#define PMC_CPUPLL		(PMC_MAIN + 4)
+#define PMC_SYSPLL		(PMC_MAIN + 5)
+#define PMC_DDRPLL		(PMC_MAIN + 6)
+#define PMC_IMGPLL		(PMC_MAIN + 7)
+#define PMC_BAUDPLL		(PMC_MAIN + 8)
+#define PMC_AUDIOPLL		(PMC_MAIN + 9)
+#define PMC_ETHPLL		(PMC_MAIN + 10)
+/* When adding a new entry, modify below entry count as well */
+#define PMC_CORE_MAX		(PMC_ETHPLL)
 
 #ifndef AT91_PMC_MOSCS
 #define AT91_PMC_MOSCS		0		/* MOSCS Flag */
