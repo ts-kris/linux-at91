@@ -87,8 +87,8 @@
 #define CSI2DC_VERSION			0x1FC
 
 /* register read/write helpers */
-#define csi2dc_readl(st, reg)		readl_relaxed(st->base + reg)
-#define csi2dc_writel(st, reg, val)	writel_relaxed(val, st->base +reg)
+#define csi2dc_readl(st, reg)		readl_relaxed((st)->base + (reg))
+#define csi2dc_writel(st, reg, val)	writel_relaxed((val), (st)->base + (reg))
 
 /* supported RAW data types */
 #define CSI2DC_DT_RAW6			0x28
@@ -104,7 +104,6 @@ struct csi2dc_format {
 };
 
 static struct csi2dc_format csi2dc_formats_list[] = {
-
 	{
 		.mbus_code =		MEDIA_BUS_FMT_SRGGB10_1X10,
 		.dt =			CSI2DC_DT_RAW10,
@@ -112,9 +111,9 @@ static struct csi2dc_format csi2dc_formats_list[] = {
 };
 
 enum mipi_csi_pads {
-        CSI2DC_PAD_SINK			= 0,
-        CSI2DC_PAD_SOURCE		= 1,
-        CSI2DC_PADS_NUM			= 2,
+	CSI2DC_PAD_SINK			= 0,
+	CSI2DC_PAD_SOURCE		= 1,
+	CSI2DC_PADS_NUM			= 2,
 };
 
 struct csi2dc_device {
@@ -146,12 +145,6 @@ struct csi2dc_device {
 	bool				completed;
 };
 
-#define CSI2DC_CHECK_COMPLETION(csi2dc) \
-	if (!csi2dc->completed) { \
-		dev_dbg(csi2dc->dev, "subdev not registered yet\n"); \
-		return 0; \
-	}
-
 static void csi2dc_vp_update(struct csi2dc_device *csi2dc)
 {
 	u32 vp;
@@ -169,16 +162,15 @@ static void csi2dc_vp_update(struct csi2dc_device *csi2dc)
 	csi2dc_writel(csi2dc, CSI2DC_PU, CSI2DC_PU_VP);
 }
 
-
-static inline struct csi2dc_device *csi2dc_sd_to_csi2dc_device(
-					struct v4l2_subdev *csi2dc_sd)
+static inline struct csi2dc_device *csi2dc_sd_to_csi2dc_device
+					(struct v4l2_subdev *csi2dc_sd)
 {
-        return container_of(csi2dc_sd, struct csi2dc_device, csi2dc_sd);
+	return container_of(csi2dc_sd, struct csi2dc_device, csi2dc_sd);
 }
 
 static int csi2dc_enum_mbus_code(struct v4l2_subdev *csi2dc_sd,
-			struct v4l2_subdev_pad_config *cfg,
-			struct v4l2_subdev_mbus_code_enum *code)
+				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
@@ -190,13 +182,16 @@ static int csi2dc_enum_mbus_code(struct v4l2_subdev *csi2dc_sd,
 }
 
 static int csi2dc_try_fmt(struct v4l2_subdev *csi2dc_sd,
-                                struct v4l2_subdev_pad_config *cfg,
-                                struct v4l2_subdev_format *req_fmt)
+			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_format *req_fmt)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 	struct csi2dc_format *fmt;
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	for (fmt = csi2dc->formats[0]; fmt; fmt++)
 		if (req_fmt->format.code == fmt->mbus_code)
@@ -204,7 +199,7 @@ static int csi2dc_try_fmt(struct v4l2_subdev *csi2dc_sd,
 
 	/* in case we could not find the desired format, default to something */
 	if (!csi2dc->try_fmt  ||
-	    (req_fmt->format.code != csi2dc->try_fmt->mbus_code)) {
+	    req_fmt->format.code != csi2dc->try_fmt->mbus_code) {
 		csi2dc->try_fmt = csi2dc->formats[0];
 		req_fmt->format.code = csi2dc->formats[0]->mbus_code;
 	}
@@ -212,15 +207,17 @@ static int csi2dc_try_fmt(struct v4l2_subdev *csi2dc_sd,
 	return v4l2_subdev_call(csi2dc->input_sd, pad, set_fmt, cfg, req_fmt);
 }
 
-
 static int csi2dc_set_fmt(struct v4l2_subdev *csi2dc_sd,
-                                struct v4l2_subdev_pad_config *cfg,
-                                struct v4l2_subdev_format *req_fmt)
+			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_format *req_fmt)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 	int ret;
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	csi2dc_try_fmt(csi2dc_sd, cfg, req_fmt);
 
@@ -252,7 +249,7 @@ static int csi2dc_formats_init(struct csi2dc_device *csi2dc)
 	csi2dc->num_fmts = 1;
 
 	csi2dc->formats = devm_kcalloc(csi2dc->dev, csi2dc->num_fmts,
-					sizeof(*csi2dc->formats), GFP_KERNEL);
+				       sizeof(*csi2dc->formats), GFP_KERNEL);
 
 	for (i = 0, j = 0; i < ARRAY_SIZE(csi2dc_formats_list); i++, fmt++)
 		if (fmt->mbus_code == MEDIA_BUS_FMT_SRGGB10_1X10)
@@ -265,7 +262,10 @@ static int csi2dc_s_power(struct v4l2_subdev *csi2dc_sd, int on)
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 	int ret = 0;
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	if (on)
 		ret = clk_prepare_enable(csi2dc->scck);
@@ -291,7 +291,10 @@ static int csi2dc_s_stream(struct v4l2_subdev *csi2dc_sd, int enable)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	return v4l2_subdev_call(csi2dc->input_sd, video, s_stream, enable);
 }
@@ -301,7 +304,10 @@ static int csi2dc_g_frame_interval(struct v4l2_subdev *csi2dc_sd,
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	return v4l2_subdev_call(csi2dc->input_sd, video, g_frame_interval,
 				interval);
@@ -312,32 +318,43 @@ static int csi2dc_s_frame_interval(struct v4l2_subdev *csi2dc_sd,
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
 	return v4l2_subdev_call(csi2dc->input_sd, video, s_frame_interval,
 				interval);
 }
 
 static int csi2dc_enum_frame_size(struct v4l2_subdev *csi2dc_sd,
-			       struct v4l2_subdev_pad_config *cfg,
-			       struct v4l2_subdev_frame_size_enum *fse)
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
-	return v4l2_subdev_call(csi2dc->input_sd, pad, enum_frame_size, cfg, fse);
+	return v4l2_subdev_call(csi2dc->input_sd, pad, enum_frame_size, cfg,
+				fse);
 }
 
 static int csi2dc_enum_frame_interval(struct v4l2_subdev *csi2dc_sd,
-			       struct v4l2_subdev_pad_config *cfg,
-			       struct v4l2_subdev_frame_interval_enum *fie)
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_frame_interval_enum *fie)
 {
 	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
-	CSI2DC_CHECK_COMPLETION(csi2dc);
+	if (!csi2dc->completed) {
+		dev_dbg((csi2dc)->dev, "subdev not registered yet\n");
+		return 0;
+	}
 
-	return v4l2_subdev_call(csi2dc->input_sd, pad, enum_frame_interval, cfg, fie);
+	return v4l2_subdev_call(csi2dc->input_sd, pad, enum_frame_interval, cfg,
+				fie);
 }
 
 static struct v4l2_subdev_core_ops csi2dc_core_ops = {
@@ -364,8 +381,8 @@ static struct v4l2_subdev_ops csi2dc_subdev_ops = {
 };
 
 static int csi2dc_async_bound(struct v4l2_async_notifier *notifier,
-				 struct v4l2_subdev *subdev,
-				 struct v4l2_async_subdev *asd)
+			      struct v4l2_subdev *subdev,
+			      struct v4l2_async_subdev *asd)
 {
 	struct csi2dc_device *csi2dc = container_of(notifier->v4l2_dev,
 					struct csi2dc_device, v4l2_dev);
@@ -382,9 +399,9 @@ static int csi2dc_async_complete(struct v4l2_async_notifier *notifier)
 
 	ret = v4l2_device_register_subdev_nodes(&csi2dc->v4l2_dev);
 	if (ret < 0) {
-                v4l2_err(&csi2dc->v4l2_dev, "Failed to register subdev nodes\n");
-                return ret;
-        }
+		v4l2_err(&csi2dc->v4l2_dev, "failed to register subdev nodes\n");
+		return ret;
+	}
 
 	csi2dc_writel(csi2dc, CSI2DC_GCFG,
 		      (CSI2DC_GCFG_HLC(csi2dc->inter_line_delay) &
@@ -435,7 +452,8 @@ static int csi2dc_prepare_notifier(struct csi2dc_device *csi2dc,
 
 	csi2dc->notifier.ops = &csi2dc_async_ops;
 
-	ret = v4l2_async_notifier_register(&csi2dc->v4l2_dev, &csi2dc->notifier);
+	ret = v4l2_async_notifier_register(&csi2dc->v4l2_dev,
+					   &csi2dc->notifier);
 
 	if (ret) {
 		dev_err(csi2dc->dev, "fail to register async notifier.\n");
@@ -449,7 +467,7 @@ csi2dc_prepare_notifier_err:
 }
 
 static int csi2dc_of_parse(struct csi2dc_device *csi2dc,
-				struct device_node *of_node)
+			   struct device_node *of_node)
 {
 	struct device_node *input_node, *sink_node, *input_parent;
 	struct v4l2_fwnode_endpoint input_endpoint, sink_endpoint;
@@ -469,10 +487,10 @@ static int csi2dc_of_parse(struct csi2dc_device *csi2dc,
 	ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(input_node),
 					 &input_endpoint);
 
-        if (ret) {
+	if (ret) {
 		dev_err(csi2dc->dev, "endpoint not defined at %s\n",
 			of_node->full_name);
-                return ret;
+		return ret;
 	}
 
 	input_parent = of_graph_get_remote_port_parent(input_node);
@@ -500,7 +518,8 @@ static int csi2dc_of_parse(struct csi2dc_device *csi2dc,
 			sink_endpoint.base.id, csi2dc->vc);
 	}
 
-	csi2dc->clk_gated = of_property_read_bool(of_node, "microchip,clk-gated");
+	csi2dc->clk_gated = of_property_read_bool(of_node,
+						  "microchip,clk-gated");
 
 	dev_dbg(csi2dc->dev, "%s clock\n",
 		(csi2dc->clk_gated ? "Gated" : "Free running"));
@@ -545,9 +564,9 @@ static int csi2dc_probe(struct platform_device *pdev)
 	csi2dc->base = devm_ioremap_resource(dev, res);
 
 	if (IS_ERR(csi2dc->base)) {
-                dev_err(dev, "base address not set\n");
-                return PTR_ERR(csi2dc->base);
-        }
+		dev_err(dev, "base address not set\n");
+		return PTR_ERR(csi2dc->base);
+	}
 
 	csi2dc->pclk = devm_clk_get(dev, "pclk");
 	if (IS_ERR(csi2dc->pclk)) {
@@ -570,10 +589,10 @@ static int csi2dc_probe(struct platform_device *pdev)
 	}
 
 	ret = v4l2_device_register(dev, &csi2dc->v4l2_dev);
-        if (ret) {
-                dev_err(dev, "unable to register v4l2 device.\n");
+	if (ret) {
+		dev_err(dev, "unable to register v4l2 device.\n");
 		goto csi2dc_clk_fail;
-        }
+	}
 
 	v4l2_subdev_init(&csi2dc->csi2dc_sd, &csi2dc_subdev_ops);
 

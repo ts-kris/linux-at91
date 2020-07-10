@@ -14,6 +14,8 @@ config VIDEO_MICROCHIP_CSI2DC
 	help
 	  CSI2 Demux Controller driver. CSI2DC is a helper chip
 	  that converts IDI interface byte stream to a parallel pixel stream.
+	  It supports various RAW formats as input.
+	  Performs clock domain crossing between hardware blocks.
 
 endmenu
 
