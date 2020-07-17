@@ -223,7 +223,10 @@
 	};
 };
 
-
+&i2s0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2s0_default>;
+};
 
 &pioA {
 	pinctrl_flx3_default: flx3_default {
@@ -302,6 +305,15 @@
 	pinctrl_i2c9_default: i2c9_default {
 		pinmux = <PIN_PC18__FLEXCOM9_IO0>,
 			 <PIN_PC19__FLEXCOM9_IO1>;
+		bias-disable;
+	};
+
+	pinctrl_i2s0_default: i2s0_default {
+		pinmux = <PIN_PB23__I2SMCC0_CK>,
+			 <PIN_PB24__I2SMCC0_WS>,
+			 <PIN_PB25__I2SMCC0_DOUT1>,
+			 <PIN_PB26__I2SMCC0_DOUT0>,
+			 <PIN_PB27__I2SMCC0_MCK>;
 		bias-disable;
 	};
 
