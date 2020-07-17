@@ -406,6 +406,28 @@
 				};
 			};
 
+			i2s0: i2s@e161c000 {
+				compatible = "microchip,sam9x60-i2smcc";
+				reg = <0xe161c000 0x4000>;
+				interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+				dmas = <&dma0 AT91_XDMAC_DT_PERID(33)>, <&dma0 AT91_XDMAC_DT_PERID(34)>;
+				dma-names = "rx", "tx";
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 57>, <&pmc PMC_TYPE_GCK 57>;
+				clock-names = "pclk", "gclk";
+				status = "disabled";
+			};
+
+			i2s1: i2s@e1620000 {
+				compatible = "microchip,sam9x60-i2smcc";
+				reg = <0xe1620000 0x4000>;
+				interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+				dmas = <&dma0 AT91_XDMAC_DT_PERID(35)>, <&dma0 AT91_XDMAC_DT_PERID(36)>;
+				dma-names = "rx", "tx";
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 58>, <&pmc PMC_TYPE_GCK 58>;
+				clock-names = "pclk", "gclk";
+				status = "disabled";
+			};
+
 			sfr: sfr@e1624000 {
 				compatible = "microchip,sama7g5-sfr", "syscon";
 				reg = <0xe1624000 0x4000>;
