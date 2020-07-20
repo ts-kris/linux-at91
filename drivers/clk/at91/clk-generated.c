@@ -108,7 +108,7 @@ static void clk_generated_best_diff(struct clk_rate_request *req,
 		tmp_rate = parent_rate / div;
 	tmp_diff = abs(req->rate - tmp_rate);
 
-	if (*best_diff < 0 || *best_diff > tmp_diff) {
+	if (*best_diff < 0 || *best_diff >= tmp_diff) {
 		*best_rate = tmp_rate;
 		*best_diff = tmp_diff;
 		req->best_parent_rate = parent_rate;
@@ -129,6 +129,8 @@ static int clk_generated_determine_rate(struct clk_hw *hw,
 	u32 div;
 
 	for (i = 0; i < clk_hw_get_num_parents(hw); i++) {
+		if (gck->chg_pid == i)
+			continue;
 		parent = clk_hw_get_parent_by_index(hw, i);
 		if (!parent)
 			continue;
