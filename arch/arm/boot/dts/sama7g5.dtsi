@@ -406,6 +406,17 @@
 				};
 			};
 
+			spdiftx: spdiftx@e1618000 {
+				#sound-dai-cells = <0>;
+				compatible = "microchip,sama7g5-spdiftx";
+				reg = <0xe1618000 0x4000>;
+				interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
+				dmas = <&dma0 AT91_XDMAC_DT_PERID(50)>;
+				dma-names = "tx";
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 85>, <&pmc PMC_TYPE_GCK 85>;
+				clock-names = "pclk", "gclk";
+			};
+
 			i2s0: i2s@e161c000 {
 				compatible = "microchip,sam9x60-i2smcc";
 				reg = <0xe161c000 0x4000>;
