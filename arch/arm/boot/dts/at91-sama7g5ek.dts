@@ -78,6 +78,27 @@
 			linux,default-trigger = "heartbeat";
 		};
 	};
+
+	spdif_out: spdif-out {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dit";
+	};
+
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "sama7g5ek audio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
+			cpu {
+				sound-dai = <&spdiftx>;
+			};
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+	};
 };
 
 &dma0 {
@@ -382,6 +403,11 @@
 		};
 	};
 
+	pinctrl_spdiftx_default: spdiftx_default {
+		pinmux = <PIN_PB1__SPDIF_TX>;
+		bias-disable;
+	};
+
 	pinctrl_usb_default: usb_default {
 		pinmux = <PIN_PC6__GPIO>;
 		bias-disable;
@@ -418,6 +444,13 @@
 	pinctrl-0 = <&pinctrl_sdmmc1_default>;
 	status = "okay";
 };
+
+&spdiftx {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdiftx_default>;
+	status = "okay";
+};
+
 
 &trng {
 	status = "okay";
