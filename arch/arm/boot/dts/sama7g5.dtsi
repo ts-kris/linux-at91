@@ -462,6 +462,19 @@
 				#size-cells = <1>;
 				ranges = <0x0 0xe1824000 0x800>;
 				status = "disabled";
+
+				uart3: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
+					clock-names = "usart";
+					dmas = <&dma1 AT91_XDMAC_DT_PERID(12)>,
+						<&dma1 AT91_XDMAC_DT_PERID(11)>;
+					dma-names = "tx", "rx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+				};
 			};
 
 			flx4: flexcom@e2018000 {
@@ -472,6 +485,20 @@
 				#size-cells = <1>;
 				ranges = <0x0 0xe2018000 0x800>;
 				status = "disabled";
+
+				uart4: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 42>;
+					clock-names = "usart";
+					dmas = <&dma1 AT91_XDMAC_DT_PERID(14)>,
+						<&dma1 AT91_XDMAC_DT_PERID(13)>;
+					dma-names = "tx", "rx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+					atmel,fifo-size = <16>;
+				};
 			};
 
 			flx7: flexcom@e2024000 {
@@ -482,6 +509,20 @@
 				#size-cells = <1>;
 				ranges = <0x0 0xe2024000 0x800>;
 				status = "disabled";
+
+				uart7: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 45>;
+					clock-names = "usart";
+					dmas = <&dma1 AT91_XDMAC_DT_PERID(20)>,
+						<&dma1 AT91_XDMAC_DT_PERID(19)>;
+					dma-names = "tx", "rx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+					atmel,fifo-size = <16>;
+				};
 			};
 
 			flx8: flexcom@e2818000 {
