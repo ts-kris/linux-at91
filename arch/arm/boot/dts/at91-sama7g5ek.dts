@@ -80,18 +80,6 @@
 	};
 };
 
-&dma0 {
-	status = "okay";
-};
-
-&dma1 {
-	status = "okay";
-};
-
-&dma2 {
-	status = "okay";
-};
-
 &csi_dphy {
 	status = "okay";
 };
@@ -114,73 +102,15 @@
 	status = "okay";
 };
 
-&xisc {
+&dma0 {
 	status = "okay";
 };
 
-&gic {
+&dma1 {
 	status = "okay";
 };
 
-&gmac0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gmac0_default &pinctrl_gmac0_phy_irq>;
-	phy-mode = "rgmii";
-	status = "okay";
-
-	ethernet-phy@7 {
-		reg = <0x7>;
-		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PA31 IRQ_TYPE_LEVEL_LOW>;
-		txc-skew-ps = <1860>;
-		txdv-skew-ps = <(-900)>;
-		txd0-skew-ps = <(-900)>;
-		txd1-skew-ps = <(-900)>;
-		txd2-skew-ps = <(-900)>;
-		txd3-skew-ps = <(-900)>;
-	};
-};
-
-&gmac1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
-	phy-mode = "rmii";
-	status = "okay";
-
-	ethernet-phy@0 {
-		reg = <0x0>;
-		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
-	};
-};
-
-&sdmmc0 {
-	bus-width = <8>;
-	mmc-ddr-1_8v;
-	cap-mmc-highspeed;
-	cap-mmc-hw-reset;
-	non-removable;
-	mmc-hs200-1_8v;
-	mmc-hs400-1_8v;
-	mmc-hs400-enhanced-strobe;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc0_default>;
-	status = "okay";
-};
-
-&sdmmc1 {
-	bus-width = <4>;
-	mmc-ddr-3_3v;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc1_default>;
-	status = "okay";
-};
-
-&trng {
+&dma2 {
 	status = "okay";
 };
 
@@ -197,7 +127,6 @@
 		status = "okay";
 	};
 };
-
 
 &flx3 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
@@ -311,6 +240,46 @@
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
+	};
+};
+
+&gic {
+	status = "okay";
+};
+
+&gmac0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac0_default &pinctrl_gmac0_phy_irq>;
+	phy-mode = "rgmii";
+	status = "okay";
+
+	ethernet-phy@7 {
+		reg = <0x7>;
+		interrupt-parent = <&pioA>;
+		interrupts = <PIN_PA31 IRQ_TYPE_LEVEL_LOW>;
+		txc-skew-ps = <1860>;
+		txdv-skew-ps = <(-900)>;
+		txd0-skew-ps = <(-900)>;
+		txd1-skew-ps = <(-900)>;
+		txd2-skew-ps = <(-900)>;
+		txd3-skew-ps = <(-900)>;
+	};
+};
+
+&gmac1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
+	phy-mode = "rmii";
+	status = "okay";
+
+	ethernet-phy@0 {
+		reg = <0x0>;
+		interrupt-parent = <&pioA>;
+		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
 	};
 };
 
@@ -564,6 +533,32 @@
 	status = "okay";
 };
 
+&sdmmc0 {
+	bus-width = <8>;
+	mmc-ddr-1_8v;
+	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	non-removable;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdmmc0_default>;
+	status = "okay";
+};
+
+&sdmmc1 {
+	bus-width = <4>;
+	mmc-ddr-3_3v;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdmmc1_default>;
+	status = "okay";
+};
+
+&trng {
+	status = "okay";
+};
+
 &usb0 {
 	atmel,vbus-gpio = <&pioA PIN_PD11 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
@@ -585,3 +580,8 @@
 &usb2 {
 	status = "okay";
 };
+
+&xisc {
+	status = "okay";
+};
+
