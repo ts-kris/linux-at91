@@ -24,9 +24,9 @@
 	};
 
 	aliases {
-		serial0 = &uart0;
-		serial1 = &uart1;
-		serial2 = &uart2;
+		serial0 = &uart3;
+		serial1 = &uart4;
+		serial2 = &uart7;
 		i2c0 = &i2c1;
 		i2c1 = &i2c8;
 		i2c2 = &i2c9;
@@ -92,98 +92,6 @@
 	status = "okay";
 };
 
-&csi_dphy {
-	status = "okay";
-};
-
-&csi2host {
-	status = "okay";
-
-	port@1 {
-		reg = <1>;
-		csi2host_in: endpoint {
-			remote-endpoint = <&imx219_out>;
-			data-lanes = <1 2>;
-			bus-type = <4>;
-			clock-lanes = <0>;
-		};
-	};
-};
-
-&csi2dc {
-	status = "okay";
-};
-
-&xisc {
-	status = "okay";
-};
-
-&gic {
-	status = "okay";
-};
-
-&gmac0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gmac0_default &pinctrl_gmac0_phy_irq>;
-	phy-mode = "rgmii";
-	status = "okay";
-
-	ethernet-phy@7 {
-		reg = <0x7>;
-		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PA31 IRQ_TYPE_LEVEL_LOW>;
-		txc-skew-ps = <1860>;
-		txdv-skew-ps = <(-900)>;
-		txd0-skew-ps = <(-900)>;
-		txd1-skew-ps = <(-900)>;
-		txd2-skew-ps = <(-900)>;
-		txd3-skew-ps = <(-900)>;
-	};
-};
-
-&gmac1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
-	phy-mode = "rmii";
-	status = "okay";
-
-	ethernet-phy@0 {
-		reg = <0x0>;
-		interrupt-parent = <&pioA>;
-		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
-	};
-};
-
-&sdmmc0 {
-	bus-width = <8>;
-	mmc-ddr-1_8v;
-	cap-mmc-highspeed;
-	cap-mmc-hw-reset;
-	non-removable;
-	mmc-hs200-1_8v;
-	mmc-hs400-1_8v;
-	mmc-hs400-enhanced-strobe;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc0_default>;
-	status = "okay";
-};
-
-&sdmmc1 {
-	bus-width = <4>;
-	mmc-ddr-3_3v;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdmmc1_default>;
-	status = "okay";
-};
-
-&trng {
-	status = "okay";
-};
-
 &flx1 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_TWI>;
 	status = "okay";
@@ -198,24 +106,13 @@
 	};
 };
 
-
 &flx3 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
 
-	uart0: serial@200 {
-		compatible = "atmel,at91sam9260-usart";
-		reg = <0x200 0x200>;
-		interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+	uart3: serial@200 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx3_default>;
-		clocks = <&pmc PMC_TYPE_PERIPHERAL 41>;
-		clock-names = "usart";
-		dmas = <&dma1 AT91_XDMAC_DT_PERID(12)>,
-			<&dma1 AT91_XDMAC_DT_PERID(11)>;
-		dma-names = "tx", "rx";
-		atmel,use-dma-rx;
-		atmel,use-dma-tx;
 		status = "okay";
 	};
 };
@@ -224,20 +121,9 @@
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
 
-	uart1: serial@200 {
-		compatible = "atmel,at91sam9260-usart";
-		reg = <0x200 0x200>;
-		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+	uart4: serial@200 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx4_default>;
-		clocks = <&pmc PMC_TYPE_PERIPHERAL 42>;
-		clock-names = "usart";
-		dmas = <&dma1 AT91_XDMAC_DT_PERID(14)>,
-			<&dma1 AT91_XDMAC_DT_PERID(13)>;
-		dma-names = "tx", "rx";
-		atmel,use-dma-rx;
-		atmel,use-dma-tx;
-		atmel,fifo-size = <16>;
 		status = "okay";
 	};
 };
@@ -246,20 +132,9 @@
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
 	status = "okay";
 
-	uart2: serial@200 {
-		compatible = "atmel,at91sam9260-usart";
-		reg = <0x200 0x200>;
-		interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
+	uart7: serial@200 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_flx7_default>;
-		clocks = <&pmc PMC_TYPE_PERIPHERAL 45>;
-		clock-names = "usart";
-		dmas = <&dma1 AT91_XDMAC_DT_PERID(20)>,
-			<&dma1 AT91_XDMAC_DT_PERID(19)>;
-		dma-names = "tx", "rx";
-		atmel,use-dma-rx;
-		atmel,use-dma-tx;
-		atmel,fifo-size = <16>;
 		status = "okay";
 	};
 };
@@ -321,83 +196,47 @@
 	};
 };
 
-&i2c8 {
-	/*
-	 * Camera sensor add-on board Raspberry Pi v2.1 Camera extension
-	 *
-	 * Sensor i2c address is fixed at 0x10
-	 *
-	 * 24 Mhz crystal is soldered on the board and hardwired to sensor
-	 *
-	 * Power supplies are present on the board and supplied by 3v3
-	 * rail from sama7g5ek PMIC
-	 */
-	imx219: camera@10 {
-		compatible = "sony,imx219";
-		reg = <0x10>;
-		clocks = <&imx219_clk>;
-		clock-names = "xclk";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_sensor_power &pinctrl_sensor_reset>;
-		VANA-supply = <&vana_imx219>; /* 2.8v */
-		VDIG-supply = <&vdig_imx219>; /* 1.8v */
-		VDDL-supply = <&vddl_imx219>; /* 1.2v */
-		reset-gpios = <&pioA PIN_PE1 GPIO_ACTIVE_HIGH>,
-				<&pioA PIN_PE2 GPIO_ACTIVE_HIGH>;
-		status = "okay";
+&gic {
+	status = "okay";
+};
 
-		imx219_clk: camera-clk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <24000000>;
-		};
+&gmac0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac0_default &pinctrl_gmac0_phy_irq>;
+	phy-mode = "rgmii";
+	status = "okay";
 
-		port {
-			imx219_out: endpoint {
-				remote-endpoint = <&csi2host_in>;
-				clock-lanes = <0>;
-				data-lanes = <1 2>;
-				link-frequencies = /bits/ 64 <456000000>;
-				clock-noncontinuous;
-			};
-		};
-
-		vana_imx219: fixed-regulator-vana {
-			compatible = "regulator-fixed";
-
-			regulator-name = "VANA-supply";
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			regulator-always-on;
-			regulator-boot-on;
-			status = "okay";
-		};
-
-		vdig_imx219: fixed-regulator-vdig {
-			compatible = "regulator-fixed";
-
-			regulator-name = "VDIG-supply";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-always-on;
-			regulator-boot-on;
-			vin-supply = <&vana_imx219>;
-			status = "okay";
-		};
-
-		vddl_imx219: fixed-regulator-vddl {
-			compatible = "regulator-fixed";
-
-			regulator-name = "VDDL-supply";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
-			regulator-always-on;
-			regulator-boot-on;
-			vin-supply = <&vana_imx219>;
-			status = "okay";
-		};
+	ethernet-phy@7 {
+		reg = <0x7>;
+		interrupt-parent = <&pioA>;
+		interrupts = <PIN_PA31 IRQ_TYPE_LEVEL_LOW>;
+		txc-skew-ps = <1860>;
+		txdv-skew-ps = <(-900)>;
+		txd0-skew-ps = <(-900)>;
+		txd1-skew-ps = <(-900)>;
+		txd2-skew-ps = <(-900)>;
+		txd3-skew-ps = <(-900)>;
 	};
 };
+
+&gmac1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
+	phy-mode = "rmii";
+	status = "okay";
+
+	ethernet-phy@0 {
+		reg = <0x0>;
+		interrupt-parent = <&pioA>;
+		interrupts = <PIN_PA21 IRQ_TYPE_LEVEL_LOW>;
+	};
+};
+
+
 
 &pioA {
 	pinctrl_flx3_default: flx3_default {
@@ -555,19 +394,33 @@
 	};
 };
 
-&pioA {
-	pinctrl_sensor_power: sensor_power {
-		pinmux = <PIN_PE1__GPIO>;
-		bias-disable;
-	};
-
-	pinctrl_sensor_reset: sensor_reset {
-		pinmux = <PIN_PE2__GPIO>;
-		bias-disable;
-	};
+&ps_wdt {
+	status = "okay";
 };
 
-&ps_wdt {
+&sdmmc0 {
+	bus-width = <8>;
+	mmc-ddr-1_8v;
+	cap-mmc-highspeed;
+	cap-mmc-hw-reset;
+	non-removable;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdmmc0_default>;
+	status = "okay";
+};
+
+&sdmmc1 {
+	bus-width = <4>;
+	mmc-ddr-3_3v;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdmmc1_default>;
+	status = "okay";
+};
+
+&trng {
 	status = "okay";
 };
 
@@ -592,3 +445,5 @@
 &usb2 {
 	status = "okay";
 };
+
+
