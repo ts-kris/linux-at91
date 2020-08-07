@@ -427,8 +427,8 @@
 &usb1 {
 	num-ports = <3>;
 	atmel,vbus-gpio = <0
+			   &pioA PIN_PC11 GPIO_ACTIVE_HIGH
 			   &pioA PIN_PC6 GPIO_ACTIVE_HIGH
-			   0
 			  >;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb_default>;
