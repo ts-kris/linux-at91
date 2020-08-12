@@ -205,19 +205,13 @@
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gmac0_default &pinctrl_gmac0_phy_irq>;
-	phy-mode = "rgmii";
+	phy-mode = "rgmii-id";
 	status = "okay";
 
 	ethernet-phy@7 {
 		reg = <0x7>;
 		interrupt-parent = <&pioA>;
 		interrupts = <PIN_PA31 IRQ_TYPE_LEVEL_LOW>;
-		txc-skew-ps = <1860>;
-		txdv-skew-ps = <(-900)>;
-		txd0-skew-ps = <(-900)>;
-		txd1-skew-ps = <(-900)>;
-		txd2-skew-ps = <(-900)>;
-		txd3-skew-ps = <(-900)>;
 	};
 };
 
@@ -434,8 +428,8 @@
 &usb1 {
 	num-ports = <3>;
 	atmel,vbus-gpio = <0
+			   &pioA PIN_PC11 GPIO_ACTIVE_HIGH
 			   &pioA PIN_PC6 GPIO_ACTIVE_HIGH
-			   0
 			  >;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb_default>;
