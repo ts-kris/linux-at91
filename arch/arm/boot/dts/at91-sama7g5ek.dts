@@ -78,6 +78,27 @@
 			linux,default-trigger = "heartbeat";
 		};
 	};
+
+	spdif_out: spdif-out {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dit";
+	};
+
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "sama7g5ek audio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
+			cpu {
+				sound-dai = <&spdiftx>;
+			};
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+	};
 };
 
 &dma0 {
@@ -230,7 +251,10 @@
 	};
 };
 
-
+&i2s0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2s0_default>;
+};
 
 &pioA {
 	pinctrl_flx3_default: flx3_default {
@@ -312,6 +336,15 @@
 		bias-disable;
 	};
 
+	pinctrl_i2s0_default: i2s0_default {
+		pinmux = <PIN_PB23__I2SMCC0_CK>,
+			 <PIN_PB24__I2SMCC0_WS>,
+			 <PIN_PB25__I2SMCC0_DOUT1>,
+			 <PIN_PB26__I2SMCC0_DOUT0>,
+			 <PIN_PB27__I2SMCC0_MCK>;
+		bias-disable;
+	};
+
 	pinctrl_key_gpio_default: key_gpio_default {
 		pinmux = <PIN_PC17__GPIO>;
 		bias-pull-up;
@@ -377,6 +410,11 @@
 		};
 	};
 
+	pinctrl_spdiftx_default: spdiftx_default {
+		pinmux = <PIN_PB1__SPDIF_TX>;
+		bias-disable;
+	};
+
 	pinctrl_usb_default: usb_default {
 		pinmux = <PIN_PC6__GPIO>;
 		bias-disable;
@@ -413,6 +451,13 @@
 	pinctrl-0 = <&pinctrl_sdmmc1_default>;
 	status = "okay";
 };
+
+&spdiftx {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdiftx_default>;
+	status = "okay";
+};
+
 
 &trng {
 	status = "okay";
