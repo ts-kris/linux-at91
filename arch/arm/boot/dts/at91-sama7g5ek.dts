@@ -35,6 +35,12 @@
 		tcb1 = &tcb1;
 	};
 
+	cpus {
+		cpu0: cpu@0 {
+			cpu-supply = <&vddcpu>;
+		};
+	};
+
 	clocks {
 		slow_xtal {
 			clock-frequency = <32768>;
