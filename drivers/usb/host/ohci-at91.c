@@ -27,7 +27,6 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include <soc/at91/atmel-sfr.h>
-#include <soc/at91/microchip-rstc.h>
 
 #include "ohci.h"
 
@@ -57,7 +56,6 @@ struct ohci_at91_priv {
 	bool wakeup;		/* Saved wake-up state for resume */
 	bool sama7g5_support;
 	struct regmap *sfr_regmap;
-	struct regmap *rstc_regmap;
 };
 /* interface and function clocks; sometimes also an AHB clock */
 
@@ -72,32 +70,11 @@ static const struct ohci_driver_overrides ohci_at91_drv_overrides __initconst = 
 };
 
 /*-------------------------------------------------------------------------*/
-static void at91_manage_phy(struct ohci_at91_priv *ohci_at91, bool enable)
-{
-	if (!ohci_at91->rstc_regmap) return;
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST1,
-			   (enable ? 0 : AT91_GRSTR_USB_RST1));
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST2,
-			   (enable ? 0 : AT91_GRSTR_USB_RST2));
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST3,
-			   (enable ? 0 : AT91_GRSTR_USB_RST3));
-
-	/* Datasheet states a minimum of 45 us is needed before any USB op */
-	usleep_range(45, 150);
-}
 
 static void at91_start_clock(struct ohci_at91_priv *ohci_at91)
 {
 	if (ohci_at91->clocked)
 		return;
-
-	at91_manage_phy(ohci_at91, true);
 
 	clk_set_rate(ohci_at91->fclk, 48000000);
 	clk_prepare_enable(ohci_at91->hclk);
@@ -114,9 +91,6 @@ static void at91_stop_clock(struct ohci_at91_priv *ohci_at91)
 	clk_disable_unprepare(ohci_at91->fclk);
 	clk_disable_unprepare(ohci_at91->iclk);
 	clk_disable_unprepare(ohci_at91->hclk);
-
-	at91_manage_phy(ohci_at91, false);
-
 	ohci_at91->clocked = false;
 }
 
@@ -258,10 +232,6 @@ static int usb_hcd_at91_probe(const struct hc_driver *driver,
 	ohci_at91->sfr_regmap = at91_dt_syscon_sfr();
 	if (!ohci_at91->sfr_regmap)
 		dev_dbg(dev, "failed to find sfr node\n");
-
-	ohci_at91->rstc_regmap = at91_dt_syscon_rstc();
-	if (!ohci_at91->rstc_regmap)
-		dev_dbg(dev, "failed to find rstc node\n");
 
 	board = hcd->self.controller->platform_data;
 	ohci = hcd_to_ohci(hcd);
