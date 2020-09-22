@@ -54,7 +54,6 @@ struct ohci_at91_priv {
 	struct clk *hclk;
 	bool clocked;
 	bool wakeup;		/* Saved wake-up state for resume */
-	bool sama7g5_support;
 	struct regmap *sfr_regmap;
 };
 /* interface and function clocks; sometimes also an AHB clock */
@@ -137,28 +136,16 @@ static void at91_stop_hc(struct platform_device *pdev)
 
 static void usb_hcd_at91_remove (struct usb_hcd *, struct platform_device *);
 
-static struct regmap *at91_dt_syscon_rstc(void)
-{
-	struct regmap *regmap;
-
-	regmap = syscon_regmap_lookup_by_compatible("microchip,sama7g5-rstc");
-	if (IS_ERR(regmap))
-		regmap = NULL;
-
-	return regmap;
-}
-
 static struct regmap *at91_dt_syscon_sfr(void)
 {
 	struct regmap *regmap;
 
 	regmap = syscon_regmap_lookup_by_compatible("atmel,sama5d2-sfr");
-	if (IS_ERR(regmap))
+	if (IS_ERR(regmap)) {
 		regmap = syscon_regmap_lookup_by_compatible("microchip,sam9x60-sfr");
-	if (IS_ERR(regmap))
-		regmap = syscon_regmap_lookup_by_compatible("microchip,sama7g5-sfr");
-	if (IS_ERR(regmap))
-		regmap = NULL;
+		if (IS_ERR(regmap))
+			regmap = NULL;
+	}
 
 	return regmap;
 }
@@ -206,9 +193,6 @@ static int usb_hcd_at91_probe(const struct hc_driver *driver,
 	}
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
-
-	ohci_at91->sama7g5_support = of_device_is_compatible(dev->of_node,
-						       "microchip,sama7g5-ohci");
 
 	ohci_at91->iclk = devm_clk_get(dev, "ohci_clk");
 	if (IS_ERR(ohci_at91->iclk)) {
@@ -516,7 +500,6 @@ static irqreturn_t ohci_hcd_at91_overcurrent_irq(int irq, void *data)
 
 static const struct of_device_id at91_ohci_dt_ids[] = {
 	{ .compatible = "atmel,at91rm9200-ohci" },
-	{ .compatible = "microchip,sama7g5-ohci" },
 	{ /* sentinel */ }
 };
 
