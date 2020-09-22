@@ -47,7 +47,6 @@ struct at91_usbh_data {
 	u8 overcurrent_supported;
 	u8 overcurrent_status[AT91_MAX_USBH_PORTS];
 	u8 overcurrent_changed[AT91_MAX_USBH_PORTS];
-	struct ohci_at91_priv *ohci_at91;
 };
 
 struct ohci_at91_priv {
@@ -265,7 +264,6 @@ static int usb_hcd_at91_probe(const struct hc_driver *driver,
 		dev_dbg(dev, "failed to find rstc node\n");
 
 	board = hcd->self.controller->platform_data;
-	board->ohci_at91 = ohci_at91;
 	ohci = hcd_to_ohci(hcd);
 	ohci->num_ports = board->ports;
 	at91_start_hc(pdev);
@@ -314,37 +312,10 @@ static void usb_hcd_at91_remove(struct usb_hcd *hcd,
 /*-------------------------------------------------------------------------*/
 static void ohci_at91_usb_set_power(struct at91_usbh_data *pdata, int port, int enable)
 {
-	struct ohci_at91_priv *ohci_at91 = pdata->ohci_at91;
-
 	if (!valid_port(port))
 		return;
 
 	gpiod_set_value(pdata->vbus_pin[port], enable);
-
-	if (!ohci_at91->sama7g5_support)
-		return;
-
-	usleep_range(45, 150);
-
-	if (!ohci_at91->sfr_regmap) return;
-
-	switch(port) {
-	case 0:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R0,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	case 1:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R1,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	case 2:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R2,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	}
 }
 
 static int ohci_at91_usb_get_power(struct at91_usbh_data *pdata, int port)
