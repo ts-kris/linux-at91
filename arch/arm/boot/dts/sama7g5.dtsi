@@ -72,6 +72,33 @@
 		};
 	};
 
+	utmi {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		usb_phy0: phy@0 {
+			compatible = "microchip,sama7g5-usb-phy";
+			reg = <0>;
+			status = "disabled";
+			#phy-cells = <0>;
+		};
+
+		usb_phy1: phy@1 {
+			compatible = "microchip,sama7g5-usb-phy";
+			reg = <1>;
+			status = "disabled";
+			#phy-cells = <0>;
+		};
+
+		usb_phy2: phy@2 {
+			compatible = "microchip,sama7g5-usb-phy";
+			reg = <2>;
+			status = "disabled";
+			#phy-cells = <0>;
+		};
+	};
+
 	ahb {
 		compatible = "simple-bus";
 		#address-cells = <1>;
