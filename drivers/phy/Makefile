@@ -20,6 +20,7 @@ obj-y					+= broadcom/	\
 					   hisilicon/	\
 					   lantiq/	\
 					   marvell/	\
+					   microchip/	\
 					   motorola/	\
 					   mscc/	\
 					   qualcomm/	\
