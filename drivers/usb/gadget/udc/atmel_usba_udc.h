@@ -345,8 +345,6 @@ struct usba_udc {
 #endif
 
 	struct regmap *pmc;
-	struct regmap *rstc;
-	struct regmap *sfr;
 };
 
 static inline struct usba_ep *to_usba_ep(struct usb_ep *ep)
