@@ -1865,6 +1865,8 @@ static int start_clock(struct usba_udc *udc)
 
 	pm_stay_awake(&udc->pdev->dev);
 
+	phy_power_on(udc->phy);
+
 	ret = clk_prepare_enable(udc->pclk);
 	if (ret)
 		return ret;
@@ -1885,6 +1887,8 @@ static void stop_clock(struct usba_udc *udc)
 
 	clk_disable_unprepare(udc->hclk);
 	clk_disable_unprepare(udc->pclk);
+
+	phy_power_off(udc->phy);
 
 	udc->clocked = false;
 
@@ -1951,6 +1955,7 @@ static irqreturn_t usba_vbus_irq_thread(int irq, void *devid)
 	vbus = vbus_is_present(udc);
 	if (vbus != udc->vbus_prev) {
 		if (vbus) {
+			phy_set_mode_ext(udc->phy, PHY_MODE_USB_DEVICE, 1);
 			usba_start(udc);
 		} else {
 			udc->suspended = false;
@@ -1958,6 +1963,7 @@ static irqreturn_t usba_vbus_irq_thread(int irq, void *devid)
 				udc->driver->disconnect(&udc->gadget);
 
 			usba_stop(udc);
+			phy_set_mode_ext(udc->phy, PHY_MODE_USB_DEVICE, 0);
 		}
 		udc->vbus_prev = vbus;
 	}
@@ -1986,6 +1992,7 @@ static int atmel_usba_start(struct usb_gadget *gadget,
 	/* If Vbus is present, enable the controller and wait for reset */
 	udc->vbus_prev = vbus_is_present(udc);
 	if (udc->vbus_prev) {
+		phy_set_mode_ext(udc->phy, PHY_MODE_USB_DEVICE, 1);
 		ret = usba_start(udc);
 		if (ret)
 			goto err;
@@ -2052,11 +2059,16 @@ static const struct usba_udc_caps at91sam9x60_caps = {
 	.ep_prealloc = false,
 };
 
+static const struct usba_udc_caps at91sama7g5_caps = {
+	.ep_prealloc = false,
+};
+
 static const struct of_device_id atmel_udc_dt_ids[] = {
 	{ .compatible = "atmel,at91sam9rl-udc", .data = &at91sam9rl_caps },
 	{ .compatible = "atmel,at91sam9g45-udc", .data = &at91sam9g45_caps },
 	{ .compatible = "atmel,sama5d3-udc", .data = &sama5d3_caps },
 	{ .compatible = "microchip,sam9x60-udc", .data = &at91sam9x60_caps },
+	{ .compatible = "microchip,sama7g5-udc", .data = &at91sama7g5_caps },
 	{ /* sentinel */ }
 };
 
@@ -2095,6 +2107,8 @@ static struct usba_ep * atmel_udc_of_init(struct platform_device *pdev,
 		if (IS_ERR(udc->pmc))
 			return ERR_CAST(udc->pmc);
 	}
+
+	udc->phy = devm_phy_optional_get(&pdev->dev, "usb");
 
 	udc->num_ep = 0;
 
@@ -2279,6 +2293,9 @@ static int usba_udc_probe(struct platform_device *pdev)
 
 	udc->usba_ep = atmel_udc_of_init(pdev, udc);
 
+	phy_init(udc->phy);
+	phy_set_mode(udc->phy, PHY_MODE_USB_DEVICE);
+
 	toggle_bias(udc, 0);
 
 	if (IS_ERR(udc->usba_ep))
@@ -2388,8 +2405,11 @@ static int usba_udc_resume(struct device *dev)
 	/* If Vbus is present, enable the controller and wait for reset */
 	mutex_lock(&udc->vbus_mutex);
 	udc->vbus_prev = vbus_is_present(udc);
-	if (udc->vbus_prev)
+	if (udc->vbus_prev) {
+		phy_set_mode_ext(udc->phy, PHY_MODE_USB_DEVICE, 1);
 		usba_start(udc);
+	}
+
 	mutex_unlock(&udc->vbus_mutex);
 
 	return 0;
