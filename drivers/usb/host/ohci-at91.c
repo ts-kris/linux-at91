@@ -27,7 +27,6 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include <soc/at91/atmel-sfr.h>
-#include <soc/at91/microchip-rstc.h>
 
 #include "ohci.h"
 
@@ -47,7 +46,6 @@ struct at91_usbh_data {
 	u8 overcurrent_supported;
 	u8 overcurrent_status[AT91_MAX_USBH_PORTS];
 	u8 overcurrent_changed[AT91_MAX_USBH_PORTS];
-	struct ohci_at91_priv *ohci_at91;
 };
 
 struct ohci_at91_priv {
@@ -56,9 +54,7 @@ struct ohci_at91_priv {
 	struct clk *hclk;
 	bool clocked;
 	bool wakeup;		/* Saved wake-up state for resume */
-	bool sama7g5_support;
 	struct regmap *sfr_regmap;
-	struct regmap *rstc_regmap;
 };
 /* interface and function clocks; sometimes also an AHB clock */
 
@@ -73,56 +69,11 @@ static const struct ohci_driver_overrides ohci_at91_drv_overrides __initconst = 
 };
 
 /*-------------------------------------------------------------------------*/
-static void at91_manage_phy(struct ohci_at91_priv *ohci_at91, bool enable)
-{
-	if (!ohci_at91->rstc_regmap) return;
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST1,
-			   (enable ? 0 : AT91_GRSTR_USB_RST1));
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST2,
-			   (enable ? 0 : AT91_GRSTR_USB_RST2));
-
-	regmap_update_bits(ohci_at91->rstc_regmap, AT91_RSTC_GRSTR,
-			   AT91_GRSTR_USB_RST3,
-			   (enable ? 0 : AT91_GRSTR_USB_RST3));
-
-	/* Datasheet states a minimum of 45 us is needed before any USB op */
-	usleep_range(45, 150);
-}
-
-static void at91_utmi_config(struct ohci_at91_priv *ohci_at91, int port)
-{
-	if (!ohci_at91->sfr_regmap) return;
-
-	/* Set TXPREEMPAMPTUNE acording to the datasheet to 1X*/
-	switch(port) {
-	case 0:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R0,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
-		break;
-	case 1:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R1,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
-		break;
-	case 2:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R2,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X,
-				   AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X);
-		break;
-	}
-}
 
 static void at91_start_clock(struct ohci_at91_priv *ohci_at91)
 {
 	if (ohci_at91->clocked)
 		return;
-
-	at91_manage_phy(ohci_at91, true);
 
 	clk_set_rate(ohci_at91->fclk, 48000000);
 	clk_prepare_enable(ohci_at91->hclk);
@@ -139,9 +90,6 @@ static void at91_stop_clock(struct ohci_at91_priv *ohci_at91)
 	clk_disable_unprepare(ohci_at91->fclk);
 	clk_disable_unprepare(ohci_at91->iclk);
 	clk_disable_unprepare(ohci_at91->hclk);
-
-	at91_manage_phy(ohci_at91, false);
-
 	ohci_at91->clocked = false;
 }
 
@@ -157,8 +105,6 @@ static void at91_start_hc(struct platform_device *pdev)
 	 * Start the USB clocks.
 	 */
 	at91_start_clock(ohci_at91);
-
-	at91_utmi_config(ohci_at91, 2);
 
 	/*
 	 * The USB host controller must remain in reset.
@@ -190,28 +136,16 @@ static void at91_stop_hc(struct platform_device *pdev)
 
 static void usb_hcd_at91_remove (struct usb_hcd *, struct platform_device *);
 
-static struct regmap *at91_dt_syscon_rstc(void)
-{
-	struct regmap *regmap;
-
-	regmap = syscon_regmap_lookup_by_compatible("microchip,sama7g5-rstc");
-	if (IS_ERR(regmap))
-		regmap = NULL;
-
-	return regmap;
-}
-
 static struct regmap *at91_dt_syscon_sfr(void)
 {
 	struct regmap *regmap;
 
 	regmap = syscon_regmap_lookup_by_compatible("atmel,sama5d2-sfr");
-	if (IS_ERR(regmap))
+	if (IS_ERR(regmap)) {
 		regmap = syscon_regmap_lookup_by_compatible("microchip,sam9x60-sfr");
-	if (IS_ERR(regmap))
-		regmap = syscon_regmap_lookup_by_compatible("microchip,sama7g5-sfr");
-	if (IS_ERR(regmap))
-		regmap = NULL;
+		if (IS_ERR(regmap))
+			regmap = NULL;
+	}
 
 	return regmap;
 }
@@ -260,9 +194,6 @@ static int usb_hcd_at91_probe(const struct hc_driver *driver,
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
 
-	ohci_at91->sama7g5_support = of_device_is_compatible(dev->of_node,
-						       "microchip,sama7g5-ohci");
-
 	ohci_at91->iclk = devm_clk_get(dev, "ohci_clk");
 	if (IS_ERR(ohci_at91->iclk)) {
 		dev_err(dev, "failed to get ohci_clk\n");
@@ -286,12 +217,7 @@ static int usb_hcd_at91_probe(const struct hc_driver *driver,
 	if (!ohci_at91->sfr_regmap)
 		dev_dbg(dev, "failed to find sfr node\n");
 
-	ohci_at91->rstc_regmap = at91_dt_syscon_rstc();
-	if (!ohci_at91->rstc_regmap)
-		dev_dbg(dev, "failed to find rstc node\n");
-
 	board = hcd->self.controller->platform_data;
-	board->ohci_at91 = ohci_at91;
 	ohci = hcd_to_ohci(hcd);
 	ohci->num_ports = board->ports;
 	at91_start_hc(pdev);
@@ -340,37 +266,10 @@ static void usb_hcd_at91_remove(struct usb_hcd *hcd,
 /*-------------------------------------------------------------------------*/
 static void ohci_at91_usb_set_power(struct at91_usbh_data *pdata, int port, int enable)
 {
-	struct ohci_at91_priv *ohci_at91 = pdata->ohci_at91;
-
 	if (!valid_port(port))
 		return;
 
 	gpiod_set_value(pdata->vbus_pin[port], enable);
-
-	if (!ohci_at91->sama7g5_support)
-		return;
-
-	usleep_range(45, 150);
-
-	if (!ohci_at91->sfr_regmap) return;
-
-	switch(port) {
-	case 0:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R0,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	case 1:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R1,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	case 2:
-		regmap_update_bits(ohci_at91->sfr_regmap, AT91_SFR_UTMI0R2,
-				   AT91_SFR_UTMI0RX_VBUS,
-				   (enable ? AT91_SFR_UTMI0RX_VBUS : 0));
-		break;
-	}
 }
 
 static int ohci_at91_usb_get_power(struct at91_usbh_data *pdata, int port)
@@ -601,7 +500,6 @@ static irqreturn_t ohci_hcd_at91_overcurrent_irq(int irq, void *data)
 
 static const struct of_device_id at91_ohci_dt_ids[] = {
 	{ .compatible = "atmel,at91rm9200-ohci" },
-	{ .compatible = "microchip,sama7g5-ohci" },
 	{ /* sentinel */ }
 };
 
