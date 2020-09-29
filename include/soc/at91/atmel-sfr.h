@@ -21,13 +21,6 @@
 #define AT91_SFR_I2SCLKSEL	0x90	/* I2SC Register */
 #define AT91_SFR_WPMR		0xe4	/* Write Protection Mode Register */
 
-#define AT91_SFR_UTMI0R0	0x2040	/* UTMI0 Configuration Register */
-#define AT91_SFR_UTMI0R1	0x2044	/* UTMI0 Configuration Register */
-#define AT91_SFR_UTMI0R2	0x2048	/* UTMI0 Configuration Register */
-#define AT91_SFR_UTMI0RX_VBUS	BIT(25) /* VBUS Valid bit */
-
-#define AT91_SFR_UTMI0RX_TXPREEMPAMPTUNE_1X	BIT(23) /* Set TXPREEMPAMPTUNE 1x */
-
 /* Field definitions */
 #define AT91_SFR_CCFG_EBI_CSA(cs, val)		((val) << (cs))
 #define AT91_SFR_CCFG_EBI_DBPUC			BIT(8)
