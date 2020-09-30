@@ -79,6 +79,11 @@
 		};
 	};
 
+	spdif_in: spdif-in {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dir";
+	};
+
 	spdif_out: spdif-out {
 		#sound-dai-cells = <0>;
 		compatible = "linux,spdif-dit";
@@ -96,6 +101,15 @@
 			};
 			codec {
 				sound-dai = <&spdif_out>;
+			};
+		};
+		simple-audio-card,dai-link@1 {
+			reg = <1>;
+			cpu {
+				sound-dai = <&spdifrx>;
+			};
+			codec {
+				sound-dai = <&spdif_in>;
 			};
 		};
 	};
@@ -403,6 +417,11 @@
 		};
 	};
 
+	pinctrl_spdifrx_default: spdifrx_default {
+		pinmux = <PIN_PB0__SPDIF_RX>;
+		bias-disable;
+	};
+
 	pinctrl_spdiftx_default: spdiftx_default {
 		pinmux = <PIN_PB1__SPDIF_TX>;
 		bias-disable;
@@ -447,6 +466,12 @@
 	mmc-ddr-3_3v;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdmmc1_default>;
+	status = "okay";
+};
+
+&spdifrx {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdifrx_default>;
 	status = "okay";
 };
 
