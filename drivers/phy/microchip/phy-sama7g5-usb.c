@@ -144,8 +144,7 @@ int sama7g5_phy_power_off(struct phy *phy)
 	/* Put the PHY in reset mode */
 	switch (sama7g5_phy->port) {
 	case 0:
-		regmap_update_bits(sama7g5_phy->rstc, AT91_RSTC_GRSTR,
-				   AT91_GRSTR_USB_RST1, AT91_GRSTR_USB_RST1);
+		/* Host might still be running. Do not disable PHY 1 */
 		break;
 	case 1:
 		regmap_update_bits(sama7g5_phy->rstc, AT91_RSTC_GRSTR,
