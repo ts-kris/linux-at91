@@ -89,7 +89,7 @@
 		compatible = "linux,spdif-dit";
 	};
 
-	sound {
+	sound: sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "sama7g5ek audio";
 		#address-cells = <1>;
