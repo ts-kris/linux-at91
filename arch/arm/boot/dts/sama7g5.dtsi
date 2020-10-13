@@ -467,6 +467,19 @@
 				status = "disabled";
 			};
 
+			sdmmc2: sdio-host@e120c000 {
+				compatible = "microchip,sama7g5-sdhci";
+				reg = <0xe120c000 0x4000>;
+				interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 82>, <&pmc PMC_TYPE_GCK 82>;
+				clock-names = "hclock", "multclk";
+				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_SYSPLL>;
+				assigned-clocks = <&pmc PMC_TYPE_GCK 82>;
+				assigned-clock-rates = <200000000>;
+				microchip,sdcal-inverted;
+				status = "disabled";
+			};
+
 			csi2host: csi2host@e1400000 {
 				compatible = "snps,dw-csi";
 				#address-cells = <1>;
