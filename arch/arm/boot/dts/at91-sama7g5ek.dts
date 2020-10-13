@@ -27,6 +27,7 @@
 		serial0 = &uart3;
 		serial1 = &uart4;
 		serial2 = &uart7;
+		serial3 = &uart0;
 		i2c0 = &i2c1;
 		i2c1 = &i2c8;
 		i2c2 = &i2c9;
@@ -125,6 +126,17 @@
 
 &dma2 {
 	status = "okay";
+};
+
+&flx0 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "disabled";
+
+	uart0: serial@200 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flx0_default>;
+		status = "disabled";
+	};
 };
 
 &flx1 {
@@ -264,6 +276,14 @@
 };
 
 &pioA {
+	pinctrl_flx0_default: flx0_default {
+		pinmux = <PIN_PE3__FLEXCOM0_IO0>,
+			 <PIN_PE4__FLEXCOM0_IO1>,
+			 <PIN_PE6__FLEXCOM0_IO3>,
+			 <PIN_PE7__FLEXCOM0_IO4>;
+		bias-disable;
+	};
+
 	pinctrl_flx3_default: flx3_default {
 		pinmux = <PIN_PD16__FLEXCOM3_IO0>,
 			 <PIN_PD17__FLEXCOM3_IO1>;
