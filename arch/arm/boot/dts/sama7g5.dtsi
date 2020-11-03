@@ -467,6 +467,19 @@
 				status = "disabled";
 			};
 
+			sdmmc2: sdio-host@e120c000 {
+				compatible = "microchip,sama7g5-sdhci";
+				reg = <0xe120c000 0x4000>;
+				interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 82>, <&pmc PMC_TYPE_GCK 82>;
+				clock-names = "hclock", "multclk";
+				assigned-clock-parents = <&pmc PMC_TYPE_CORE PMC_SYSPLL>;
+				assigned-clocks = <&pmc PMC_TYPE_GCK 82>;
+				assigned-clock-rates = <200000000>;
+				microchip,sdcal-inverted;
+				status = "disabled";
+			};
+
 			csi2host: csi2host@e1400000 {
 				compatible = "snps,dw-csi";
 				#address-cells = <1>;
@@ -628,6 +641,29 @@
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 71>, <&pmc PMC_TYPE_GCK 71>;
 				clock-names = "pclk", "gclk";
 				status = "okay";
+			};
+
+			flx0: flexcom@e1818000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <0xe1818000 0x200>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 38>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe1818000 0x800>;
+				status = "disabled";
+
+				uart0: serial@200 {
+					compatible = "atmel,at91sam9260-usart";
+					reg = <0x200 0x200>;
+					interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&pmc PMC_TYPE_PERIPHERAL 38>;
+					clock-names = "usart";
+					dmas = <&dma1 AT91_XDMAC_DT_PERID(6)>,
+						<&dma1 AT91_XDMAC_DT_PERID(5)>;
+					dma-names = "tx", "rx";
+					atmel,use-dma-rx;
+					atmel,use-dma-tx;
+				};
 			};
 
 			flx1: flexcom@e181c000 {
