@@ -177,6 +177,8 @@ static void sdhci_at91_reset(struct sdhci_host *host, u8 mask)
 
 		sdhci_writel(host, calcr | SDMMC_CALCR_ALWYSON | SDMMC_CALCR_EN,
 			     SDMMC_CALCR);
+
+		while (sdhci_readl(host, SDMMC_CALCR) & SDMMC_CALCR_EN) ;
 	}
 }
 
