@@ -231,6 +231,17 @@
 				clock-names = "td_slck", "md_slck", "main_xtal";
 			};
 
+			shdwc: shdwc@e001d010 {
+				compatible = "microchip,sama7g5-shdwc", "syscon";
+				reg = <0xe001d010 0x10>;
+				clocks = <&clk32k 0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				atmel,wakeup-rtc-timer;
+				atmel,wakeup-rtt-timer;
+				status = "disabled";
+			};
+
 			reset_controller: rstc@e001d000 {
 				compatible = "microchip,sama7g5-rstc", "microchip,sam9x60-rstc", "syscon";
 				reg = <0xe001d000 0x100>;
