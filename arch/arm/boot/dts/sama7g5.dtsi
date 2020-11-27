@@ -125,6 +125,11 @@
 		status = "disabled";
 	};
 
+	ns_sram: ns_sram@100000 {
+		compatible = "mmio-sram";
+		reg = <0x100000 0x20000>;
+	};
+
 	ahb {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -178,6 +183,29 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+
+			securam: securam@e0000000 {
+				compatible = "microchip,sama7g5-securam", "atmel,sama5d2-securam", "mmio-sram";
+				reg = <0xe0000000 0x4000>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 18>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0 0xe0000000 0x4000>;
+				no-memory-wc;
+				status = "okay";
+			};
+
+			secumod: secumod@e0004000 {
+				compatible = "atmel,sama5d2-secumod", "syscon";
+				reg = <0xe0004000 0x4000>;
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			sfrbu: sfr@e0008000 {
+				compatible = "atmel,sama5d2-sfrbu", "syscon";
+				reg = <0xe0008000 0x20>;
+			};
 
 			pioA: pinctrl@e0014000 {
 				compatible = "microchip,sama7g5-pinctrl";
@@ -736,6 +764,18 @@
 				clock-names = "pclk", "hclk";
 				microchip,bridge-bug;
 				status = "disabled";
+			};
+
+			uddrc: uddrc@e3800000 {
+				compatible = "microchip,sama7g5-uddrc";
+				reg = <0xe3800000 0x4000>;
+				status = "okay";
+			};
+
+			ddr3phy: ddr3phy@e3804000 {
+				compatible = "microchip,sama7g5-ddr3phy";
+				reg = <0xe3804000 0x1000>;
+				status = "okay";
 			};
 
 			gic: interrupt-controller@e8c11000 {
