@@ -394,6 +394,7 @@ static int dw_async_complete(struct v4l2_async_notifier *notifier)
 	dev_dbg(dw->dev, "async completed\n");
 	dw->completed = true;
 
+	schedule_work(&dw->workq);
 	return ret;
 }
 
@@ -481,6 +482,18 @@ err:
 }
 
 static const struct of_device_id dw_mipi_csi_of_match[];
+
+static void dw_workq_handler(struct work_struct *workq)
+{
+	struct dw_csi *csi = container_of(workq,
+					struct dw_csi, workq);
+	v4l2_subdev_call(csi->input_sd, core, s_power, true);
+		dw_mipi_csi_hw_stdby(csi);
+		dw_mipi_csi_start(csi);
+
+	if (v4l2_async_register_subdev(&csi->sd))
+		dev_dbg(csi->dev, "failed to register the subdevice\n");
+}
 
 static int dw_csi_probe(struct platform_device *pdev)
 {
@@ -662,7 +675,8 @@ static int dw_csi_probe(struct platform_device *pdev)
 
 	phy_init(csi->phy);
 
-	ret = v4l2_async_register_subdev(&csi->sd);
+	INIT_WORK(&csi->workq, dw_workq_handler);
+
 	return 0;
 end:
 #if IS_ENABLED(CONFIG_OF)

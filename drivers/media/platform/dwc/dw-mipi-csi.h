@@ -257,6 +257,7 @@ struct dw_csi {
 
 	struct v4l2_subdev *input_sd;
 	bool completed;
+	struct work_struct workq;
 };
 
 static inline struct dw_csi *sd_to_mipi_csi_dev(struct v4l2_subdev *sdev)
