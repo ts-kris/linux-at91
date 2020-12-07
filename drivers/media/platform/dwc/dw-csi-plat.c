@@ -201,7 +201,8 @@ dw_mipi_csi_s_power(struct v4l2_subdev *sd, int on)
 		dev_dbg(dev->dev, "subdev not registered yet\n");
 		return 0;
 	}
-
+/* TODO: move to CONFIG_PM related functions */
+#if 0
 	if (on) {
 		v4l2_subdev_call(dev->input_sd, core, s_power, on);
 		dw_mipi_csi_hw_stdby(dev);
@@ -213,6 +214,7 @@ dw_mipi_csi_s_power(struct v4l2_subdev *sd, int on)
 		dev->ipi_dt = 0x0;
 		v4l2_subdev_call(dev->input_sd, core, s_power, on);
 	}
+#endif
 	return 0;
 }
 
