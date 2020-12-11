@@ -419,11 +419,23 @@
 				clocks = <&clk32k 0>;
 			};
 
+			rtt: rtt@e001d020 {
+				compatible = "microchip,sam9x60-rtt", "atmel,at91sam9260-rtt";
+				reg = <0xe001d020 0x30>;
+				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clk32k 0>;
+			};
+
 			clk32k: sckc@e001d050 {
 				compatible = "microchip,sam9x60-sckc";
 				reg = <0xe001d050 0x4>;
 				clocks = <&slow_xtal>;
 				#clock-cells = <1>;
+			};
+
+			gpbr: gpbr@e001d060 {
+				compatible = "microchip,sam9x60-gpbr", "atmel,at91sam9260-gpbr", "syscon";
+				reg = <0xe001d060 0x48>;
 			};
 
 			rtc: rtc@e001d0a8 {

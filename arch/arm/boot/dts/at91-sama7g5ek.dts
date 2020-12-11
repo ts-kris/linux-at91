@@ -499,6 +499,10 @@
 	status = "disabled"; /* Conflict with leds. */
 };
 
+&rtt {
+	atmel,rtt-rtc-time-reg = <&gpbr 0x0>;
+};
+
 &sdmmc0 {
 	bus-width = <8>;
 	mmc-ddr-1_8v;
