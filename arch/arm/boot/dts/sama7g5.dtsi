@@ -427,7 +427,7 @@
 			};
 
 			rtc: rtc@e001d0a8 {
-				compatible = "atmel,at91rm9200-rtc";
+				compatible = "microchip,sama7g5-rtc", "microchip,sam9x60-rtc";
 				reg = <0xe001d0a8 0x30>;
 				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clk32k 1>;
