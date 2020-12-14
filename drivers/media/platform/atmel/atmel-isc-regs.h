@@ -26,6 +26,7 @@
 #define ISC_PFE_CFG0_PPOL_LOW   BIT(2)
 #define ISC_PFE_CFG0_CCIR656    BIT(9)
 #define ISC_PFE_CFG0_CCIR_CRC   BIT(10)
+#define ISC_PFE_CFG0_MIPI	BIT(14)
 
 #define ISC_PFE_CFG0_MODE_PROGRESSIVE   (0x0 << 4)
 #define ISC_PFE_CFG0_MODE_MASK          GENMASK(6, 4)
@@ -65,6 +66,7 @@
 /* ISC Clock Status Register */
 #define ISC_CLKSR               0x00000020
 #define ISC_CLKSR_SIP		BIT(31)
+#define ISC_CLKSR_ICSR		BIT(0)
 
 #define ISC_CLK(n)		BIT(n)
 
@@ -89,6 +91,46 @@
 
 #define ISC_INT_DDONE		BIT(8)
 #define ISC_INT_HISDONE		BIT(12)
+
+/* ISC DPC Control Register */
+#define ISC_DPC_CTRL	0x40
+
+#define ISC_DPC_CTRL_DPCEN	BIT(0)
+#define ISC_DPC_CTRL_GDCEN	BIT(1)
+#define ISC_DPC_CTRL_BLCEN	BIT(2)
+
+/* ISC DPC Config Register */
+#define ISC_DPC_CFG	0x44
+
+#define ISC_DPC_CFG_BAYSEL_SHIFT	0
+
+#define ISC_DPC_CFG_EITPOL		BIT(4)
+
+#define ISC_DPC_CFG_TA_ENABLE		BIT(14)
+#define ISC_DPC_CFG_TC_ENABLE		BIT(13)
+#define ISC_DPC_CFG_TM_ENABLE		BIT(12)
+
+#define ISC_DPC_CFG_RE_MODE		BIT(17)
+
+#define ISC_DPC_CFG_GDCCLP_SHIFT	20
+#define ISC_DPC_CFG_GDCCLP_MASK		GENMASK(22,20)
+
+#define ISC_DPC_CFG_BLOFF_SHIFT		24
+#define ISC_DPC_CFG_BLOFF_MASK		GENMASK(31,24)
+
+#define ISC_DPC_CFG_BAYCFG_SHIFT	0
+#define ISC_DPC_CFG_BAYCFG_MASK		GENMASK(1,0)
+/* ISC DPC Threshold Median Register */
+#define ISC_DPC_THRESHM	0x48
+
+/* ISC DPC Threshold Closest Register */
+#define ISC_DPC_THRESHC	0x4C
+
+/* ISC DPC Threshold Average Register */
+#define ISC_DPC_THRESHA	0x50
+
+/* ISC DPC STatus Register */
+#define ISC_DPC_SR	0x54
 
 /* ISC White Balance Control Register */
 #define ISC_WB_CTRL     0x00000058
@@ -144,6 +186,8 @@
 /* ISC Gamma Correction Control Register */
 #define ISC_GAM_CTRL    0x00000094
 
+#define ISC_GAM_CTRL_BIPART	BIT(4)
+
 /* ISC_Gamma Correction Blue Entry Register */
 #define ISC_GAM_BENTRY	0x00000098
 
@@ -153,49 +197,105 @@
 /* ISC_Gamma Correction Green Entry Register */
 #define ISC_GAM_RENTRY	0x00000298
 
+/* ISC VHXS Control Register */
+#define ISC_VHXS_CTRL	0x398
+
+/* ISC VHXS Source Size Register */
+#define ISC_VHXS_SS	0x39C
+
+/* ISC VHXS Destination Size Register */
+#define ISC_VHXS_DS	0x3A0
+
+/* ISC Vertical Factor Register */
+#define ISC_VXS_FACT	0x3a4
+
+/* ISC Horizontal Factor Register */
+#define ISC_HXS_FACT	0x3a8
+
+/* ISC Vertical Config Register */
+#define ISC_VXS_CFG	0x3ac
+
+/* ISC Horizontal Config Register */
+#define ISC_HXS_CFG	0x3b0
+
+/* ISC Vertical Tap Register */
+#define ISC_VXS_TAP	0x3b4
+
+/* ISC Horizontal Tap Register */
+#define ISC_HXS_TAP	0x434
+
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
+#define XISC_CSC_OFFSET	0
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define XISC_CSC_OFFSET	0x11c
+#endif
+
 /* Color Space Conversion Control Register */
-#define ISC_CSC_CTRL    0x00000398
+#define ISC_CSC_CTRL    (0x00000398 + XISC_CSC_OFFSET) /* XISC: 4b4 */
 
 /* Color Space Conversion YR YG Register */
-#define ISC_CSC_YR_YG	0x0000039c
+#define ISC_CSC_YR_YG	(0x0000039c + XISC_CSC_OFFSET) /* XISC: 4b8 */
 
 /* Color Space Conversion YB OY Register */
-#define ISC_CSC_YB_OY	0x000003a0
+#define ISC_CSC_YB_OY	(0x000003a0 + XISC_CSC_OFFSET) /* XISC: 4bc */
 
 /* Color Space Conversion CBR CBG Register */
-#define ISC_CSC_CBR_CBG	0x000003a4
+#define ISC_CSC_CBR_CBG	(0x000003a4 + XISC_CSC_OFFSET) /* XISC: 4c0 */
 
 /* Color Space Conversion CBB OCB Register */
-#define ISC_CSC_CBB_OCB	0x000003a8
+#define ISC_CSC_CBB_OCB	(0x000003a8 + XISC_CSC_OFFSET) /* XISC: 4c4 */
 
 /* Color Space Conversion CRR CRG Register */
-#define ISC_CSC_CRR_CRG	0x000003ac
+#define ISC_CSC_CRR_CRG	(0x000003ac + XISC_CSC_OFFSET) /* XISC: 4c8 */
 
 /* Color Space Conversion CRB OCR Register */
-#define ISC_CSC_CRB_OCR	0x000003b0
+#define ISC_CSC_CRB_OCR	(0x000003b0 + XISC_CSC_OFFSET) /* XISC: 4cc */
+
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
+#define XISC_CBC_OFFSET	0
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define XISC_CBC_OFFSET	0x11c
+#endif
 
 /* Contrast And Brightness Control Register */
-#define ISC_CBC_CTRL    0x000003b4
+#define ISC_CBC_CTRL    (0x000003b4 + XISC_CBC_OFFSET) /* XISC: 4d0 */
 
 /* Contrast And Brightness Configuration Register */
-#define ISC_CBC_CFG	0x000003b8
+#define ISC_CBC_CFG	(0x000003b8 + XISC_CBC_OFFSET) /* XISC: 4d4 */
 
 /* Brightness Register */
-#define ISC_CBC_BRIGHT	0x000003bc
+#define ISC_CBC_BRIGHT	(0x000003bc + XISC_CBC_OFFSET) /* XISC: 4d8 */
 #define ISC_CBC_BRIGHT_MASK	GENMASK(10, 0)
 
 /* Contrast Register */
-#define ISC_CBC_CONTRAST	0x000003c0
+#define ISC_CBC_CONTRAST	(0x000003c0 + XISC_CBC_OFFSET) /* XISC: 4dc */
 #define ISC_CBC_CONTRAST_MASK	GENMASK(11, 0)
 
+/* Hue Register */
+#define ISC_CBCHS_HUE	0x4e0
+/* Saturation Register */
+#define ISC_CBCHS_SAT	0x4e4
+
 /* Subsampling 4:4:4 to 4:2:2 Control Register */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_SUB422_CTRL 0x000003c4
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_SUB422_CTRL 0x000004e8
+#endif
 
 /* Subsampling 4:2:2 to 4:2:0 Control Register */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_SUB420_CTRL 0x000003cc
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_SUB420_CTRL 0x000004f0
+#endif
 
 /* Rounding, Limiting and Packing Configuration Register */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_RLP_CFG     0x000003d0
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_RLP_CFG     0x000004f4
+#endif
 
 #define ISC_RLP_CFG_MODE_DAT8           0x0
 #define ISC_RLP_CFG_MODE_DAT9           0x1
@@ -210,16 +310,34 @@
 #define ISC_RLP_CFG_MODE_ARGB32         0xa
 #define ISC_RLP_CFG_MODE_YYCC           0xb
 #define ISC_RLP_CFG_MODE_YYCC_LIMITED   0xc
+#define ISC_RLP_CFG_MODE_YCYC           0xd
 #define ISC_RLP_CFG_MODE_MASK           GENMASK(3, 0)
 
+#define ISC_RLP_CFG_LSH			BIT(5)
+
+#define ISC_RLP_CFG_YMODE_YUYV		(3 << 6)
+#define ISC_RLP_CFG_YMODE_YVYU		(2 << 6)
+#define ISC_RLP_CFG_YMODE_VYUY		(0 << 6)
+#define ISC_RLP_CFG_YMODE_UYVY		(1 << 6)
+
+#define ISC_RLP_CFG_YMODE_MASK		GENMASK(7,6)
+
 /* Histogram Control Register */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_HIS_CTRL	0x000003d4
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_HIS_CTRL	0x000004f8
+#endif
 
 #define ISC_HIS_CTRL_EN			BIT(0)
 #define ISC_HIS_CTRL_DIS		0x0
 
 /* Histogram Configuration Register */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_HIS_CFG	0x000003d8
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_HIS_CFG	0x000004fc
+#endif
 
 #define ISC_HIS_CFG_MODE_GR		0x0
 #define ISC_HIS_CFG_MODE_R		0x1
@@ -233,8 +351,16 @@
 
 #define ISC_HIS_CFG_RAR			BIT(8)
 
+
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
+#define ISC_DMA_OFFSET	0
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_DMA_OFFSET	0x13c
+#endif
+
 /* DMA Configuration Register */
-#define ISC_DCFG        0x000003e0
+#define ISC_DCFG        (0x000003e0 + ISC_DMA_OFFSET) /* XISC: 51c */
+
 #define ISC_DCFG_IMODE_PACKED8          0x0
 #define ISC_DCFG_IMODE_PACKED16         0x1
 #define ISC_DCFG_IMODE_PACKED32         0x2
@@ -248,16 +374,18 @@
 #define ISC_DCFG_YMBSIZE_BEATS4         (0x1 << 4)
 #define ISC_DCFG_YMBSIZE_BEATS8         (0x2 << 4)
 #define ISC_DCFG_YMBSIZE_BEATS16        (0x3 << 4)
-#define ISC_DCFG_YMBSIZE_MASK           GENMASK(5, 4)
+#define ISC_DCFG_YMBSIZE_BEATS32        (0x4 << 4)
+#define ISC_DCFG_YMBSIZE_MASK           GENMASK(6, 4)
 
 #define ISC_DCFG_CMBSIZE_SINGLE         (0x0 << 8)
 #define ISC_DCFG_CMBSIZE_BEATS4         (0x1 << 8)
 #define ISC_DCFG_CMBSIZE_BEATS8         (0x2 << 8)
 #define ISC_DCFG_CMBSIZE_BEATS16        (0x3 << 8)
-#define ISC_DCFG_CMBSIZE_MASK           GENMASK(9, 8)
+#define ISC_DCFG_CMBSIZE_BEATS32        (0x4 << 8)
+#define ISC_DCFG_CMBSIZE_MASK           GENMASK(10, 8)
 
 /* DMA Control Register */
-#define ISC_DCTRL       0x000003e4
+#define ISC_DCTRL       (0x000003e4 + ISC_DMA_OFFSET) /* XISC: 520 */
 
 #define ISC_DCTRL_DVIEW_PACKED          (0x0 << 1)
 #define ISC_DCTRL_DVIEW_SEMIPLANAR      (0x1 << 1)
@@ -267,18 +395,30 @@
 #define ISC_DCTRL_IE_IS			(0x0 << 4)
 
 /* DMA Descriptor Address Register */
-#define ISC_DNDA        0x000003e8
+#define ISC_DNDA        (0x000003e8 + ISC_DMA_OFFSET) /* XISC: 524 */
 
 /* DMA Address 0 Register */
-#define ISC_DAD0        0x000003ec
+#define ISC_DAD0        (0x000003ec + ISC_DMA_OFFSET) /* XISC: 528 */
+/* DMA Stride 0 Register */
+#define ISC_DST0        (0x000003f0 + ISC_DMA_OFFSET) /* XISC: 52c */
 
 /* DMA Address 1 Register */
-#define ISC_DAD1        0x000003f4
+#define ISC_DAD1        (0x000003f4 + ISC_DMA_OFFSET) /* XISC: 530 */
+/* DMA Stride 1 Register */
+#define ISC_DST1        (0x000003f8 + ISC_DMA_OFFSET) /* XISC: 534 */
 
 /* DMA Address 2 Register */
-#define ISC_DAD2        0x000003fc
+#define ISC_DAD2        (0x000003fc + ISC_DMA_OFFSET) /* XISC: 538 */
+/* DMA Stride 2 Register */
+#define ISC_DST2        (0x00000400 + ISC_DMA_OFFSET) /* XISC: 53C */
+
+#define ISC_VERSION	0x00000548
 
 /* Histogram Entry */
+#if IS_ENABLED(CONFIG_VIDEO_ATMEL_ISC)
 #define ISC_HIS_ENTRY	0x00000410
+#elif IS_ENABLED(CONFIG_VIDEO_ATMEL_XISC)
+#define ISC_HIS_ENTRY	0x0000055c
+#endif
 
 #endif
