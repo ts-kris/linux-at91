@@ -443,6 +443,16 @@
 				status = "disabled";
 			};
 
+			tcb1: timer@e0800000 {
+				compatible = "atmel,sama5d2-tcb", "simple-mfd", "syscon";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0xe0800000 0x100>;
+				interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 91>, <&pmc PMC_TYPE_PERIPHERAL 92>, <&pmc PMC_TYPE_PERIPHERAL 93>, <&clk32k 1>;
+				clock-names = "t0_clk", "t1_clk", "t2_clk", "slow_clk";
+			};
+
 			sdmmc0: sdio-host@e1204000 {
 				compatible = "microchip,sama7g5-sdhci";
 				reg = <0xe1204000 0x4000>;
@@ -769,6 +779,16 @@
 					atmel,use-dma-tx;
 					atmel,fifo-size = <16>;
 				};
+			};
+
+			tcb0: timer@e2814000 {
+				compatible = "atmel,sama5d2-tcb", "simple-mfd", "syscon";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0xe2814000 0x100>;
+				interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 88>, <&pmc PMC_TYPE_PERIPHERAL 89>, <&pmc PMC_TYPE_PERIPHERAL 90>, <&clk32k 1>;
+				clock-names = "t0_clk", "t1_clk", "t2_clk", "slow_clk";
 			};
 
 			flx8: flexcom@e2818000 {
