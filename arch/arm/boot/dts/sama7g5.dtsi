@@ -23,16 +23,6 @@
 	#size-cells = <1>;
 	interrupt-parent = <&gic>;
 
-	chosen {
-		linux,clocksource {
-			timer=<&pit64b0>;
-		};
-
-		linux,clockevent {
-			timer=<&pit64b1>;
-		};
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
