@@ -116,6 +116,12 @@
 	};
 };
 
+&adc {
+	vddana-supply = <&vddout25>;
+	vref-supply = <&vddout25>;
+	status = "okay";
+};
+
 &dma0 {
 	status = "okay";
 };
@@ -721,5 +727,10 @@
 };
 
 &usb_phy2 {
+	status = "okay";
+};
+
+&vddout25 {
+	vin-supply = <&vdd_3v3>;
 	status = "okay";
 };
