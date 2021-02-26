@@ -116,6 +116,12 @@
 	};
 };
 
+&adc {
+	vddana-supply = <&vddout25>;
+	vref-supply = <&vddout25>;
+	status = "okay";
+};
+
 &dma0 {
 	status = "okay";
 };
