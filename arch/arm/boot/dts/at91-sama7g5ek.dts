@@ -723,3 +723,8 @@
 &usb_phy2 {
 	status = "okay";
 };
+
+&vddout25 {
+	vin-supply = <&vdd_3v3>;
+	status = "okay";
+};
