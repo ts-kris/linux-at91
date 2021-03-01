@@ -627,7 +627,6 @@ skip_pwm:
 skip_cpt:
 	pc->chip.dev = dev;
 	pc->chip.ops = &sti_pwm_ops;
-	pc->chip.base = -1;
 	pc->chip.npwm = pc->cdata->pwm_num_devs;
 
 	ret = pwmchip_add(&pc->chip);
