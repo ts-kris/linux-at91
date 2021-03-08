@@ -202,6 +202,8 @@ struct isc_reg_offsets {
  *
  * @config_csc:		pointer to a function that initializes product
  *			specific CSC module
+ * @config_cbc:		pointer to a function that initializes product
+ *			specific CBC module
  *
  * @offsets:		struct holding the product specific register offsets
  */
@@ -274,6 +276,7 @@ struct isc_device {
 
 	struct {
 		void (*config_csc)(struct isc_device *isc);
+		void (*config_cbc)(struct isc_device *isc);
 	};
 
 	struct isc_reg_offsets		offsets;
