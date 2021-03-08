@@ -144,6 +144,14 @@ struct isc_ctrls {
 #define ISC_PIPE_LINE_NODE_NUM	11
 
 /*
+ * struct isc_reg_offsets - ISC device register offsets
+ * @csc:		Offset for the CSC register
+ */
+struct isc_reg_offsets {
+	u32 csc;
+};
+
+/*
  * struct isc_device - ISC device driver data/config struct
  * @regmap:		Register map
  * @hclock:		Hclock clock input (refer datasheet)
@@ -194,6 +202,8 @@ struct isc_ctrls {
  *
  * @config_csc:		pointer to a function that initializes product
  *			specific CSC module
+ *
+ * @offsets:		struct holding the product specific register offsets
  */
 struct isc_device {
 	struct regmap		*regmap;
@@ -265,6 +275,8 @@ struct isc_device {
 	struct {
 		void (*config_csc)(struct isc_device *isc);
 	};
+
+	struct isc_reg_offsets		offsets;
 };
 
 extern struct isc_format formats_list[];
