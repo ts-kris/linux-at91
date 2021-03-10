@@ -151,6 +151,7 @@ struct isc_ctrls {
  * @sub420:		Offset for the SUB420 register
  * @rlp:		Offset for the RLP register
  * @his:		Offset for the HIS related registers
+ * @dma:		Offset for the DMA related registers
  */
 struct isc_reg_offsets {
 	u32 csc;
@@ -159,6 +160,7 @@ struct isc_reg_offsets {
 	u32 sub420;
 	u32 rlp;
 	u32 his;
+	u32 dma;
 };
 
 /*
