@@ -210,6 +210,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	struct isc_subdev_entity *subdev_entity;
 	int irq;
 	int ret;
+	u32 ver;
 
 	isc = devm_kzalloc(dev, sizeof(*isc), GFP_KERNEL);
 	if (!isc)
@@ -258,6 +259,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	isc->offsets.rlp = ISC_SAMA5D2_RLP_OFFSET;
 	isc->offsets.his = ISC_SAMA5D2_HIS_OFFSET;
 	isc->offsets.dma = ISC_SAMA5D2_DMA_OFFSET;
+	isc->offsets.version = ISC_SAMA5D2_VERSION_OFFSET;
 
 	/* sama5d2-isc - 8 bits per beat */
 	isc->dcfg = ISC_DCFG_YMBSIZE_BEATS8 | ISC_DCFG_CMBSIZE_BEATS8;
@@ -345,6 +347,9 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_request_idle(dev);
+
+	regmap_read(isc->regmap, ISC_VERSION + isc->offsets.version, &ver);
+	dev_info(dev, "Microchip ISC version %x\n", ver);
 
 	return 0;
 
