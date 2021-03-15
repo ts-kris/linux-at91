@@ -220,6 +220,8 @@ struct isc_reg_offsets {
  * @max_width:		maximum frame width, dependent on the internal RAM
  * @max_height:		maximum frame height, dependent on the internal RAM
  *
+ * @config_dpc:		pointer to a function that initializes product
+ *			specific DPC module
  * @config_csc:		pointer to a function that initializes product
  *			specific CSC module
  * @config_cbc:		pointer to a function that initializes product
@@ -299,6 +301,7 @@ struct isc_device {
 	u32		max_height;
 
 	struct {
+		void (*config_dpc)(struct isc_device *isc);
 		void (*config_csc)(struct isc_device *isc);
 		void (*config_cbc)(struct isc_device *isc);
 		void (*config_cc)(struct isc_device *isc);
