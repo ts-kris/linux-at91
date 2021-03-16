@@ -970,6 +970,7 @@ void wilc_netdev_cleanup(struct wilc *wilc)
 	}
 
 	wilc_wlan_cfg_deinit(wilc);
+	wilc_sysfs_exit();
 	wlan_deinit_locks(wilc);
 	kfree(wilc->bus_data);
 	wiphy_unregister(wilc->wiphy);
