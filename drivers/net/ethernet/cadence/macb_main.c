@@ -4754,12 +4754,19 @@ static int macb_probe(struct platform_device *pdev)
 	if (bp->caps & MACB_CAPS_NEEDS_RSTONUBR)
 		bp->rx_intr_mask |= MACB_BIT(RXUBR);
 
+	bp->bridge_bug = of_property_read_bool(pdev->dev.of_node,
+					       "microchip,bridge-bug");
+
 	mac = of_get_mac_address(np);
 	if (PTR_ERR(mac) == -EPROBE_DEFER) {
 		err = -EPROBE_DEFER;
 		goto err_out_free_netdev;
 	} else if (!IS_ERR_OR_NULL(mac)) {
 		ether_addr_copy(bp->dev->dev_addr, mac);
+	} else if (bp->bridge_bug) {
+		dev_err(&pdev->dev, "Workaround for bridge bug needs MACs provided from EEPROMs\n");
+		err = -EINVAL;
+		goto err_out_free_netdev;
 	} else {
 		macb_get_hwaddr(bp);
 	}
