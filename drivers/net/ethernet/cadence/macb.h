@@ -1143,6 +1143,14 @@ struct macb_ptp_info {
 			 struct ifreq *ifr, int cmd);
 };
 
+#define MACB_SCREENER_SCRT2_MAX	(16)
+#define MACB_SCREENER_ETHT_MAX	(8)
+
+struct macb_screeners {
+	u32 scrt2[MACB_SCREENER_SCRT2_MAX];
+	u32 etht[MACB_SCREENER_ETHT_MAX];
+};
+
 struct macb_pm_data {
 	u32 scrt2;
 	u32 usrio;
@@ -1301,6 +1309,8 @@ struct macb {
 	const struct macb_usrio_config *usrio;
 
 	u32 bridge_bug;
+
+	struct macb_screeners screeners;
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
