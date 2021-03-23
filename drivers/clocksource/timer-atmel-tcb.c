@@ -148,6 +148,7 @@ struct tc_clkevt_device {
 	struct clk			*clk;
 	u32				rate;
 	void __iomem			*regs;
+	u32				channel;
 };
 
 static struct tc_clkevt_device *to_tc_clkevt(struct clock_event_device *clkevt)
@@ -161,9 +162,10 @@ static int tc_shutdown(struct clock_event_device *d)
 {
 	struct tc_clkevt_device *tcd = to_tc_clkevt(d);
 	void __iomem		*regs = tcd->regs;
+	u32			channel = tcd->channel;
 
-	writel(0xff, regs + ATMEL_TC_REG(2, IDR));
-	writel(ATMEL_TC_CLKDIS, regs + ATMEL_TC_REG(2, CCR));
+	writel(0xff, regs + ATMEL_TC_REG(channel, IDR));
+	writel(ATMEL_TC_CLKDIS, regs + ATMEL_TC_REG(channel, CCR));
 	if (!clockevent_state_detached(d))
 		clk_disable(tcd->clk);
 
@@ -174,6 +176,7 @@ static int tc_set_oneshot(struct clock_event_device *d)
 {
 	struct tc_clkevt_device *tcd = to_tc_clkevt(d);
 	void __iomem		*regs = tcd->regs;
+	u32			channel = tcd->channel;
 
 	if (clockevent_state_oneshot(d) || clockevent_state_periodic(d))
 		tc_shutdown(d);
@@ -182,8 +185,8 @@ static int tc_set_oneshot(struct clock_event_device *d)
 
 	/* count up to RC, then irq and stop */
 	writel(timer_clock | ATMEL_TC_CPCSTOP | ATMEL_TC_WAVE |
-		     ATMEL_TC_WAVESEL_UP_AUTO, regs + ATMEL_TC_REG(2, CMR));
-	writel(ATMEL_TC_CPCS, regs + ATMEL_TC_REG(2, IER));
+		     ATMEL_TC_WAVESEL_UP_AUTO, regs + ATMEL_TC_REG(channel, CMR));
+	writel(ATMEL_TC_CPCS, regs + ATMEL_TC_REG(channel, IER));
 
 	/* set_next_event() configures and starts the timer */
 	return 0;
@@ -193,6 +196,7 @@ static int tc_set_periodic(struct clock_event_device *d)
 {
 	struct tc_clkevt_device *tcd = to_tc_clkevt(d);
 	void __iomem		*regs = tcd->regs;
+	u32 			channel = tcd->channel;
 
 	if (clockevent_state_oneshot(d) || clockevent_state_periodic(d))
 		tc_shutdown(d);
@@ -204,25 +208,28 @@ static int tc_set_periodic(struct clock_event_device *d)
 
 	/* count up to RC, then irq and restart */
 	writel(timer_clock | ATMEL_TC_WAVE | ATMEL_TC_WAVESEL_UP_AUTO,
-		     regs + ATMEL_TC_REG(2, CMR));
-	writel((tcd->rate + HZ / 2) / HZ, tcaddr + ATMEL_TC_REG(2, RC));
+		     regs + ATMEL_TC_REG(channel, CMR));
+	writel((tcd->rate + HZ / 2) / HZ, tcaddr + ATMEL_TC_REG(channel, RC));
 
 	/* Enable clock and interrupts on RC compare */
-	writel(ATMEL_TC_CPCS, regs + ATMEL_TC_REG(2, IER));
+	writel(ATMEL_TC_CPCS, regs + ATMEL_TC_REG(channel, IER));
 
 	/* go go gadget! */
 	writel(ATMEL_TC_CLKEN | ATMEL_TC_SWTRG, regs +
-		     ATMEL_TC_REG(2, CCR));
+		     ATMEL_TC_REG(channel, CCR));
 	return 0;
 }
 
 static int tc_next_event(unsigned long delta, struct clock_event_device *d)
 {
-	writel_relaxed(delta, tcaddr + ATMEL_TC_REG(2, RC));
+	struct tc_clkevt_device *tcd = to_tc_clkevt(d);
+	u32 channel = tcd->channel;
+
+	writel_relaxed(delta, tcaddr + ATMEL_TC_REG(channel, RC));
 
 	/* go go gadget! */
 	writel_relaxed(ATMEL_TC_CLKEN | ATMEL_TC_SWTRG,
-			tcaddr + ATMEL_TC_REG(2, CCR));
+			tcaddr + ATMEL_TC_REG(channel, CCR));
 	return 0;
 }
 
@@ -239,12 +246,12 @@ static struct tc_clkevt_device clkevt = {
 	},
 };
 
-static irqreturn_t ch2_irq(int irq, void *handle)
+static irqreturn_t clkevt_irq(int irq, void *handle)
 {
 	struct tc_clkevt_device	*dev = handle;
 	unsigned int		sr;
 
-	sr = readl_relaxed(dev->regs + ATMEL_TC_REG(2, SR));
+	sr = readl_relaxed(dev->regs + ATMEL_TC_REG(dev->channel, SR));
 	if (sr & ATMEL_TC_CPCS) {
 		dev->clkevt.event_handler(&dev->clkevt);
 		return IRQ_HANDLED;
@@ -256,25 +263,35 @@ static irqreturn_t ch2_irq(int irq, void *handle)
 static int __init setup_clkevents(struct atmel_tc *tc, int divisor_idx)
 {
 	int ret;
-	struct clk *t2_clk = tc->clk[2];
-	int irq = tc->irq[2];
+	struct clk *clk;
+	int irq, channel = 2;
 	int bits = tc->tcb_config->counter_width;
 
+	if (tc->bridge_bug) {
+		if (bits != 32)
+			return -EINVAL;
+		channel = 1;
+	}
+
+	clk = tc->clk[channel];
+	irq = tc->irq[channel];
+
 	/* try to enable t2 clk to avoid future errors in mode change */
-	ret = clk_prepare_enable(t2_clk);
+	ret = clk_prepare_enable(clk);
 	if (ret)
 		return ret;
 
 	clkevt.regs = tc->regs;
-	clkevt.clk = t2_clk;
+	clkevt.clk = clk;
+	clkevt.channel = channel;
 
 	if (bits == 32) {
 		timer_clock = divisor_idx;
-		clkevt.rate = clk_get_rate(t2_clk) / atmel_tcb_divisors[divisor_idx];
+		clkevt.rate = clk_get_rate(clk) / atmel_tcb_divisors[divisor_idx];
 	} else {
 		ret = clk_prepare_enable(tc->slow_clk);
 		if (ret) {
-			clk_disable_unprepare(t2_clk);
+			clk_disable_unprepare(clk);
 			return ret;
 		}
 
@@ -282,13 +299,13 @@ static int __init setup_clkevents(struct atmel_tc *tc, int divisor_idx)
 		timer_clock = ATMEL_TC_TIMER_CLOCK5;
 	}
 
-	clk_disable(t2_clk);
+	clk_disable(clk);
 
 	clkevt.clkevt.cpumask = cpumask_of(0);
 
-	ret = request_irq(irq, ch2_irq, IRQF_TIMER, "tc_clkevt", &clkevt);
+	ret = request_irq(irq, clkevt_irq, IRQF_TIMER, "tc_clkevt", &clkevt);
 	if (ret) {
-		clk_unprepare(t2_clk);
+		clk_unprepare(clk);
 		if (bits != 32)
 			clk_disable_unprepare(tc->slow_clk);
 		return ret;
@@ -391,6 +408,9 @@ static int __init tcb_clksrc_init(struct device_node *node)
 	if (!tc.regs)
 		return -ENXIO;
 
+	tc.bridge_bug = of_property_read_bool(node->parent,
+					      "microchip,bridge-bug");
+
 	t0_clk = of_clk_get_by_name(node->parent, "t0_clk");
 	if (IS_ERR(t0_clk))
 		return PTR_ERR(t0_clk);
@@ -406,6 +426,13 @@ static int __init tcb_clksrc_init(struct device_node *node)
 	tc.clk[2] = of_clk_get_by_name(node->parent, "t2_clk");
 	if (IS_ERR(tc.clk[2]))
 		tc.clk[2] = t0_clk;
+
+	tc.irq[1] = of_irq_get(node->parent, 1);
+	if (tc.irq[1] <= 0) {
+		tc.irq[1] = of_irq_get(node->parent, 0);
+		if (tc.irq[1] <= 0)
+			return -EINVAL;
+	}
 
 	tc.irq[2] = of_irq_get(node->parent, 2);
 	if (tc.irq[2] <= 0) {
