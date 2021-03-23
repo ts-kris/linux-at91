@@ -579,6 +579,7 @@
 				interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 88>, <&pmc PMC_TYPE_PERIPHERAL 89>, <&pmc PMC_TYPE_PERIPHERAL 90>, <&clk32k 1>;
 				clock-names = "t0_clk", "t1_clk", "t2_clk", "slow_clk";
+				microchip,bridge-bug;
 			};
 
 			flx8: flexcom@e2818000 {
