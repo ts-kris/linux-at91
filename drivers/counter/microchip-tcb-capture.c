@@ -305,6 +305,7 @@ static int mchp_tc_probe(struct platform_device *pdev)
 	struct clk *clk[3];
 	int channel;
 	int ret, i;
+	bool bridge_bug;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -323,6 +324,9 @@ static int mchp_tc_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	bridge_bug = of_property_read_bool(pdev->dev.of_node,
+					   "microchip,bridge-bug");
+
 	/* max. channels number is 2 when in QDEC mode */
 	priv->num_channels = of_property_count_u32_elems(np, "reg");
 	if (priv->num_channels < 0) {
@@ -333,7 +337,8 @@ static int mchp_tc_probe(struct platform_device *pdev)
 	/* Register channels and initialize clocks */
 	for (i = 0; i < priv->num_channels; i++) {
 		ret = of_property_read_u32_index(np, "reg", i, &channel);
-		if (ret < 0 || channel > 2)
+		if (ret < 0 || (bridge_bug && channel == 2) ||
+		    channel > 2)
 			return -ENODEV;
 
 		priv->channel[i] = channel;
