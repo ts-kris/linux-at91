@@ -144,6 +144,9 @@ static int __init tc_probe(struct platform_device *pdev)
 	if (IS_ERR(tc->regs))
 		return PTR_ERR(tc->regs);
 
+	tc->bridge_bug = of_property_read_bool(pdev->dev.of_node,
+					       "microchip,bridge-bug");
+
 	/* Now take SoC information if available */
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
