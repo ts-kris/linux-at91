@@ -31,6 +31,8 @@
 		i2c0 = &i2c1;
 		i2c1 = &i2c8;
 		i2c2 = &i2c9;
+		tcb0 = &tcb0;
+		tcb1 = &tcb1;
 	};
 
 	clocks {
