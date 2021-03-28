@@ -137,7 +137,9 @@ static int wilc_sdio_probe(struct sdio_func *func,
 {
 	struct wilc *wilc;
 	int ret, io_type;
+	static bool init_power;
 	struct wilc_sdio *sdio_priv;
+	struct device_node *np;
 	int irq_num;
 
 	sdio_priv = kzalloc(sizeof(*sdio_priv), GFP_KERNEL);
@@ -151,13 +153,14 @@ static int wilc_sdio_probe(struct sdio_func *func,
 	dev_dbg(&func->dev, "Initializing netdev\n");
 	ret = wilc_cfg80211_init(&wilc, &func->dev, io_type, &wilc_hif_sdio);
 	if (ret) {
-		kfree(sdio_priv);
-		return ret;
+		dev_err(&func->dev, "Couldn't initialize netdev\n");
+		goto free;
 	}
-
 	sdio_set_drvdata(func, wilc);
 	wilc->bus_data = sdio_priv;
 	wilc->dev = &func->dev;
+	wilc->dt_dev = &func->card->dev;
+	sdio_priv->wl = wilc;
 
 	irq_num = of_irq_get(func->card->dev.of_node, 0);
 	if (irq_num > 0)
@@ -165,13 +168,48 @@ static int wilc_sdio_probe(struct sdio_func *func,
 
 	wilc->rtc_clk = devm_clk_get(&func->card->dev, "rtc");
 	if (PTR_ERR_OR_ZERO(wilc->rtc_clk) == -EPROBE_DEFER) {
-		kfree(sdio_priv);
-		return -EPROBE_DEFER;
-	} else if (!IS_ERR(wilc->rtc_clk))
+		ret = -EPROBE_DEFER;
+		goto dispose_irq;
+	} else if (!IS_ERR(wilc->rtc_clk)) {
 		clk_prepare_enable(wilc->rtc_clk);
+	}
+
+	/*
+	 * Some WILC SDIO setups needs a SD power sequence driver to be able
+	 * to power the WILC devices before reaching this function. For those
+	 * devices the power sequence driver already provides reset-gpios
+	 * and chip_en-gpios.
+	 */
+	np = of_parse_phandle(func->card->host->parent->of_node, "mmc-pwrseq",
+			      0);
+	if (np && of_device_is_available(np)) {
+		init_power = 1;
+		of_node_put(np);
+	} else {
+		ret = wilc_of_parse_power_pins(wilc);
+		if (ret)
+			goto disable_rtc_clk;
+	}
+
+
+	if (!init_power) {
+		wilc_wlan_power(wilc, false);
+		init_power = 1;
+		wilc_wlan_power(wilc, true);
+	}
 
 	dev_info(&func->dev, "Driver Initializing success\n");
 	return 0;
+
+disable_rtc_clk:
+	if (!IS_ERR(wilc->rtc_clk))
+		clk_disable_unprepare(wilc->rtc_clk);
+dispose_irq:
+	irq_dispose_mapping(wilc->dev_irq_num);
+	wilc_netdev_cleanup(wilc);
+free:
+	kfree(sdio_priv);
+	return ret;
 }
 
 static void wilc_sdio_remove(struct sdio_func *func)
@@ -609,7 +647,10 @@ static int wilc_sdio_deinit(struct wilc *wilc)
 	struct wilc_sdio *sdio_priv = wilc->bus_data;
 
 	sdio_priv->is_init = false;
+
 	pm_runtime_put_sync_autosuspend(mmc_dev(func->card->host));
+	wilc_wlan_power(wilc, false);
+
 	return 0;
 }
 
