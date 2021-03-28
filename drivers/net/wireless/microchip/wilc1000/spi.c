@@ -253,6 +253,7 @@ static int wilc_spi_resume(struct device *dev)
 
 static const struct of_device_id wilc_of_match[] = {
 	{ .compatible = "microchip,wilc1000", },
+	{ .compatible = "microchip,wilc3000", },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, wilc_of_match);
@@ -1215,6 +1216,19 @@ static int wilc_spi_init(struct wilc *wilc, bool resume)
 	if (ret) {
 		dev_err(&spi->dev, "Fail cmd read chip id...\n");
 		return ret;
+	}
+
+	if (!resume) {
+		chipid = wilc_get_chipid(wilc, true);
+		if (is_wilc3000(chipid)) {
+			wilc->chip = WILC_3000;
+		} else if (is_wilc1000(chipid)) {
+			wilc->chip = WILC_1000;
+		} else {
+			dev_err(&spi->dev, "Unsupported chipid: %x\n", chipid);
+			return -EINVAL;
+		}
+		dev_dbg(&spi->dev, "chipid %08x\n", chipid);
 	}
 
 	spi_priv->is_init = true;
