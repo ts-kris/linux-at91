@@ -12,6 +12,10 @@
 
 #define WAKE_UP_TRIAL_RETRY		10000
 
+#if KERNEL_VERSION(3, 12, 21) > LINUX_VERSION_CODE
+#define list_next_entry(pos, member) \
+	list_entry((pos)->member.next, typeof(*(pos)), member)
+#endif
 
 void acquire_bus(struct wilc *wilc, enum bus_acquire acquire, int source)
 {

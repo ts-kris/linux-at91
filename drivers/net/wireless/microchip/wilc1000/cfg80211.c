@@ -846,8 +846,13 @@ static int set_default_key(struct wiphy *wiphy, struct net_device *netdev,
 	return 0;
 }
 
+#if KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
 static int get_station(struct wiphy *wiphy, struct net_device *dev,
 		       const u8 *mac, struct station_info *sinfo)
+#else
+static int get_station(struct wiphy *wiphy, struct net_device *dev,
+		       u8 *mac, struct station_info *sinfo)
+#endif
 {
 	struct wilc_vif *vif = netdev_priv(dev);
 	struct wilc_priv *priv = &vif->priv;
@@ -873,7 +878,11 @@ static int get_station(struct wiphy *wiphy, struct net_device *dev,
 			return -ENOENT;
 		}
 
+#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
 		sinfo->filled |= BIT(NL80211_STA_INFO_INACTIVE_TIME);
+#else
+		sinfo->filled |= STATION_INFO_INACTIVE_TIME;
+#endif
 
 		wilc_get_inactive_time(vif, mac, &inactive_time);
 		sinfo->inactive_time = 1000 * inactive_time;
@@ -889,13 +898,19 @@ static int get_station(struct wiphy *wiphy, struct net_device *dev,
 		}
 
 		wilc_get_statistics(vif, &stats);
-
+#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
 		sinfo->filled |= BIT(NL80211_STA_INFO_SIGNAL) |
-				 BIT(NL80211_STA_INFO_RX_PACKETS) |
-				 BIT(NL80211_STA_INFO_TX_PACKETS) |
-				 BIT(NL80211_STA_INFO_TX_FAILED) |
-				 BIT(NL80211_STA_INFO_TX_BITRATE);
-
+			      BIT(NL80211_STA_INFO_RX_PACKETS) |
+			      BIT(NL80211_STA_INFO_TX_PACKETS) |
+			      BIT(NL80211_STA_INFO_TX_FAILED) |
+			      BIT(NL80211_STA_INFO_TX_BITRATE);
+#else
+		sinfo->filled |= STATION_INFO_SIGNAL |
+			      STATION_INFO_RX_PACKETS |
+			      STATION_INFO_TX_PACKETS |
+			      STATION_INFO_TX_FAILED |
+			      STATION_INFO_TX_BITRATE;
+#endif
 		sinfo->signal = stats.rssi;
 		sinfo->rx_packets = stats.rx_cnt;
 		sinfo->tx_packets = stats.tx_cnt + stats.tx_fail_cnt;
@@ -1310,15 +1325,25 @@ static int cancel_remain_on_channel(struct wiphy *wiphy,
 	return wilc_listen_state_expired(vif, cookie);
 }
 
+#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE
 static int mgmt_tx(struct wiphy *wiphy,
 		   struct wireless_dev *wdev,
 		   struct cfg80211_mgmt_tx_params *params,
 		   u64 *cookie)
+#else
+static int mgmt_tx(struct wiphy *wiphy,
+		   struct wireless_dev *wdev,
+		   struct ieee80211_channel *chan, bool offchan,
+		   unsigned int wait, const u8 *buf, size_t len,
+		   bool no_cck, bool dont_wait_for_ack, u64 *cookie)
+#endif
 {
+#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE
 	struct ieee80211_channel *chan = params->chan;
 	unsigned int wait = params->wait;
 	const u8 *buf = params->buf;
 	size_t len = params->len;
+#endif
 	const struct ieee80211_mgmt *mgmt;
 	struct wilc_p2p_mgmt_data *mgmt_tx;
 	struct wilc_vif *vif = netdev_priv(wdev->netdev);
@@ -1497,7 +1522,11 @@ static int dump_station(struct wiphy *wiphy, struct net_device *dev,
 	if (ret)
 		return ret;
 
-	sinfo->filled |=  BIT(NL80211_STA_INFO_SIGNAL);
+#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
+	sinfo->filled |= BIT(NL80211_STA_INFO_SIGNAL);
+#else
+	sinfo->filled |= STATION_INFO_SIGNAL;
+#endif
 
 	return 0;
 }
@@ -1670,8 +1699,13 @@ static int stop_ap(struct wiphy *wiphy, struct net_device *dev)
 	return ret;
 }
 
+#if KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
 static int add_station(struct wiphy *wiphy, struct net_device *dev,
 		       const u8 *mac, struct station_parameters *params)
+#else
+static int add_station(struct wiphy *wiphy, struct net_device *dev,
+		       u8 *mac, struct station_parameters *params)
+#endif
 {
 	int ret = 0;
 	struct wilc_vif *vif = netdev_priv(dev);
@@ -1725,10 +1759,20 @@ static int add_station(struct wiphy *wiphy, struct net_device *dev,
 	return ret;
 }
 
+#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
 static int del_station(struct wiphy *wiphy, struct net_device *dev,
 		       struct station_del_parameters *params)
+#elif KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
+static int del_station(struct wiphy *wiphy, struct net_device *dev,
+		       const u8 *mac)
+#else
+static int del_station(struct wiphy *wiphy, struct net_device *dev,
+		       u8 *mac)
+#endif
 {
+#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
 	const u8 *mac = params->mac;
+#endif
 	int ret = 0;
 	struct wilc_vif *vif = netdev_priv(dev);
 	struct wilc_priv *priv = &vif->priv;
@@ -1757,8 +1801,13 @@ static int del_station(struct wiphy *wiphy, struct net_device *dev,
 	return ret;
 }
 
+#if KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
 static int change_station(struct wiphy *wiphy, struct net_device *dev,
 			  const u8 *mac, struct station_parameters *params)
+#else
+static int change_station(struct wiphy *wiphy, struct net_device *dev,
+			  u8 *mac, struct station_parameters *params)
+#endif
 {
 	int ret = 0;
 	struct wilc_vif *vif = netdev_priv(dev);
@@ -1815,11 +1864,32 @@ struct wilc_vif *wilc_get_vif_from_type(struct wilc *wl, int type)
 	return NULL;
 }
 
+#if KERNEL_VERSION(4, 12, 0) <= LINUX_VERSION_CODE
 static struct wireless_dev *add_virtual_intf(struct wiphy *wiphy,
 					     const char *name,
 					     unsigned char name_assign_type,
 					     enum nl80211_iftype type,
 					     struct vif_params *params)
+#elif KERNEL_VERSION(4, 1, 0) <= LINUX_VERSION_CODE
+static struct wireless_dev *add_virtual_intf(struct wiphy *wiphy,
+					     const char *name,
+					     unsigned char name_assign_type,
+					     enum nl80211_iftype type,
+					     u32 *flags,
+					     struct vif_params *params)
+#elif KERNEL_VERSION(3, 7, 0) <= LINUX_VERSION_CODE
+static struct wireless_dev *add_virtual_intf(struct wiphy *wiphy,
+					     const char *name,
+					     enum nl80211_iftype type,
+					     u32 *flags,
+					     struct vif_params *params)
+#else
+static struct wireless_dev *add_virtual_intf(struct wiphy *wiphy,
+					     char *name,
+					     enum nl80211_iftype type,
+					     u32 *flags,
+					     struct vif_params *params)
+#endif
 {
 	struct wilc *wl = wiphy_priv(wiphy);
 	struct wilc_vif *vif;
@@ -2206,7 +2276,11 @@ struct wilc *wilc_create_wiphy(struct device *dev)
 
 	wiphy->max_scan_ssids = WILC_MAX_NUM_PROBED_SSID;
 #ifdef CONFIG_PM
+#if KERNEL_VERSION(3, 11, 0) <= LINUX_VERSION_CODE
 	wiphy->wowlan = &wowlan_support;
+#else
+	wiphy->wowlan = wowlan_support;
+#endif
 #endif
 	wiphy->max_num_pmkids = WILC_MAX_NUM_PMKIDS;
 	wiphy->max_scan_ie_len = 1000;
