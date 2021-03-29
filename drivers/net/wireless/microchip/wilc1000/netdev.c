@@ -855,7 +855,9 @@ static int wilc_mac_open(struct net_device *ndev)
 	struct wilc_vif *vif = netdev_priv(ndev);
 	struct wilc *wl = vif->wilc;
 	int ret = 0;
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 	struct mgmt_frame_regs mgmt_regs = {};
+#endif
 
 	if (!wl || !wl->dev) {
 		netdev_err(ndev, "device not ready\n");
@@ -901,12 +903,24 @@ static int wilc_mac_open(struct net_device *ndev)
 		return -EINVAL;
 	}
 
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 	mgmt_regs.interface_stypes = vif->mgmt_reg_stypes;
 	/* so we detect a change */
 	vif->mgmt_reg_stypes = 0;
+
 	wilc_update_mgmt_frame_registrations(vif->ndev->ieee80211_ptr->wiphy,
 					     vif->ndev->ieee80211_ptr,
 					     &mgmt_regs);
+#else
+	wilc_mgmt_frame_register(vif->ndev->ieee80211_ptr->wiphy,
+				 vif->ndev->ieee80211_ptr,
+				 vif->frame_reg[0].type,
+				 vif->frame_reg[0].reg);
+	wilc_mgmt_frame_register(vif->ndev->ieee80211_ptr->wiphy,
+				 vif->ndev->ieee80211_ptr,
+				 vif->frame_reg[1].type,
+				 vif->frame_reg[1].reg);
+#endif
 	netif_wake_queue(ndev);
 	wl->open_ifcs++;
 	vif->mac_opened = 1;
@@ -1200,12 +1214,22 @@ void wilc_wfi_mgmt_rx(struct wilc *wilc, u8 *buff, u32 size)
 	srcu_idx = srcu_read_lock(&wilc->srcu);
 	list_for_each_entry_rcu(vif, &wilc->vif_list, list) {
 		u16 type = le16_to_cpup((__le16 *)buff);
+		struct wilc_priv *priv;
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 		u32 type_bit = BIT(type >> 4);
+#endif
 
+		priv = &vif->priv;
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 		if (vif->mgmt_reg_stypes & type_bit &&
 		    vif->p2p_listen_state)
 			wilc_wfi_p2p_rx(vif, buff, size);
-
+#else
+		if (((type == vif->frame_reg[0].type && vif->frame_reg[0].reg) ||
+		    (type == vif->frame_reg[1].type && vif->frame_reg[1].reg)) &&
+			    vif->p2p_listen_state)
+			wilc_wfi_p2p_rx(vif, buff, size);
+#endif
 
 		if (vif->monitor_flag)
 			wilc_wfi_monitor_rx(wilc->monitor_dev, buff, size);

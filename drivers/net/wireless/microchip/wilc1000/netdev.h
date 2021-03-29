@@ -305,6 +305,15 @@ struct wilc_priv {
 	u64 inc_roc_cookie;
 };
 
+#if KERNEL_VERSION(5, 8, 0) > LINUX_VERSION_CODE
+struct frame_reg {
+	u16 type;
+	bool reg;
+};
+
+#define NUM_REG_FRAME				2
+#endif
+
 #define MAX_TCP_SESSION                25
 #define MAX_PENDING_ACKS               256
 
@@ -346,7 +355,11 @@ struct wilc_vif {
 	u8 iftype;
 	int monitor_flag;
 	int mac_opened;
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 	u32 mgmt_reg_stypes;
+#else
+	struct frame_reg frame_reg[NUM_REG_FRAME];
+#endif
 	struct net_device_stats netstats;
 	struct wilc *wilc;
 	u8 bssid[ETH_ALEN];

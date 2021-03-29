@@ -300,10 +300,14 @@ static int wilc_spi_tx(struct wilc *wilc, u8 *b, u32 len)
 		struct spi_transfer tr = {
 			.tx_buf = b,
 			.len = len,
+#if KERNEL_VERSION(5, 5, 0) <= LINUX_VERSION_CODE
 			.delay = {
-				.value = 0,
-				.unit = SPI_DELAY_UNIT_USECS
+			.value = 0,
+			.unit = SPI_DELAY_UNIT_USECS
 			},
+#else
+			.delay_usecs = 0,
+#endif
 		};
 		char *r_buffer = kzalloc(len, GFP_KERNEL);
 
@@ -344,11 +348,14 @@ static int wilc_spi_rx(struct wilc *wilc, u8 *rb, u32 rlen)
 		struct spi_transfer tr = {
 			.rx_buf = rb,
 			.len = rlen,
-			.delay = {
-				.value = 0,
-				.unit = SPI_DELAY_UNIT_USECS
-			},
-
+#if KERNEL_VERSION(5, 5, 0) <= LINUX_VERSION_CODE
+						.delay = {
+						.value = 0,
+						.unit = SPI_DELAY_UNIT_USECS
+						},
+#else
+			.delay_usecs = 0,
+#endif
 		};
 		char *t_buffer = kzalloc(rlen, GFP_KERNEL);
 
@@ -389,11 +396,14 @@ static int wilc_spi_tx_rx(struct wilc *wilc, u8 *wb, u8 *rb, u32 rlen)
 			.tx_buf = wb,
 			.len = rlen,
 			.bits_per_word = 8,
-			.delay = {
-				.value = 0,
-				.unit = SPI_DELAY_UNIT_USECS
-			},
-
+#if KERNEL_VERSION(5, 5, 0) <= LINUX_VERSION_CODE
+						.delay = {
+						.value = 0,
+						.unit = SPI_DELAY_UNIT_USECS
+						},
+#else
+			.delay_usecs = 0,
+#endif
 		};
 
 		memset(&msg, 0, sizeof(msg));

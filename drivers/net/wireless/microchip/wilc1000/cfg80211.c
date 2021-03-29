@@ -1516,6 +1516,7 @@ static int mgmt_tx_cancel_wait(struct wiphy *wiphy,
 	return 0;
 }
 
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 void wilc_update_mgmt_frame_registrations(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
 					  struct mgmt_frame_regs *upd)
@@ -1542,6 +1543,42 @@ void wilc_update_mgmt_frame_registrations(struct wiphy *wiphy,
 	vif->mgmt_reg_stypes =
 		upd->interface_stypes & (presp_bit | action_bit);
 }
+#else
+void wilc_mgmt_frame_register(struct wiphy *wiphy, struct wireless_dev *wdev,
+			      u16 frame_type, bool reg)
+{
+	struct wilc *wl = wiphy_priv(wiphy);
+	struct wilc_vif *vif = netdev_priv(wdev->netdev);
+
+	if (!frame_type)
+		return;
+
+	PRINT_D(vif->ndev, GENERIC_DBG,
+		   "Frame registering Frame Type: %x: Boolean: %d\n",
+		   frame_type, reg);
+	switch (frame_type) {
+	case IEEE80211_STYPE_PROBE_REQ:
+		vif->frame_reg[0].type = frame_type;
+		vif->frame_reg[0].reg = reg;
+		break;
+
+	case IEEE80211_STYPE_ACTION:
+		vif->frame_reg[1].type = frame_type;
+		vif->frame_reg[1].reg = reg;
+		break;
+
+	default:
+		break;
+	}
+
+	if (!wl->initialized) {
+		PRINT_INFO(vif->ndev, GENERIC_DBG,
+			   "Return since mac is closed\n");
+		return;
+	}
+	wilc_frame_register(vif, frame_type, reg);
+}
+#endif
 
 static int set_cqm_rssi_config(struct wiphy *wiphy, struct net_device *dev,
 			       s32 rssi_thold, u32 rssi_hyst)
@@ -2186,7 +2223,11 @@ static const struct cfg80211_ops wilc_cfg80211_ops = {
 	.cancel_remain_on_channel = cancel_remain_on_channel,
 	.mgmt_tx_cancel_wait = mgmt_tx_cancel_wait,
 	.mgmt_tx = mgmt_tx,
+#if KERNEL_VERSION(5, 8, 0) <= LINUX_VERSION_CODE
 	.update_mgmt_frame_registrations = wilc_update_mgmt_frame_registrations,
+#else
+	.mgmt_frame_register = wilc_mgmt_frame_register,
+#endif
 	.set_power_mgmt = set_power_mgmt,
 	.set_cqm_rssi_config = set_cqm_rssi_config,
 
