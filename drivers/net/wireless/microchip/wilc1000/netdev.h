@@ -212,14 +212,25 @@ static const u32 wilc_cipher_suites[] = {
 	WLAN_CIPHER_SUITE_AES_CMAC
 };
 
-#define CHAN2G(_channel, _freq, _flags) {	 \
-	.band             = NL80211_BAND_2GHZ, \
-	.center_freq      = (_freq),		 \
-	.hw_value         = (_channel),		 \
-	.flags            = (_flags),		 \
-	.max_antenna_gain = 0,			 \
-	.max_power        = 30,			 \
+#if KERNEL_VERSION(4, 7, 0) > LINUX_VERSION_CODE
+#define CHAN2G(_channel, _freq, _flags) {       \
+	.band             = IEEE80211_BAND_2GHZ, \
+	.center_freq      = (_freq),             \
+	.hw_value         = (_channel),          \
+	.flags            = (_flags),            \
+	.max_antenna_gain = 0,                   \
+	.max_power        = 30,                  \
 }
+#else
+#define CHAN2G(_channel, _freq, _flags) {       \
+	.band             = NL80211_BAND_2GHZ, \
+	.center_freq      = (_freq),             \
+	.hw_value         = (_channel),          \
+	.flags            = (_flags),            \
+	.max_antenna_gain = 0,                   \
+	.max_power        = 30,                  \
+}
+#endif
 
 static const struct ieee80211_channel wilc_2ghz_channels[] = {
 	CHAN2G(1,  2412, 0),

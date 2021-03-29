@@ -8,7 +8,12 @@
 #define WILC_WLAN_H
 
 #include <linux/types.h>
+#include <linux/version.h>
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
 #include <linux/bitfield.h>
+#endif
+
 
 /********************************************
  *
@@ -472,7 +477,11 @@ int wilc_send_config_pkt(struct wilc_vif *vif, u8 mode, struct wid *wids,
 			 u32 count);
 void wilc_bt_init(struct wilc *wilc);
 void wilc_bt_deinit(void);
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 void eap_buff_timeout(struct timer_list *t);
+#else
+void eap_buff_timeout(unsigned long user);
+#endif
 void acquire_bus(struct wilc *wilc, enum bus_acquire acquire, int source);
 void release_bus(struct wilc *wilc, enum bus_release release, int source);
 int wilc_wlan_init(struct net_device *dev);

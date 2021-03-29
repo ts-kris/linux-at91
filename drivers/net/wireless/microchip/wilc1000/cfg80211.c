@@ -143,11 +143,15 @@ static void cfg_scan_result(enum scan_event scan_event,
 		mutex_lock(&priv->scan_req_lock);
 
 		if (priv->scan_req) {
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 			struct cfg80211_scan_info info = {
 				.aborted = false,
 			};
 
 			cfg80211_scan_done(priv->scan_req, &info);
+#else
+			cfg80211_scan_done(priv->scan_req, false);
+#endif
 			priv->cfg_scanning = false;
 			priv->scan_req = NULL;
 		}
@@ -157,11 +161,16 @@ static void cfg_scan_result(enum scan_event scan_event,
 
 		PRINT_INFO(priv->dev, CFG80211_DBG, "Scan Aborted\n");
 		if (priv->scan_req) {
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 			struct cfg80211_scan_info info = {
 				.aborted = false,
 			};
 
 			cfg80211_scan_done(priv->scan_req, &info);
+#else
+			cfg80211_scan_done(priv->scan_req, false);
+#endif
+
 			priv->cfg_scanning = false;
 			priv->scan_req = NULL;
 		}
@@ -178,7 +187,9 @@ static void cfg_connect_result(enum conn_event conn_disconn_evt, u8 mac_status,
 	struct wilc *wl = vif->wilc;
 	struct host_if_drv *wfi_drv = priv->hif_drv;
 	struct wilc_conn_info *conn_info = &wfi_drv->conn_info;
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 	struct wiphy *wiphy = dev->ieee80211_ptr->wiphy;
+#endif
 
 	vif->connecting = false;
 
@@ -215,6 +226,7 @@ static void cfg_connect_result(enum conn_event conn_disconn_evt, u8 mac_status,
 		PRINT_INFO(vif->ndev, CFG80211_DBG,
 			   "Association response info elements length = %d\n",
 			   conn_info->resp_ies_len);
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
 		cfg80211_ref_bss(wiphy, vif->bss);
 		cfg80211_connect_bss(dev, conn_info->bssid, vif->bss,
 				     conn_info->req_ies,
@@ -223,7 +235,22 @@ static void cfg_connect_result(enum conn_event conn_disconn_evt, u8 mac_status,
 				     conn_info->resp_ies_len,
 				     connect_status, GFP_KERNEL,
 				     NL80211_TIMEOUT_UNSPECIFIED);
-
+#elif KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
+		cfg80211_ref_bss(wiphy, vif->bss);
+		cfg80211_connect_bss(dev, conn_info->bssid, vif->bss,
+				     conn_info->req_ies,
+				     conn_info->req_ies_len,
+				     conn_info->resp_ies,
+				     conn_info->resp_ies_len,
+				     connect_status, GFP_KERNEL);
+#else
+		cfg80211_connect_result(dev, conn_info->bssid,
+					conn_info->req_ies,
+					conn_info->req_ies_len,
+					conn_info->resp_ies,
+					conn_info->resp_ies_len, connect_status,
+					GFP_KERNEL);
+#endif
 		vif->bss = NULL;
 	} else if (conn_disconn_evt == CONN_DISCONN_EVENT_DISCONN_NOTIF) {
 		u16 reason = 0;
@@ -242,8 +269,11 @@ static void cfg_connect_result(enum conn_event conn_disconn_evt, u8 mac_status,
 			else
 				reason = 1;
 		}
-
+#if KERNEL_VERSION(4, 2, 0) > LINUX_VERSION_CODE
+		cfg80211_disconnected(dev, reason, NULL, 0, GFP_KERNEL);
+#else
 		cfg80211_disconnected(dev, reason, NULL, 0, false, GFP_KERNEL);
+#endif
 	}
 }
 
@@ -481,9 +511,15 @@ static int connect(struct wiphy *wiphy, struct net_device *dev,
 		goto out_error;
 	}
 
+#if KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE
+	bss = cfg80211_get_bss(wiphy, sme->channel, sme->bssid, sme->ssid,
+			       sme->ssid_len, WLAN_CAPABILITY_ESS,
+			       WLAN_CAPABILITY_ESS);
+#else
 	bss = cfg80211_get_bss(wiphy, sme->channel, sme->bssid, sme->ssid,
 			       sme->ssid_len, IEEE80211_BSS_TYPE_ANY,
 			       IEEE80211_PRIVACY(sme->privacy));
+#endif
 	if (!bss) {
 		ret = -EINVAL;
 		goto out_error;
@@ -1194,8 +1230,11 @@ bool wilc_wfi_p2p_rx(struct wilc_vif *vif, u8 *buff, u32 size)
 		return true;
 	}
 
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 	freq = ieee80211_channel_to_frequency(wl->op_ch, NL80211_BAND_2GHZ);
-
+ #else
+	freq = ieee80211_channel_to_frequency(wl->op_ch, IEEE80211_BAND_2GHZ);
+ #endif
 	mgmt = (struct ieee80211_mgmt *)buff;
 	PRINT_D(vif->ndev, GENERIC_DBG, "Rx Frame Type:%x\n",
 		mgmt->frame_control);
@@ -1299,6 +1338,10 @@ static int remain_on_channel(struct wiphy *wiphy,
 	priv->remain_on_ch_params.listen_duration = duration;
 
 	cfg80211_ready_on_channel(wdev, *cookie, chan, duration, GFP_KERNEL);
+
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
+	vif->hif_drv->remain_on_ch_timer.data = (unsigned long)vif->hif_drv;
+#endif
 	mod_timer(&vif->hif_drv->remain_on_ch_timer,
 		  jiffies + msecs_to_jiffies(duration + 1000));
 
@@ -1552,9 +1595,15 @@ static int set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 	return 0;
 }
 
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
 static int change_virtual_intf(struct wiphy *wiphy, struct net_device *dev,
 			       enum nl80211_iftype type,
 			       struct vif_params *params)
+#else
+static int change_virtual_intf(struct wiphy *wiphy, struct net_device *dev,
+			       enum nl80211_iftype type, u32 *flags,
+			       struct vif_params *params)
+#endif
 {
 	struct wilc *wl = wiphy_priv(wiphy);
 	struct wilc_vif *vif = netdev_priv(dev);
@@ -2272,7 +2321,11 @@ struct wilc *wilc_create_wiphy(struct device *dev)
 	wl->band.ht_cap.ampdu_factor = IEEE80211_HT_MAX_AMPDU_8K;
 	wl->band.ht_cap.ampdu_density = IEEE80211_HT_MPDU_DENSITY_NONE;
 
+#if KERNEL_VERSION(4, 7, 0) <= LINUX_VERSION_CODE
 	wiphy->bands[NL80211_BAND_2GHZ] = &wl->band;
+#else
+	wiphy->bands[IEEE80211_BAND_2GHZ] = &wl->band;
+#endif
 
 	wiphy->max_scan_ssids = WILC_MAX_NUM_PROBED_SSID;
 #ifdef CONFIG_PM
@@ -2322,7 +2375,12 @@ int wilc_init_host_int(struct net_device *net)
 	struct wilc_priv *priv = &vif->priv;
 
 	PRINT_INFO(net, INIT_DBG, "Host[%p][%p]\n", net, net->ieee80211_ptr);
+
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	timer_setup(&priv->eap_buff_timer, eap_buff_timeout, 0);
+#else
+	setup_timer(&priv->eap_buff_timer, eap_buff_timeout, 0);
+#endif
 
 	vif->p2p_listen_state = false;
 

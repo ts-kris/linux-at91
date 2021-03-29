@@ -3,12 +3,14 @@
  * Copyright (c) 2012 - 2018 Microchip Technology Inc., and its subsidiaries.
  * All rights reserved.
  */
-
-#include <linux/bitfield.h>
 #include "wlan_if.h"
 #include "wlan.h"
 #include "wlan_cfg.h"
 #include "netdev.h"
+
+#if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE
+#include <linux/bitfield.h>
+#endif
 
 enum cfg_cmd_type {
 	CFG_BYTE_CMD	= 0,

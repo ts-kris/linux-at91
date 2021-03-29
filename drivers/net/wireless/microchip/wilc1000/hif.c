@@ -317,6 +317,9 @@ int wilc_scan(struct wilc_vif *vif, u8 scan_source, u8 scan_type,
 	wid_list[index].val = (s8 *)&scan_type;
 	index++;
 
+#if KERNEL_VERSION(4, 8, 0) > LINUX_VERSION_CODE
+	scan_timeout = WILC_HIF_SCAN_TIMEOUT_MS;
+#else
 	if (scan_type == WILC_FW_PASSIVE_SCAN && request->duration) {
 		wid_list[index].id = WID_PASSIVE_SCAN_TIME;
 		wid_list[index].type = WID_SHORT;
@@ -328,7 +331,7 @@ int wilc_scan(struct wilc_vif *vif, u8 scan_source, u8 scan_type,
 	} else {
 		scan_timeout = WILC_HIF_SCAN_TIMEOUT_MS;
 	}
-
+#endif
 	wid_list[index].id = WID_SCAN_CHANNEL_LIST;
 	wid_list[index].type = WID_BIN_DATA;
 
@@ -360,6 +363,9 @@ int wilc_scan(struct wilc_vif *vif, u8 scan_source, u8 scan_type,
 		hif_drv->scan_timer_vif = vif;
 		PRINT_INFO(vif->ndev, HOSTINF_DBG,
 			   ">> Starting the SCAN timer\n");
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
+		hif_drv->scan_timer.data = (unsigned long)hif_drv;
+#endif
 		mod_timer(&hif_drv->scan_timer,
 			  jiffies + msecs_to_jiffies(scan_timeout));
 	}
@@ -1172,10 +1178,18 @@ static void wilc_handle_listen_state_expired(struct work_struct *work)
 	kfree(msg);
 }
 
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 static void listen_timer_cb(struct timer_list *t)
+#else
+static void listen_timer_cb(unsigned long arg)
+#endif
 {
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	struct host_if_drv *hif_drv = from_timer(hif_drv, t,
 						      remain_on_ch_timer);
+#else
+	struct host_if_drv *hif_drv = (struct host_if_drv *)arg;
+#endif
 	struct wilc_vif *vif = hif_drv->remain_on_ch_timer_vif;
 	int result;
 	struct host_if_msg *msg;
@@ -1277,9 +1291,17 @@ static void handle_scan_complete(struct work_struct *work)
 	kfree(msg);
 }
 
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 static void timer_scan_cb(struct timer_list *t)
+#else
+static void timer_scan_cb(unsigned long arg)
+#endif
 {
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	struct host_if_drv *hif_drv = from_timer(hif_drv, t, scan_timer);
+#else
+	struct host_if_drv *hif_drv = (struct host_if_drv *)arg;
+#endif
 	struct wilc_vif *vif = hif_drv->scan_timer_vif;
 	struct host_if_msg *msg;
 	int result;
@@ -1293,10 +1315,17 @@ static void timer_scan_cb(struct timer_list *t)
 		kfree(msg);
 }
 
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 static void timer_connect_cb(struct timer_list *t)
+#else
+static void timer_connect_cb(unsigned long arg)
+#endif
 {
-	struct host_if_drv *hif_drv = from_timer(hif_drv, t,
-						      connect_timer);
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
+	struct host_if_drv *hif_drv = from_timer(hif_drv, t, connect_timer);
+#else
+	struct host_if_drv *hif_drv = (struct host_if_drv *)arg;
+#endif
 	struct wilc_vif *vif = hif_drv->connect_timer_vif;
 	struct host_if_msg *msg;
 	int result;
@@ -1659,6 +1688,9 @@ int wilc_set_join_req(struct wilc_vif *vif, u8 *bssid, const u8 *ies,
 		goto free_ies;
 	}
 
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
+	hif_drv->connect_timer.data = (unsigned long)hif_drv;
+#endif
 	hif_drv->connect_timer_vif = vif;
 	mod_timer(&hif_drv->connect_timer,
 		  jiffies + msecs_to_jiffies(WILC_HIF_CONNECT_TIMEOUT_MS));
@@ -1826,9 +1858,17 @@ int wilc_hif_set_cfg(struct wilc_vif *vif, struct cfg_param_attr *param)
 	return wilc_send_config_pkt(vif, WILC_SET_CFG, wid_list, i);
 }
 
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 static void get_periodic_rssi(struct timer_list *t)
+#else
+static void get_periodic_rssi(unsigned long arg)
+#endif
 {
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	struct wilc_vif *vif = from_timer(vif, t, periodic_rssi);
+#else
+	struct wilc_vif *vif = (struct wilc_vif *)arg;
+#endif
 
 	if (!vif->hif_drv) {
 		netdev_err(vif->ndev, "%s: hif driver is NULL", __func__);
@@ -1854,12 +1894,19 @@ int wilc_init(struct net_device *dev, struct host_if_drv **hif_drv_handler)
 	*hif_drv_handler = hif_drv;
 	vif->hif_drv = hif_drv;
 
-	timer_setup(&vif->periodic_rssi, get_periodic_rssi, 0);
-	mod_timer(&vif->periodic_rssi, jiffies + msecs_to_jiffies(5000));
-
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	timer_setup(&hif_drv->scan_timer, timer_scan_cb, 0);
 	timer_setup(&hif_drv->connect_timer, timer_connect_cb, 0);
 	timer_setup(&hif_drv->remain_on_ch_timer, listen_timer_cb, 0);
+	timer_setup(&vif->periodic_rssi, get_periodic_rssi, 0);
+#else
+	setup_timer(&hif_drv->scan_timer, timer_scan_cb, 0);
+	setup_timer(&hif_drv->connect_timer, timer_connect_cb, 0);
+	setup_timer(&hif_drv->remain_on_ch_timer, listen_timer_cb, 0);
+	setup_timer(&vif->periodic_rssi, get_periodic_rssi,
+			    (unsigned long)vif);
+#endif
+	mod_timer(&vif->periodic_rssi, jiffies + msecs_to_jiffies(5000));
 
 	hif_drv->hif_state = HOST_IF_IDLE;
 

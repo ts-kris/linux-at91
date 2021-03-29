@@ -247,13 +247,21 @@ static void free_eap_buff_params(void *vp)
 	}
 }
 
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 void eap_buff_timeout(struct timer_list *t)
+#else
+void eap_buff_timeout(unsigned long user)
+#endif
 {
 	u8 null_bssid[ETH_ALEN] = {0};
 	u8 *assoc_bss;
 	static u8 timeout = 5;
 	int status = -1;
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 	struct wilc_priv *priv = from_timer(priv, t, eap_buff_timer);
+#else
+	struct wilc_priv *priv = (struct wilc_priv *)user;
+#endif
 	struct wilc_vif *vif = netdev_priv(priv->dev);
 
 	assoc_bss = priv->associated_bss;
@@ -1156,6 +1164,9 @@ void wilc_frmw_to_host(struct wilc_vif *vif, u8 *buff, u32 size,
 		priv->buffered_eap->pkt_offset = pkt_offset;
 		memcpy(priv->buffered_eap->buff, buff -
 		       pkt_offset, size + pkt_offset);
+	#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
+		priv->eap_buff_timer.data = (unsigned long)priv;
+	#endif
 		mod_timer(&priv->eap_buff_timer, (jiffies +
 			  msecs_to_jiffies(10)));
 		return;
@@ -1167,7 +1178,11 @@ void wilc_frmw_to_host(struct wilc_vif *vif, u8 *buff, u32 size,
 	}
 
 	skb->dev = vif->ndev;
+#if KERNEL_VERSION(4, 13, 0) <= LINUX_VERSION_CODE
 	skb_put_data(skb, buff_to_send, frame_len);
+#else
+	memcpy(skb_put(skb, frame_len), buff_to_send, frame_len);
+#endif
 
 	skb->protocol = eth_type_trans(skb, vif->ndev);
 	vif->netstats.rx_packets++;
@@ -1326,8 +1341,11 @@ struct wilc_vif *wilc_netdev_ifc_init(struct wilc *wl, const char *name,
 		free_netdev(ndev);
 		return ERR_PTR(-EFAULT);
 	}
-
+#if KERNEL_VERSION(4, 11, 9) <= LINUX_VERSION_CODE
 	ndev->needs_free_netdev = true;
+#else
+	ndev->destructor = free_netdev;
+#endif
 	vif->iftype = vif_type;
 	vif->idx = wilc_get_available_idx(wl);
 	vif->mac_opened = 0;
