@@ -31,6 +31,14 @@
 		i2c0 = &i2c1;
 		i2c1 = &i2c8;
 		i2c2 = &i2c9;
+		tcb0 = &tcb0;
+		tcb1 = &tcb1;
+	};
+
+	cpus {
+		cpu0: cpu@0 {
+			cpu-supply = <&vddcpu>;
+		};
 	};
 
 	clocks {
@@ -119,6 +127,8 @@
 &adc {
 	vddana-supply = <&vddout25>;
 	vref-supply = <&vddout25>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mikrobus1_an_default &pinctrl_mikrobus2_an_default>;
 	status = "okay";
 };
 
@@ -270,6 +280,34 @@
 				};
 			};
 		};
+
+		eeprom0: eeprom0@52 {
+			compatible = "atmel,24mac02e4";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x52>;
+			pagesize = <16>;
+			size = <256>;
+			status = "okay";
+
+			eeprom0_eui48: eui48@fa {
+				reg = <0xfa 0x6>;
+			};
+		};
+
+		eeprom1: eeprom1@53 {
+			compatible = "atmel,24mac02e4";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x53>;
+			pagesize = <16>;
+			size = <256>;
+			status = "okay";
+
+			eeprom1_eui48: eui48@fa {
+				reg = <0xfa 0x6>;
+			};
+		};
 	};
 };
 
@@ -368,6 +406,9 @@
 	phy-mode = "rgmii-id";
 	status = "okay";
 
+	nvmem-cells = <&eeprom0_eui48>;
+	nvmem-cell-names = "mac-address";
+
 	ethernet-phy@7 {
 		reg = <0x7>;
 		interrupt-parent = <&pioA>;
@@ -382,6 +423,9 @@
 	pinctrl-0 = <&pinctrl_gmac1_default &pinctrl_gmac1_phy_irq>;
 	phy-mode = "rmii";
 	status = "okay";
+
+	nvmem-cells = <&eeprom1_eui48>;
+	nvmem-cell-names = "mac-address";
 
 	ethernet-phy@0 {
 		reg = <0x0>;
@@ -506,6 +550,16 @@
 			 <PIN_PB8__GPIO>,
 			 <PIN_PD20__GPIO>;
 		bias-pull-up;
+	};
+
+	pinctrl_mikrobus1_an_default: mikrobus1_an_default {
+		pinmux = <PIN_PD0__GPIO>;
+		bias-disable;
+	};
+
+	pinctrl_mikrobus2_an_default: mikrobus2_an_default {
+		pinmux = <PIN_PD1__GPIO>;
+		bias-disable;
 	};
 
 	pinctrl_mikrobus1_pwm2_default: mikrobus1_pwm2_default {
