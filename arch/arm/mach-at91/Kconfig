@@ -205,6 +205,9 @@ config ATMEL_PM
 config SOC_SAMA7
 	bool
 	select ARM_GIC
+	select ATMEL_PM if PM
+	select ATMEL_SDRAMC
 	select MEMORY
 	select SOC_SAM_V7
+	select SRAM if PM
 endif
