@@ -89,6 +89,11 @@ static struct atmel_tcb_config tcb_sam9x5_config = {
 	.counter_width = 32,
 };
 
+static struct atmel_tcb_config tcb_sama5d2_config = {
+	.counter_width = 32,
+	.has_gclk = 1,
+};
+
 static const struct of_device_id atmel_tcb_dt_ids[] = {
 	{
 		.compatible = "atmel,at91rm9200-tcb",
@@ -96,6 +101,9 @@ static const struct of_device_id atmel_tcb_dt_ids[] = {
 	}, {
 		.compatible = "atmel,at91sam9x5-tcb",
 		.data = &tcb_sam9x5_config,
+	}, {
+		.compatible = "atmel,sama5d2-tcb",
+		.data = &tcb_sama5d2_config,
 	}, {
 		/* sentinel */
 	}
@@ -135,6 +143,9 @@ static int __init tc_probe(struct platform_device *pdev)
 	tc->regs = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(tc->regs))
 		return PTR_ERR(tc->regs);
+
+	tc->bridge_bug = of_property_read_bool(pdev->dev.of_node,
+					       "microchip,bridge-bug");
 
 	/* Now take SoC information if available */
 	if (pdev->dev.of_node) {

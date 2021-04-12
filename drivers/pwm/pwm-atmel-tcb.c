@@ -30,6 +30,25 @@
 #define ATMEL_TC_BCMR_MASK	(ATMEL_TC_BCPB | ATMEL_TC_BCPC |	\
 				 ATMEL_TC_BEEVT | ATMEL_TC_BSWTRG)
 
+#define ATMEL_TC_READ(_chip, _reg, _reg_name, _group) ({		\
+	u32 _off = offsetof(struct atmel_tcb_channel, _reg_name);	\
+	u32 _r;								\
+	if ((_chip)->tc->bridge_bug)					\
+		_r = *((u32 *)((u8 *)&(_chip)->regs[(_group)] + _off));	\
+	else								\
+		_r = __raw_readl((_chip)->tc->regs +			\
+				 ATMEL_TC_REG((_group), _reg));		\
+	(_r);								\
+})
+
+#define ATMEL_TC_WRITE(_chip, _reg, _reg_name, _group, _val) ({		\
+	u32 _off = offsetof(struct atmel_tcb_channel, _reg_name);	\
+	if ((_chip)->tc->bridge_bug)					\
+		*((u32 *)((u8 *)&(_chip)->regs[(_group)] + _off)) = (_val); \
+	__raw_writel((_val), (_chip)->tc->regs +			\
+		     ATMEL_TC_REG((_group), _reg));			\
+})
+
 struct atmel_tcb_pwm_device {
 	enum pwm_polarity polarity;	/* PWM polarity */
 	unsigned div;			/* PWM clock divider */
@@ -40,6 +59,7 @@ struct atmel_tcb_pwm_device {
 struct atmel_tcb_channel {
 	u32 enabled;
 	u32 cmr;
+	u32 ccr;
 	u32 ra;
 	u32 rb;
 	u32 rc;
@@ -50,7 +70,7 @@ struct atmel_tcb_pwm_chip {
 	spinlock_t lock;
 	struct atmel_tc *tc;
 	struct atmel_tcb_pwm_device *pwms[NPWM];
-	struct atmel_tcb_channel bkup[NPWM / 2];
+	struct atmel_tcb_channel regs[NPWM / 2];
 };
 
 static inline struct atmel_tcb_pwm_chip *to_tcb_chip(struct pwm_chip *chip)
@@ -75,7 +95,6 @@ static int atmel_tcb_pwm_request(struct pwm_chip *chip,
 	struct atmel_tcb_pwm_chip *tcbpwmc = to_tcb_chip(chip);
 	struct atmel_tcb_pwm_device *tcbpwm;
 	struct atmel_tc *tc = tcbpwmc->tc;
-	void __iomem *regs = tc->regs;
 	unsigned group = pwm->hwpwm / 2;
 	unsigned index = pwm->hwpwm % 2;
 	unsigned cmr;
@@ -98,28 +117,26 @@ static int atmel_tcb_pwm_request(struct pwm_chip *chip,
 	tcbpwm->div = 0;
 
 	spin_lock(&tcbpwmc->lock);
-	cmr = __raw_readl(regs + ATMEL_TC_REG(group, CMR));
+	cmr = ATMEL_TC_READ(tcbpwmc, CMR, cmr, group);
 	/*
 	 * Get init config from Timer Counter registers if
 	 * Timer Counter is already configured as a PWM generator.
 	 */
 	if (cmr & ATMEL_TC_WAVE) {
 		if (index == 0)
-			tcbpwm->duty =
-				__raw_readl(regs + ATMEL_TC_REG(group, RA));
+			tcbpwm->duty = ATMEL_TC_READ(tcbpwmc, RA, ra, group);
 		else
-			tcbpwm->duty =
-				__raw_readl(regs + ATMEL_TC_REG(group, RB));
+			tcbpwm->duty = ATMEL_TC_READ(tcbpwmc, RB, rb, group);
 
 		tcbpwm->div = cmr & ATMEL_TC_TCCLKS;
-		tcbpwm->period = __raw_readl(regs + ATMEL_TC_REG(group, RC));
+		tcbpwm->period = ATMEL_TC_READ(tcbpwmc, RC, rc, group);
 		cmr &= (ATMEL_TC_TCCLKS | ATMEL_TC_ACMR_MASK |
 			ATMEL_TC_BCMR_MASK);
 	} else
 		cmr = 0;
 
 	cmr |= ATMEL_TC_WAVE | ATMEL_TC_WAVESEL_UP_AUTO | ATMEL_TC_EEVT_XC0;
-	__raw_writel(cmr, regs + ATMEL_TC_REG(group, CMR));
+	ATMEL_TC_WRITE(tcbpwmc, CMR, cmr, group, cmr);
 	spin_unlock(&tcbpwmc->lock);
 
 	tcbpwmc->pwms[pwm->hwpwm] = tcbpwm;
@@ -142,8 +159,6 @@ static void atmel_tcb_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 {
 	struct atmel_tcb_pwm_chip *tcbpwmc = to_tcb_chip(chip);
 	struct atmel_tcb_pwm_device *tcbpwm = pwm_get_chip_data(pwm);
-	struct atmel_tc *tc = tcbpwmc->tc;
-	void __iomem *regs = tc->regs;
 	unsigned group = pwm->hwpwm / 2;
 	unsigned index = pwm->hwpwm % 2;
 	unsigned cmr;
@@ -161,7 +176,7 @@ static void atmel_tcb_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 		polarity = !polarity;
 
 	spin_lock(&tcbpwmc->lock);
-	cmr = __raw_readl(regs + ATMEL_TC_REG(group, CMR));
+	cmr = ATMEL_TC_READ(tcbpwmc, CMR, cmr, group);
 
 	/* flush old setting and set the new one */
 	if (index == 0) {
@@ -178,20 +193,19 @@ static void atmel_tcb_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 			cmr |= ATMEL_TC_BSWTRG_SET;
 	}
 
-	__raw_writel(cmr, regs + ATMEL_TC_REG(group, CMR));
+	ATMEL_TC_WRITE(tcbpwmc, CMR, cmr, group, cmr);
 
 	/*
 	 * Use software trigger to apply the new setting.
 	 * If both PWM devices in this group are disabled we stop the clock.
 	 */
 	if (!(cmr & (ATMEL_TC_ACPC | ATMEL_TC_BCPC))) {
-		__raw_writel(ATMEL_TC_SWTRG | ATMEL_TC_CLKDIS,
-			     regs + ATMEL_TC_REG(group, CCR));
-		tcbpwmc->bkup[group].enabled = 1;
+		ATMEL_TC_WRITE(tcbpwmc, CCR, ccr, group,
+				ATMEL_TC_SWTRG | ATMEL_TC_CLKDIS);
+		tcbpwmc->regs[group].enabled = 1;
 	} else {
-		__raw_writel(ATMEL_TC_SWTRG, regs +
-			     ATMEL_TC_REG(group, CCR));
-		tcbpwmc->bkup[group].enabled = 0;
+		ATMEL_TC_WRITE(tcbpwmc, CCR, ccr, group, ATMEL_TC_SWTRG);
+		tcbpwmc->regs[group].enabled = 0;
 	}
 
 	spin_unlock(&tcbpwmc->lock);
@@ -201,8 +215,6 @@ static int atmel_tcb_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 {
 	struct atmel_tcb_pwm_chip *tcbpwmc = to_tcb_chip(chip);
 	struct atmel_tcb_pwm_device *tcbpwm = pwm_get_chip_data(pwm);
-	struct atmel_tc *tc = tcbpwmc->tc;
-	void __iomem *regs = tc->regs;
 	unsigned group = pwm->hwpwm / 2;
 	unsigned index = pwm->hwpwm % 2;
 	u32 cmr;
@@ -220,7 +232,7 @@ static int atmel_tcb_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 		polarity = !polarity;
 
 	spin_lock(&tcbpwmc->lock);
-	cmr = __raw_readl(regs + ATMEL_TC_REG(group, CMR));
+	cmr = ATMEL_TC_READ(tcbpwmc, CMR, cmr, group);
 
 	/* flush old setting and set the new one */
 	cmr &= ~ATMEL_TC_TCCLKS;
@@ -263,19 +275,18 @@ static int atmel_tcb_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 
 	cmr |= (tcbpwm->div & ATMEL_TC_TCCLKS);
 
-	__raw_writel(cmr, regs + ATMEL_TC_REG(group, CMR));
+	ATMEL_TC_WRITE(tcbpwmc, CMR, cmr, group, cmr);
 
 	if (index == 0)
-		__raw_writel(tcbpwm->duty, regs + ATMEL_TC_REG(group, RA));
+		ATMEL_TC_WRITE(tcbpwmc, RA, ra, group, tcbpwm->duty);
 	else
-		__raw_writel(tcbpwm->duty, regs + ATMEL_TC_REG(group, RB));
+		ATMEL_TC_WRITE(tcbpwmc, RB, rb, group, tcbpwm->duty);
 
-	__raw_writel(tcbpwm->period, regs + ATMEL_TC_REG(group, RC));
+	ATMEL_TC_WRITE(tcbpwmc, RC, rc, group, tcbpwm->period);
 
 	/* Use software trigger to apply the new setting */
-	__raw_writel(ATMEL_TC_CLKEN | ATMEL_TC_SWTRG,
-		     regs + ATMEL_TC_REG(group, CCR));
-	tcbpwmc->bkup[group].enabled = 1;
+	ATMEL_TC_WRITE(tcbpwmc, CCR, ccr, group, ATMEL_TC_CLKEN | ATMEL_TC_SWTRG);
+	tcbpwmc->regs[group].enabled = 1;
 	spin_unlock(&tcbpwmc->lock);
 	return 0;
 }
@@ -289,7 +300,7 @@ static int atmel_tcb_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	unsigned index = pwm->hwpwm % 2;
 	struct atmel_tcb_pwm_device *atcbpwm = NULL;
 	struct atmel_tc *tc = tcbpwmc->tc;
-	int i;
+	int i = 0;
 	int slowclk = 0;
 	unsigned period;
 	unsigned duty;
@@ -301,7 +312,9 @@ static int atmel_tcb_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	 * Find best clk divisor:
 	 * the smallest divisor which can fulfill the period_ns requirements.
 	 */
-	for (i = 0; i < 5; ++i) {
+	if (tc->tcb_config->has_gclk)
+		i = 1;
+	for ( ; i < 5; ++i) {
 		if (atmel_tc_divisors[i] == 0) {
 			slowclk = i;
 			continue;
@@ -461,16 +474,15 @@ MODULE_DEVICE_TABLE(of, atmel_tcb_pwm_dt_ids);
 static int atmel_tcb_pwm_suspend(struct device *dev)
 {
 	struct atmel_tcb_pwm_chip *tcbpwm = dev_get_drvdata(dev);
-	void __iomem *base = tcbpwm->tc->regs;
 	int i;
 
 	for (i = 0; i < (NPWM / 2); i++) {
-		struct atmel_tcb_channel *chan = &tcbpwm->bkup[i];
+		struct atmel_tcb_channel *chan = &tcbpwm->regs[i];
 
-		chan->cmr = readl(base + ATMEL_TC_REG(i, CMR));
-		chan->ra = readl(base + ATMEL_TC_REG(i, RA));
-		chan->rb = readl(base + ATMEL_TC_REG(i, RB));
-		chan->rc = readl(base + ATMEL_TC_REG(i, RC));
+		chan->cmr = ATMEL_TC_READ(tcbpwm, CMR, cmr, i);
+		chan->cmr = ATMEL_TC_READ(tcbpwm, RA, ra, i);
+		chan->cmr = ATMEL_TC_READ(tcbpwm, RB, rb, i);
+		chan->cmr = ATMEL_TC_READ(tcbpwm, RC, rc, i);
 	}
 	return 0;
 }
@@ -478,19 +490,18 @@ static int atmel_tcb_pwm_suspend(struct device *dev)
 static int atmel_tcb_pwm_resume(struct device *dev)
 {
 	struct atmel_tcb_pwm_chip *tcbpwm = dev_get_drvdata(dev);
-	void __iomem *base = tcbpwm->tc->regs;
 	int i;
 
 	for (i = 0; i < (NPWM / 2); i++) {
-		struct atmel_tcb_channel *chan = &tcbpwm->bkup[i];
+		struct atmel_tcb_channel *chan = &tcbpwm->regs[i];
 
-		writel(chan->cmr, base + ATMEL_TC_REG(i, CMR));
-		writel(chan->ra, base + ATMEL_TC_REG(i, RA));
-		writel(chan->rb, base + ATMEL_TC_REG(i, RB));
-		writel(chan->rc, base + ATMEL_TC_REG(i, RC));
+		ATMEL_TC_WRITE(tcbpwm, CMR, cmr, i, chan->cmr);
+		ATMEL_TC_WRITE(tcbpwm, RA, ra, i, chan->ra);
+		ATMEL_TC_WRITE(tcbpwm, RB, rb, i, chan->rb);
+		ATMEL_TC_WRITE(tcbpwm, RC, rc, i, chan->rc);
 		if (chan->enabled) {
-			writel(ATMEL_TC_CLKEN | ATMEL_TC_SWTRG,
-				base + ATMEL_TC_REG(i, CCR));
+			ATMEL_TC_WRITE(tcbpwm, CCR, ccr, i,
+					ATMEL_TC_CLKEN | ATMEL_TC_SWTRG);
 		}
 	}
 	return 0;

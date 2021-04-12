@@ -75,6 +75,7 @@ struct atmel_tc {
 	struct clk		*slow_clk;
 	struct list_head	node;
 	bool			allocated;
+	bool			bridge_bug;
 };
 
 extern struct atmel_tc *atmel_tc_alloc(unsigned block);
