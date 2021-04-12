@@ -2,7 +2,7 @@
 /*
  * Setup code for SAMA7
  *
- * Copyright (C) 2020 Microchip Technology, Inc. and its subsidiaries
+ * Copyright (C) 2021 Microchip Technology, Inc. and its subsidiaries
  *
  */
 
@@ -14,14 +14,10 @@
 
 #include "generic.h"
 
-static void __init sama7_common_init(void)
-{
-	of_platform_default_populate(NULL, NULL, NULL);
-}
-
 static void __init sama7_dt_device_init(void)
 {
-	sama7_common_init();
+	of_platform_default_populate(NULL, NULL, NULL);
+	sama7_pm_init();
 }
 
 static const char *const sama7_dt_board_compat[] __initconst = {
@@ -34,15 +30,3 @@ DT_MACHINE_START(sama7_dt, "Microchip SAMA7")
 	.init_machine	= sama7_dt_device_init,
 	.dt_compat	= sama7_dt_board_compat,
 MACHINE_END
-
-static const char *const sama7g5_dt_board_compat[] __initconst = {
-	"microchip,sama7g5",
-	NULL
-};
-
-DT_MACHINE_START(sama7g5_dt, "Microchip SAMA7G5")
-	/* Maintainer: Microchip */
-	.init_machine	= sama7_dt_device_init,
-	.dt_compat	= sama7g5_dt_board_compat,
-MACHINE_END
-
