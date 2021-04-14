@@ -744,14 +744,16 @@ static int csi2dc_remove(struct platform_device *pdev)
 
 static int __maybe_unused csi2dc_runtime_suspend(struct device *dev)
 {
-	struct csi2dc_device *csi2dc = dev_get_drvdata(dev);
+	struct v4l2_subdev *csi2dc_sd = dev_get_drvdata(dev);
+	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
 	return csi2dc_power(csi2dc, false);
 }
 
 static int __maybe_unused csi2dc_runtime_resume(struct device *dev)
 {
-	struct csi2dc_device *csi2dc = dev_get_drvdata(dev);
+	struct v4l2_subdev *csi2dc_sd = dev_get_drvdata(dev);
+	struct csi2dc_device *csi2dc = csi2dc_sd_to_csi2dc_device(csi2dc_sd);
 
 	return csi2dc_power(csi2dc, true);
 }
