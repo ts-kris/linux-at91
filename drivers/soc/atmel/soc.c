@@ -27,9 +27,9 @@
 #define AT91_CHIPID_EXID		0x04
 #define AT91_CIDR_VERSION(x)		((x) & 0x1f)
 #define AT91_CIDR_EXT			BIT(31)
-#define AT91_CIDR_MATCH_MASK		0x7fffffe0
+#define AT91_CIDR_MATCH_MASK		GENMASK(30, 5)
 
-static const struct at91_soc __initconst socs[] = {
+static const struct at91_soc socs[] __initconst = {
 #ifdef CONFIG_SOC_AT91RM9200
 	AT91_SOC(AT91RM9200_CIDR_MATCH, 0, "at91rm9200 BGA", "at91rm9200"),
 #endif
@@ -69,6 +69,12 @@ static const struct at91_soc __initconst socs[] = {
 #endif
 #ifdef CONFIG_SOC_SAM9X60
 	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_EXID_MATCH, "sam9x60", "sam9x60"),
+	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_D5M_EXID_MATCH,
+		 "sam9x60 64MiB DDR2 SiP", "sam9x60"),
+	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_D1G_EXID_MATCH,
+		 "sam9x60 128MiB DDR2 SiP", "sam9x60"),
+	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_D6K_EXID_MATCH,
+		 "sam9x60 8MiB SDRAM SiP", "sam9x60"),
 #endif
 #ifdef CONFIG_SOC_SAMA5
 	AT91_SOC(SAMA5D2_CIDR_MATCH, SAMA5D21CU_EXID_MATCH,
