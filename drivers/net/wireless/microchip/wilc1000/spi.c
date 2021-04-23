@@ -42,6 +42,7 @@ struct wilc_spi {
 	bool probing_crc;	/* true if we're probing chip's CRC config */
 	bool crc7_enabled;	/* true if crc7 is currently enabled */
 	bool crc16_enabled;	/* true if crc16 is currently enabled */
+	bool is_init;
 };
 
 static const struct wilc_hif_func wilc_hif_spi;
@@ -971,11 +972,19 @@ static int wilc_spi_reset(struct wilc *wilc)
 	return result;
 }
 
+static bool wilc_spi_is_init(struct wilc *wilc)
+{
+	struct wilc_spi *spi_priv = wilc->bus_data;
+
+	return spi_priv->is_init;
+}
+
 static int wilc_spi_deinit(struct wilc *wilc)
 {
-	/*
-	 * TODO:
-	 */
+	struct wilc_spi *spi_priv = wilc->bus_data;
+
+	spi_priv->is_init = false;
+
 	return 0;
 }
 
@@ -985,10 +994,9 @@ static int wilc_spi_init(struct wilc *wilc, bool resume)
 	struct wilc_spi *spi_priv = wilc->bus_data;
 	u32 reg;
 	u32 chipid;
-	static int isinit;
 	int ret, i;
 
-	if (isinit) {
+	if (spi_priv->is_init) {
 		ret = wilc_spi_read_reg(wilc, WILC_CHIPID, &chipid);
 		if (ret)
 			dev_err(&spi->dev, "Fail cmd read chip id...\n");
@@ -1059,8 +1067,7 @@ static int wilc_spi_init(struct wilc *wilc, bool resume)
 		return ret;
 	}
 
-	isinit = 1;
-
+	spi_priv->is_init = true;
 	return 0;
 }
 
@@ -1189,4 +1196,5 @@ static const struct wilc_hif_func wilc_hif_spi = {
 	.hif_block_rx_ext = wilc_spi_read,
 	.hif_sync_ext = wilc_spi_sync_ext,
 	.hif_reset = wilc_spi_reset,
+	.hif_is_init = wilc_spi_is_init,
 };
