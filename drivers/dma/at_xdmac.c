@@ -2048,7 +2048,6 @@ static int at_xdmac_probe(struct platform_device *pdev)
 	int		irq, size, nr_channels, i, ret;
 	void __iomem	*base;
 	u32		reg;
-	bool		bridge_bug;
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -2071,12 +2070,8 @@ static int at_xdmac_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	bridge_bug = of_property_read_bool(pdev->dev.of_node,
-					   "microchip,bridge-bug");
-
 	size = sizeof(*atxdmac);
-	size += (bridge_bug ? (nr_channels - 6) : nr_channels) *
-		sizeof(struct at_xdmac_chan);
+	size += nr_channels * sizeof(struct at_xdmac_chan);
 	atxdmac = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!atxdmac) {
 		dev_err(&pdev->dev, "can't allocate at_xdmac structure\n");
@@ -2157,10 +2152,6 @@ static int at_xdmac_probe(struct platform_device *pdev)
 	for (i = 0; i < nr_channels; i++) {
 		struct at_xdmac_chan *atchan = &atxdmac->chan[i];
 
-		if (bridge_bug &&
-		    (i == 0 || i == 1 || i == 18 || i == 19 || i == 26 || i == 27))
-			continue;
-
 		atchan->chan.device = &atxdmac->dma;
 		list_add_tail(&atchan->chan.device_node,
 			      &atxdmac->dma.channels);
@@ -2193,7 +2184,7 @@ static int at_xdmac_probe(struct platform_device *pdev)
 	}
 
 	dev_info(&pdev->dev, "%d channels, mapped at 0x%p\n",
-		 bridge_bug ? (nr_channels - 6) : nr_channels, atxdmac->regs);
+		 nr_channels, atxdmac->regs);
 
 	at_xdmac_axi_config(pdev);
 
