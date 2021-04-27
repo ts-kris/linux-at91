@@ -15,6 +15,11 @@ the dmas property of client devices.
     interface identifier,
     - bit 30-24: PERID, peripheral identifier.
 
+Optional properties:
+- microchip,bridge-bug: Should only be used in conjunction with compatible
+  "microchip,sama7g5-dma". Indicates that this controller instance is
+  affected by the sama7g5 bridge bug that limits the number of channels.
+
 Example:
 
 dma1: dma-controller@f0004000 {
