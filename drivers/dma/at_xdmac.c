@@ -224,11 +224,16 @@ struct at_xdmac_chan {
 	u32				save_cnda;
 	u32				save_cndc;
 	u32				irq_status;
+
+	/* channel is broken and should not be used */
+	bool				broken;
+
 	unsigned long			status;
 	struct tasklet_struct		tasklet;
 	struct dma_slave_config		sconfig;
 
 	spinlock_t			lock;
+
 
 	struct list_head		xfers_list;
 	struct list_head		free_descs_list;
@@ -244,6 +249,7 @@ struct at_xdmac {
 	u32			save_gim;
 	struct dma_pool		*at_xdmac_desc_pool;
 	const struct at_xdmac_layout	*layout;
+	u32			all_channels_count; /* including broken */
 	struct at_xdmac_chan	chan[];
 };
 
@@ -1755,11 +1761,15 @@ static irqreturn_t at_xdmac_interrupt(int irq, void *dev_id)
 			break;
 
 		/* We have to find which channel has generated the interrupt. */
-		for (i = 0; i < atxdmac->dma.chancnt; i++) {
+		for (i = 0; i < atxdmac->all_channels_count; i++) {
 			if (!((1 << i) & pending))
 				continue;
 
 			atchan = &atxdmac->chan[i];
+
+			if (atchan->broken)
+				continue;
+
 			chan_imr = at_xdmac_chan_read(atchan, AT_XDMAC_CIM);
 			chan_status = at_xdmac_chan_read(atchan, AT_XDMAC_CIS);
 			atchan->irq_status = chan_status & chan_imr;
@@ -1965,6 +1975,9 @@ static int atmel_xdmac_suspend(struct device *dev)
 	list_for_each_entry_safe(chan, _chan, &atxdmac->dma.channels, device_node) {
 		struct at_xdmac_chan	*atchan = to_at_xdmac_chan(chan);
 
+		if (atchan->broken)
+			continue;
+
 		atchan->save_cc = at_xdmac_chan_read(atchan, AT_XDMAC_CC);
 		if (at_xdmac_chan_is_cyclic(atchan)) {
 			if (!at_xdmac_chan_is_paused(atchan))
@@ -1994,8 +2007,12 @@ static int atmel_xdmac_resume(struct device *dev)
 		return ret;
 
 	/* Clear pending interrupts. */
-	for (i = 0; i < atxdmac->dma.chancnt; i++) {
+	for (i = 0; i < atxdmac->all_channels_count; i++) {
 		atchan = &atxdmac->chan[i];
+
+		if (atchan->broken)
+			continue;
+
 		while (at_xdmac_chan_read(atchan, AT_XDMAC_CIS))
 			cpu_relax();
 	}
@@ -2003,6 +2020,10 @@ static int atmel_xdmac_resume(struct device *dev)
 	at_xdmac_write(atxdmac, AT_XDMAC_GIE, atxdmac->save_gim);
 	list_for_each_entry_safe(chan, _chan, &atxdmac->dma.channels, device_node) {
 		atchan = to_at_xdmac_chan(chan);
+
+		if (atchan->broken)
+			continue;
+
 		at_xdmac_chan_write(atchan, AT_XDMAC_CC, atchan->save_cc);
 		if (at_xdmac_chan_is_cyclic(atchan)) {
 			if (at_xdmac_chan_is_paused(atchan))
@@ -2075,8 +2096,7 @@ static int at_xdmac_probe(struct platform_device *pdev)
 					   "microchip,bridge-bug");
 
 	size = sizeof(*atxdmac);
-	size += (bridge_bug ? (nr_channels - 6) : nr_channels) *
-		sizeof(struct at_xdmac_chan);
+	size += nr_channels * sizeof(struct at_xdmac_chan);
 	atxdmac = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!atxdmac) {
 		dev_err(&pdev->dev, "can't allocate at_xdmac structure\n");
@@ -2158,8 +2178,10 @@ static int at_xdmac_probe(struct platform_device *pdev)
 		struct at_xdmac_chan *atchan = &atxdmac->chan[i];
 
 		if (bridge_bug &&
-		    (i == 0 || i == 1 || i == 18 || i == 19 || i == 26 || i == 27))
+		    (i == 0 || i == 1 || i == 18 || i == 19 || i == 26 || i == 27)) {
+			atchan->broken = true;
 			continue;
+		}
 
 		atchan->chan.device = &atxdmac->dma;
 		list_add_tail(&atchan->chan.device_node,
@@ -2195,6 +2217,8 @@ static int at_xdmac_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%d channels, mapped at 0x%p\n",
 		 bridge_bug ? (nr_channels - 6) : nr_channels, atxdmac->regs);
 
+	atxdmac->all_channels_count = nr_channels;
+
 	at_xdmac_axi_config(pdev);
 
 	return 0;
@@ -2220,9 +2244,10 @@ static int at_xdmac_remove(struct platform_device *pdev)
 
 	free_irq(atxdmac->irq, atxdmac);
 
-	for (i = 0; i < atxdmac->dma.chancnt; i++) {
+	for (i = 0; i < atxdmac->all_channels_count; i++) {
 		struct at_xdmac_chan *atchan = &atxdmac->chan[i];
-
+		if (atchan->broken)
+			continue;
 		tasklet_kill(&atchan->tasklet);
 		at_xdmac_free_chan_resources(&atchan->chan);
 	}
