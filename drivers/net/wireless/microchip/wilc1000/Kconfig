@@ -12,6 +12,7 @@ config WILC1000_SDIO
 	tristate "Atmel WILC1000 SDIO (WiFi only)"
 	depends on CFG80211 && INET && MMC
 	select WILC1000
+	select PWRSEQ_WILC
 	help
 	  This module adds support for the SDIO interface of adapters using
 	  WILC1000 chipset. The Atmel WILC1000 SDIO is a full speed interface.
@@ -28,6 +29,7 @@ config WILC1000_SPI
 	select WILC1000
 	select CRC7
 	select CRC_ITU_T
+	select PWRSEQ_WILC
 	help
 	  This module adds support for the SPI interface of adapters using
 	  WILC1000 chipset. The Atmel WILC1000 has a Serial Peripheral
@@ -45,4 +47,4 @@ config WILC1000_HW_OOB_INTR
 	  chipset. This OOB interrupt is intended to provide a faster interrupt
 	  mechanism for SDIO host controllers that don't support SDIO interrupt.
 	  Select this option If the SDIO host controller in your platform
-	  doesn't support SDIO time division interrupt.
+	  doesn't support SDIO time devision interrupt.
