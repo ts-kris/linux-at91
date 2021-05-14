@@ -473,7 +473,8 @@
 			};
 
 			i2s0: i2s@e161c000 {
-				compatible = "microchip,sam9x60-i2smcc";
+				#sound-dai-cells = <0>;
+				compatible = "microchip,sama7g5-i2smcc";
 				reg = <0xe161c000 0x4000>;
 				interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
 				dmas = <&dma0 AT91_XDMAC_DT_PERID(33)>, <&dma0 AT91_XDMAC_DT_PERID(34)>;
@@ -484,7 +485,8 @@
 			};
 
 			i2s1: i2s@e1620000 {
-				compatible = "microchip,sam9x60-i2smcc";
+				#sound-dai-cells = <0>;
+				compatible = "microchip,sama7g5-i2smcc";
 				reg = <0xe1620000 0x4000>;
 				interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
 				dmas = <&dma0 AT91_XDMAC_DT_PERID(35)>, <&dma0 AT91_XDMAC_DT_PERID(36)>;
