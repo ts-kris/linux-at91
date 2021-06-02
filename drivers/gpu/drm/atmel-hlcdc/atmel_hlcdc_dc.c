@@ -822,8 +822,6 @@ static void atmel_hlcdc_dc_irq_uninstall(struct drm_device *dev)
 	regmap_read(dc->hlcdc->regmap, ATMEL_HLCDC_ISR, &isr);
 }
 
-
-
 DEFINE_DRM_GEM_CMA_FOPS(fops);
 
 /*
