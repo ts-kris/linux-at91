@@ -423,9 +423,7 @@ static int start_streaming(struct vb2_queue *vq, unsigned int count)
 	struct frame_buffer *buf, *node;
 	int ret;
 
-	ret = pm_runtime_resume_and_get(isi->dev);
-	if (ret < 0)
-		return ret;
+	pm_runtime_get_sync(isi->dev);
 
 	/* Enable stream on the sub device */
 	ret = v4l2_subdev_call(isi->entity.subdev, video, s_stream, 1);
@@ -785,10 +783,9 @@ static int isi_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int isi_camera_set_bus_param(struct atmel_isi *isi)
+static void isi_camera_set_bus_param(struct atmel_isi *isi)
 {
 	u32 cfg1 = 0;
-	int ret;
 
 	/* set bus param for ISI */
 	if (isi->pdata.hsync_act_low)
@@ -805,16 +802,12 @@ static int isi_camera_set_bus_param(struct atmel_isi *isi)
 	cfg1 |= ISI_CFG1_THMASK_BEATS_16;
 
 	/* Enable PM and peripheral clock before operate isi registers */
-	ret = pm_runtime_resume_and_get(isi->dev);
-	if (ret < 0)
-		return ret;
+	pm_runtime_get_sync(isi->dev);
 
 	isi_writel(isi, ISI_CTRL, ISI_CTRL_DIS);
 	isi_writel(isi, ISI_CFG1, cfg1);
 
 	pm_runtime_put(isi->dev);
-
-	return 0;
 }
 
 /* -----------------------------------------------------------------------*/
@@ -1093,11 +1086,7 @@ static int isi_graph_notify_complete(struct v4l2_async_notifier *notifier)
 		dev_err(isi->dev, "No supported mediabus format found\n");
 		return ret;
 	}
-	ret = isi_camera_set_bus_param(isi);
-	if (ret) {
-		dev_err(isi->dev, "Can't wake up device\n");
-		return ret;
-	}
+	isi_camera_set_bus_param(isi);
 
 	ret = isi_set_default_fmt(isi);
 	if (ret) {

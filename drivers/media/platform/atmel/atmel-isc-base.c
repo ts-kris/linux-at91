@@ -121,13 +121,9 @@ static int isc_wait_clk_stable(struct clk_hw *hw)
 static int isc_clk_prepare(struct clk_hw *hw)
 {
 	struct isc_clk *isc_clk = to_isc_clk(hw);
-	int ret;
 
-	if (isc_clk->id == ISC_ISPCK) {
-		ret = pm_runtime_resume_and_get(isc_clk->dev);
-		if (ret < 0)
-			return ret;
-	}
+	if (isc_clk->id == ISC_ISPCK)
+		pm_runtime_get_sync(isc_clk->dev);
 
 	return isc_wait_clk_stable(hw);
 }
@@ -184,13 +180,9 @@ static int isc_clk_is_enabled(struct clk_hw *hw)
 {
 	struct isc_clk *isc_clk = to_isc_clk(hw);
 	u32 status;
-	int ret;
 
-	if (isc_clk->id == ISC_ISPCK) {
-		ret = pm_runtime_resume_and_get(isc_clk->dev);
-		if (ret < 0)
-			return 0;
-	}
+	if (isc_clk->id == ISC_ISPCK)
+		pm_runtime_get_sync(isc_clk->dev);
 
 	regmap_read(isc_clk->regmap, ISC_CLKSR, &status);
 
@@ -641,12 +633,7 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 		goto err_start_stream;
 	}
 
-	ret = pm_runtime_resume_and_get(isc->dev);
-	if (ret < 0) {
-		v4l2_err(&isc->v4l2_dev, "RPM resume failed in subdev %d\n",
-			 ret);
-		goto err_pm_get;
-	}
+	pm_runtime_get_sync(isc->dev);
 
 	ret = isc_configure(isc);
 	if (unlikely(ret))
@@ -677,7 +664,7 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 err_configure:
 	pm_runtime_put_sync(isc->dev);
-err_pm_get:
+
 	v4l2_subdev_call(isc->current_subdev->sd, video, s_stream, 0);
 
 err_start_stream:
@@ -1694,7 +1681,6 @@ static void isc_awb_work(struct work_struct *w)
 	u32 baysel;
 	unsigned long flags;
 	u32 min, max;
-	int ret;
 
 	/* streaming is not active anymore */
 	if (isc->stop)
@@ -1717,9 +1703,7 @@ static void isc_awb_work(struct work_struct *w)
 	ctrls->hist_id = hist_id;
 	baysel = isc->config.sd_format->cfa_baycfg << ISC_HIS_CFG_BAYSEL_SHIFT;
 
-	ret = pm_runtime_resume_and_get(isc->dev);
-	if (ret < 0)
-		return;
+	pm_runtime_get_sync(isc->dev);
 
 	/*
 	 * only update if we have all the required histograms and controls
