@@ -260,6 +260,15 @@ static bool wilc_sdio_is_init(struct wilc *wilc)
 	return sdio_priv->is_init;
 }
 
+static int wilc_sdio_clear_init(struct wilc *wilc)
+{
+	struct wilc_sdio *sdio_priv = wilc->bus_data;
+
+	sdio_priv->is_init = false;
+
+	return 0;
+}
+
 static int wilc_sdio_suspend(struct device *dev)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
@@ -1072,6 +1081,7 @@ static const struct wilc_hif_func wilc_hif_sdio = {
 	.disable_interrupt = wilc_sdio_disable_interrupt,
 	.hif_reset = wilc_sdio_reset,
 	.hif_is_init = wilc_sdio_is_init,
+	.hif_clear_init = wilc_sdio_clear_init,
 };
 
 static int wilc_sdio_resume(struct device *dev)
