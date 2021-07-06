@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 5
 PATCHLEVEL = 10
-SUBLEVEL = 27
-EXTRAVERSION = -linux4sam-2021.04-rc3
+SUBLEVEL = 47
+EXTRAVERSION =
 NAME = Dare mighty things
 
 # *DOCUMENTATION*
