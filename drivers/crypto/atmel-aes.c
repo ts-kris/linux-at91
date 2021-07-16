@@ -143,6 +143,7 @@ struct atmel_aes_xts_ctx {
 	struct atmel_aes_base_ctx	base;
 
 	u32			key2[AES_KEYSIZE_256 / sizeof(u32)];
+	struct crypto_skcipher *fallback_tfm;
 };
 
 #if IS_ENABLED(CONFIG_CRYPTO_DEV_ATMEL_AUTHENC)
@@ -155,6 +156,7 @@ struct atmel_aes_authenc_ctx {
 struct atmel_aes_reqctx {
 	unsigned long		mode;
 	u8			lastc[AES_BLOCK_SIZE];
+	struct skcipher_request fallback_req;
 };
 
 #if IS_ENABLED(CONFIG_CRYPTO_DEV_ATMEL_AUTHENC)
@@ -1083,12 +1085,49 @@ static int atmel_aes_ctr_start(struct atmel_aes_dev *dd)
 	return atmel_aes_ctr_transfer(dd);
 }
 
+static int atmel_aes_xts_fallback(struct skcipher_request *req, bool enc)
+{
+	struct atmel_aes_reqctx *rctx = skcipher_request_ctx(req);
+	struct atmel_aes_xts_ctx *ctx = crypto_skcipher_ctx(
+			crypto_skcipher_reqtfm(req));
+
+	skcipher_request_set_tfm(&rctx->fallback_req, ctx->fallback_tfm);
+	skcipher_request_set_callback(&rctx->fallback_req, req->base.flags,
+				      req->base.complete, req->base.data);
+	skcipher_request_set_crypt(&rctx->fallback_req, req->src, req->dst,
+				   req->cryptlen, req->iv);
+
+	return enc ? crypto_skcipher_encrypt(&rctx->fallback_req) :
+		     crypto_skcipher_decrypt(&rctx->fallback_req);
+}
+
 static int atmel_aes_crypt(struct skcipher_request *req, unsigned long mode)
 {
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	struct atmel_aes_base_ctx *ctx = crypto_skcipher_ctx(skcipher);
 	struct atmel_aes_reqctx *rctx;
 	struct atmel_aes_dev *dd;
+	u32 opmode = mode & AES_FLAGS_OPMODE_MASK;
+
+	if (opmode == AES_FLAGS_XTS) {
+		if (req->cryptlen < XTS_BLOCK_SIZE)
+			return -EINVAL;
+
+		if (!IS_ALIGNED(req->cryptlen, XTS_BLOCK_SIZE))
+			return atmel_aes_xts_fallback(req,
+						      mode & AES_FLAGS_ENCRYPT);
+	}
+
+	/*
+	 * ECB, CBC, CFB, OFB or CTR mode require the plaintext and ciphertext
+	 * to have a positve integer length.
+	 */
+	if (!req->cryptlen && opmode != AES_FLAGS_XTS)
+		return 0;
+
+	if ((opmode == AES_FLAGS_ECB || opmode == AES_FLAGS_CBC) &&
+	    !IS_ALIGNED(req->cryptlen, crypto_skcipher_blocksize(skcipher)))
+		return -EINVAL;
 
 	switch (mode & AES_FLAGS_OPMODE_MASK) {
 	case AES_FLAGS_CFB8:
@@ -1120,7 +1159,7 @@ static int atmel_aes_crypt(struct skcipher_request *req, unsigned long mode)
 	rctx = skcipher_request_ctx(req);
 	rctx->mode = mode;
 
-	if ((mode & AES_FLAGS_OPMODE_MASK) != AES_FLAGS_ECB &&
+	if (opmode != AES_FLAGS_ECB &&
 	    !(mode & AES_FLAGS_ENCRYPT) && req->src == req->dst) {
 		unsigned int ivsize = crypto_skcipher_ivsize(skcipher);
 
@@ -1290,7 +1329,7 @@ static struct skcipher_alg aes_algs[] = {
 {
 	.base.cra_name		= "ofb(aes)",
 	.base.cra_driver_name	= "atmel-ofb-aes",
-	.base.cra_blocksize	= AES_BLOCK_SIZE,
+	.base.cra_blocksize	= 1,
 	.base.cra_ctxsize	= sizeof(struct atmel_aes_ctx),
 
 	.init			= atmel_aes_init_tfm,
@@ -1849,6 +1888,13 @@ static int atmel_aes_xts_setkey(struct crypto_skcipher *tfm, const u8 *key,
 	if (err)
 		return err;
 
+	crypto_skcipher_clear_flags(ctx->fallback_tfm, CRYPTO_TFM_REQ_MASK);
+	crypto_skcipher_set_flags(ctx->fallback_tfm, tfm->base.crt_flags &
+				  CRYPTO_TFM_REQ_MASK);
+	err = crypto_skcipher_setkey(ctx->fallback_tfm, key, keylen);
+	if (err)
+		return err;
+
 	memcpy(ctx->base.key, key, keylen/2);
 	memcpy(ctx->key2, key + keylen/2, keylen/2);
 	ctx->base.keylen = keylen/2;
@@ -1869,11 +1915,25 @@ static int atmel_aes_xts_decrypt(struct skcipher_request *req)
 static int atmel_aes_xts_init_tfm(struct crypto_skcipher *tfm)
 {
 	struct atmel_aes_xts_ctx *ctx = crypto_skcipher_ctx(tfm);
+	const char *tfm_name = crypto_tfm_alg_name(&tfm->base);
 
-	crypto_skcipher_set_reqsize(tfm, sizeof(struct atmel_aes_reqctx));
+	ctx->fallback_tfm = crypto_alloc_skcipher(tfm_name, 0,
+						  CRYPTO_ALG_NEED_FALLBACK);
+	if (IS_ERR(ctx->fallback_tfm))
+		return PTR_ERR(ctx->fallback_tfm);
+
+	crypto_skcipher_set_reqsize(tfm, sizeof(struct atmel_aes_reqctx) +
+				    crypto_skcipher_reqsize(ctx->fallback_tfm));
 	ctx->base.start = atmel_aes_xts_start;
 
 	return 0;
+}
+
+static void atmel_aes_xts_exit_tfm(struct crypto_skcipher *tfm)
+{
+	struct atmel_aes_xts_ctx *ctx = crypto_skcipher_ctx(tfm);
+
+	crypto_free_skcipher(ctx->fallback_tfm);
 }
 
 static struct skcipher_alg aes_xts_alg = {
@@ -1881,6 +1941,7 @@ static struct skcipher_alg aes_xts_alg = {
 	.base.cra_driver_name	= "atmel-xts-aes",
 	.base.cra_blocksize	= AES_BLOCK_SIZE,
 	.base.cra_ctxsize	= sizeof(struct atmel_aes_xts_ctx),
+	.base.cra_flags		= CRYPTO_ALG_NEED_FALLBACK,
 
 	.min_keysize		= 2 * AES_MIN_KEY_SIZE,
 	.max_keysize		= 2 * AES_MAX_KEY_SIZE,
@@ -1889,6 +1950,7 @@ static struct skcipher_alg aes_xts_alg = {
 	.encrypt		= atmel_aes_xts_encrypt,
 	.decrypt		= atmel_aes_xts_decrypt,
 	.init			= atmel_aes_xts_init_tfm,
+	.exit			= atmel_aes_xts_exit_tfm,
 };
 
 #if IS_ENABLED(CONFIG_CRYPTO_DEV_ATMEL_AUTHENC)
@@ -2358,7 +2420,7 @@ static void atmel_aes_unregister_algs(struct atmel_aes_dev *dd)
 
 static void atmel_aes_crypto_alg_init(struct crypto_alg *alg)
 {
-	alg->cra_flags = CRYPTO_ALG_ASYNC;
+	alg->cra_flags |= CRYPTO_ALG_ASYNC;
 	alg->cra_alignmask = 0xf;
 	alg->cra_priority = ATMEL_AES_PRIORITY;
 	alg->cra_module = THIS_MODULE;
