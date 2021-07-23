@@ -247,6 +247,14 @@
 							<AT91_PIOE 3 AT91_PERIPH_GPIO AT91_PINCTRL_NONE
 							 AT91_PIOE 4 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
 					};
+
+					pinctrl_d2_led: d2_led_default {
+						atmel,pins = <AT91_PIOE 23 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
+					};
+
+					pinctrl_d3_led: d3_led_default {
+						atmel,pins = <AT91_PIOE 24 AT91_PERIPH_GPIO AT91_PINCTRL_NONE>;
+					};
 				};
 			};
 		};
@@ -361,6 +369,9 @@
 
 	leds {
 		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_d2_led &pinctrl_d3_led>;
+		status = "okay";
 
 		d2 {
 			label = "d2";
@@ -369,7 +380,7 @@
 		};
 
 		d3 {
-			label = "d3";
+			label = "d3"; /* Conflict with EBI CS0, USART2 CTS. */
 			gpios = <&pioE 24 GPIO_ACTIVE_HIGH>;
 		};
 	};
