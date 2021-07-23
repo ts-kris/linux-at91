@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 10
 SUBLEVEL = 50
-EXTRAVERSION = -linux4sam-2021.04-rc4
+EXTRAVERSION = -linux4sam-2021.04-rc5
 NAME = Dare mighty things
 
 # *DOCUMENTATION*
