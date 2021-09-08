@@ -159,7 +159,7 @@ static bool mtk_nor_match_read(const struct spi_mem_op *op)
 {
 	int dummy = 0;
 
-	if (op->dummy.buswidth)
+	if (op->dummy.nbytes)
 		dummy = op->dummy.nbytes * BITS_PER_BYTE / op->dummy.buswidth;
 
 	if ((op->data.buswidth == 2) || (op->data.buswidth == 4)) {
