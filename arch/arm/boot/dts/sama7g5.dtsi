@@ -282,6 +282,11 @@
 				status = "disabled";
 			};
 
+			chipid@e0020000 {
+				compatible = "microchip,sama7g5-chipid";
+				reg = <0xe0020000 0x8>;
+			};
+
 			tcb1: timer@e0800000 {
 				compatible = "atmel,sama5d2-tcb", "simple-mfd", "syscon";
 				#address-cells = <1>;
