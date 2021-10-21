@@ -277,7 +277,7 @@ static void clk_pll_restore_context(struct clk_hw *hw)
 {
 	struct clk_pll *pll = to_clk_pll(hw);
 	unsigned long calc_rate;
-	unsigned int pllr;
+	unsigned int pllr, pllr_out, pllr_count;
 	u8 out = 0;
 
 	if (pll->characteristics->out)
@@ -287,11 +287,13 @@ static void clk_pll_restore_context(struct clk_hw *hw)
 
 	calc_rate = (pll->pms.parent_rate / PLL_DIV(pllr)) *
 		     (PLL_MUL(pllr, pll->layout) + 1);
+	pllr_count = (pllr >> PLL_COUNT_SHIFT) & PLL_MAX_COUNT;
+	pllr_out = (pllr >> PLL_OUT_SHIFT) & out;
 
 	if (pll->pms.rate != calc_rate ||
 	    pll->pms.status != clk_pll_ready(pll->regmap, PLL_REG(pll->id)) ||
-	    (((pllr >> PLL_COUNT_SHIFT) & PLL_MAX_COUNT) != PLL_MAX_COUNT) ||
-	    (out && ((pllr >> PLL_OUT_SHIFT) & out) != out))
+	    pllr_count != PLL_MAX_COUNT ||
+	    (out && pllr_out != out))
 		pr_warn("PLLAR was not configured properly by firmware\n");
 }
 

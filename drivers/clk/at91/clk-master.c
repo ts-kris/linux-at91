@@ -37,6 +37,7 @@ struct clk_master {
 	u8 id;
 	u8 parent;
 	u8 div;
+	u32 safe_div;
 };
 
 /* MCK div reference to be used by notifier. */
@@ -157,6 +158,7 @@ static const struct clk_ops master_div_ops = {
 	.restore_context = clk_master_div_restore_context,
 };
 
+/* This function must be called with lock acquired. */
 static int clk_master_div_set(struct clk_master *master,
 			      unsigned long parent_rate, int div)
 {
@@ -187,8 +189,8 @@ static int clk_master_div_set(struct clk_master *master,
 	if (ret)
 		return ret;
 
-	tmp = mckr & master->layout->mask;
-	tmp = (tmp >> MASTER_DIV_SHIFT) & MASTER_DIV_MASK;
+	mckr &= master->layout->mask;
+	tmp = (mckr >> MASTER_DIV_SHIFT) & MASTER_DIV_MASK;
 	if (tmp == div_index)
 		return 0;
 
@@ -211,53 +213,6 @@ static int clk_master_div_set(struct clk_master *master,
 
 	return 0;
 }
-
-static int at91_clk_master_div_notifier(struct notifier_block *notifier,
-					unsigned long code, void *data)
-{
-	const struct clk_master_characteristics *characteristics =
-						master_div->characteristics;
-	struct clk_notifier_data *cnd = data;
-	unsigned long cur_rate, flags;
-	unsigned int mckr, cur_div, diff_div;
-	static unsigned int new_div;
-
-	/*
-	 * Need to increase/decrease div to avoid master div clock over/under
-	 * clocking
-	 */
-	spin_lock_irqsave(master_div->lock, flags);
-	switch (code) {
-	case PRE_RATE_CHANGE:
-		regmap_read(master_div->regmap, master_div->layout->offset,
-			    &mckr);
-		mckr &= master_div->layout->mask;
-		mckr = (mckr >> MASTER_DIV_SHIFT) & MASTER_DIV_MASK;
-
-		cur_div = characteristics->divisors[mckr];
-		cur_rate = DIV_ROUND_CLOSEST_ULL(cnd->old_rate, cur_div);
-		new_div = DIV_ROUND_CLOSEST(cnd->new_rate, cur_rate);
-		diff_div = abs(cur_div - new_div);
-
-		clk_master_div_set(master_div, cnd->old_rate,
-				   cur_div + diff_div);
-		break;
-
-	case POST_RATE_CHANGE:
-		clk_master_div_set(master_div, cnd->new_rate, new_div);
-		break;
-
-	default:
-		break;
-	}
-	spin_unlock_irqrestore(master_div->lock, flags);
-
-	return 0;
-}
-
-static struct notifier_block clk_master_notifier = {
-	.notifier_call = at91_clk_master_div_notifier,
-};
 
 static unsigned long clk_master_div_recalc_rate_chg(struct clk_hw *hw,
 						    unsigned long parent_rate)
@@ -288,6 +243,111 @@ static const struct clk_ops master_div_ops_chg = {
 	.recalc_rate = clk_master_div_recalc_rate_chg,
 	.save_context = clk_master_div_save_context,
 	.restore_context = clk_master_div_restore_context_chg,
+};
+
+static int clk_master_div_notifier_fn(struct notifier_block *notifier,
+				      unsigned long code, void *data)
+{
+	const struct clk_master_characteristics *characteristics =
+						master_div->characteristics;
+	struct clk_notifier_data *cnd = data;
+	unsigned long flags, new_parent_rate, new_rate;
+	unsigned int mckr, div, new_div = 0;
+	int ret, i;
+	long tmp_diff;
+	long best_diff = -1;
+
+	spin_lock_irqsave(master_div->lock, flags);
+	switch (code) {
+	case PRE_RATE_CHANGE:
+		/*
+		 * We want to avoid any overclocking of MCK DIV domain. To do
+		 * this we set a safe divider (the underclocking is not of
+		 * interest as we can go as low as 32KHz). The relation
+		 * b/w this clock and its parents are as follows:
+		 *
+		 * FRAC PLL -> DIV PLL -> MCK DIV
+		 *
+		 * With the proper safe divider we should be good even with FRAC
+		 * PLL at its maximum value.
+		 */
+		ret = regmap_read(master_div->regmap, master_div->layout->offset,
+				  &mckr);
+		if (ret) {
+			ret = NOTIFY_STOP_MASK;
+			goto unlock;
+		}
+
+		mckr &= master_div->layout->mask;
+		div = (mckr >> MASTER_DIV_SHIFT) & MASTER_DIV_MASK;
+
+		/* Switch to safe divider. */
+		clk_master_div_set(master_div,
+				   cnd->old_rate * characteristics->divisors[div],
+				   master_div->safe_div);
+		break;
+
+	case POST_RATE_CHANGE:
+		/*
+		 * At this point we want to restore MCK DIV domain to its maximum
+		 * allowed rate.
+		 */
+		ret = regmap_read(master_div->regmap, master_div->layout->offset,
+				  &mckr);
+		if (ret) {
+			ret = NOTIFY_STOP_MASK;
+			goto unlock;
+		}
+
+		mckr &= master_div->layout->mask;
+		div = (mckr >> MASTER_DIV_SHIFT) & MASTER_DIV_MASK;
+		new_parent_rate = cnd->new_rate * characteristics->divisors[div];
+
+		for (i = 0; i < ARRAY_SIZE(characteristics->divisors); i++) {
+			if (!characteristics->divisors[i])
+				break;
+
+			new_rate = DIV_ROUND_CLOSEST_ULL(new_parent_rate,
+							 characteristics->divisors[i]);
+
+			tmp_diff = characteristics->output.max - new_rate;
+			if (tmp_diff < 0)
+				continue;
+
+			if (best_diff < 0 || best_diff > tmp_diff) {
+				new_div = characteristics->divisors[i];
+				best_diff = tmp_diff;
+			}
+
+			if (!tmp_diff)
+				break;
+		}
+
+		if (!new_div) {
+			ret = NOTIFY_STOP_MASK;
+			goto unlock;
+		}
+
+		/* Update the div to preserve MCK DIV clock rate. */
+		clk_master_div_set(master_div, new_parent_rate,
+				   new_div);
+
+		ret = NOTIFY_OK;
+		break;
+
+	default:
+		ret = NOTIFY_DONE;
+		break;
+	}
+
+unlock:
+	spin_unlock_irqrestore(master_div->lock, flags);
+
+	return ret;
+}
+
+static struct notifier_block clk_master_div_notifier = {
+	.notifier_call = clk_master_div_notifier_fn,
 };
 
 static void clk_sama7g5_master_best_diff(struct clk_rate_request *req,
@@ -357,7 +417,7 @@ static int clk_master_pres_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_master *master = to_clk_master(hw);
 	unsigned long flags;
-	unsigned int pres, val;
+	unsigned int pres, mckr, tmp;
 	int ret;
 
 	pres = DIV_ROUND_CLOSEST(parent_rate, rate);
@@ -366,21 +426,24 @@ static int clk_master_pres_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	else if (pres == 3)
 		pres = MASTER_PRES_MAX;
-	else
+	else if (pres)
 		pres = ffs(pres) - 1;
 
 	spin_lock_irqsave(master->lock, flags);
-	ret = regmap_read(master->regmap, master->layout->offset, &val);
+	ret = regmap_read(master->regmap, master->layout->offset, &mckr);
 	if (ret)
 		goto unlock;
 
-	val = (val >> master->layout->pres_shift) & MASTER_PRES_MASK;
-	if (pres == val)
+	mckr &= master->layout->mask;
+	tmp = (mckr >> master->layout->pres_shift) & MASTER_PRES_MASK;
+	if (pres == tmp)
 		goto unlock;
 
-	regmap_update_bits(master->regmap, master->layout->offset,
-			   (MASTER_PRES_MASK << master->layout->pres_shift),
-			   (pres << master->layout->pres_shift));
+	mckr &= ~(MASTER_PRES_MASK << master->layout->pres_shift);
+	mckr |= (pres << master->layout->pres_shift);
+	ret = regmap_write(master->regmap, master->layout->offset, mckr);
+	if (ret)
+		goto unlock;
 
 	while (!clk_master_ready(master))
 		cpu_relax();
@@ -403,8 +466,9 @@ static unsigned long clk_master_pres_recalc_rate(struct clk_hw *hw,
 	regmap_read(master->regmap, master->layout->offset, &val);
 	spin_unlock_irqrestore(master->lock, flags);
 
+	val &= master->layout->mask;
 	pres = (val >> master->layout->pres_shift) & MASTER_PRES_MASK;
-	if (pres == 3 && characteristics->have_div3_pres)
+	if (pres == MASTER_PRES_MAX && characteristics->have_div3_pres)
 		pres = 3;
 	else
 		pres = (1 << pres);
@@ -422,6 +486,8 @@ static u8 clk_master_pres_get_parent(struct clk_hw *hw)
 	regmap_read(master->regmap, master->layout->offset, &mckr);
 	spin_unlock_irqrestore(master->lock, flags);
 
+	mckr &= master->layout->mask;
+
 	return mckr & AT91_PMC_CSS;
 }
 
@@ -436,8 +502,9 @@ static int clk_master_pres_save_context(struct clk_hw *hw)
 	regmap_read(master->regmap, master->layout->offset, &val);
 	spin_unlock_irqrestore(master->lock, flags);
 
+	val &= master->layout->mask;
 	pres = (val >> master->layout->pres_shift) & MASTER_PRES_MASK;
-	if (pres == 3 && master->characteristics->have_div3_pres)
+	if (pres == MASTER_PRES_MAX && master->characteristics->have_div3_pres)
 		pres = 3;
 	else
 		pres = (1 << pres);
@@ -459,14 +526,15 @@ static void clk_master_pres_restore_context(struct clk_hw *hw)
 	regmap_read(master->regmap, master->layout->offset, &val);
 	spin_unlock_irqrestore(master->lock, flags);
 
+	val &= master->layout->mask;
 	pres = (val >> master->layout->pres_shift) & MASTER_PRES_MASK;
-	if (pres == 3 && master->characteristics->have_div3_pres)
+	if (pres == MASTER_PRES_MAX && master->characteristics->have_div3_pres)
 		pres = 3;
 	else
 		pres = (1 << pres);
 
-	if ((master->pms.rate !=
-	     DIV_ROUND_CLOSEST_ULL(master->pms.parent_rate, pres)) ||
+	if (master->pms.rate !=
+	    DIV_ROUND_CLOSEST_ULL(master->pms.parent_rate, pres) ||
 	    (master->pms.parent != (val & AT91_PMC_CSS)))
 		pr_warn("MCKR PRES was not configured properly by firmware!\n");
 }
@@ -560,24 +628,19 @@ at91_clk_register_master_pres(struct regmap *regmap,
 		const char **parent_names,
 		const struct clk_master_layout *layout,
 		const struct clk_master_characteristics *characteristics,
-		spinlock_t *lock, u32 flags, int chg_pid, bool notifier)
+		spinlock_t *lock, u32 flags, int chg_pid)
 {
 	const struct clk_ops *ops;
-	struct clk_hw *hw;
 
 	if (flags & CLK_SET_RATE_GATE)
 		ops = &master_pres_ops;
 	else
 		ops = &master_pres_ops_chg;
 
-	hw = at91_clk_register_master_internal(regmap, name, num_parents,
-					       parent_names, layout,
-					       characteristics, ops,
-					       lock, flags, chg_pid);
-	if (!IS_ERR(hw) && notifier)
-		clk_notifier_register(hw->clk, &clk_master_notifier);
-
-	return hw;
+	return at91_clk_register_master_internal(regmap, name, num_parents,
+						 parent_names, layout,
+						 characteristics, ops,
+						 lock, flags, chg_pid);
 }
 
 struct clk_hw * __init
@@ -585,7 +648,7 @@ at91_clk_register_master_div(struct regmap *regmap,
 		const char *name, const char *parent_name,
 		const struct clk_master_layout *layout,
 		const struct clk_master_characteristics *characteristics,
-		spinlock_t *lock, u32 flags)
+		spinlock_t *lock, u32 flags, u32 safe_div)
 {
 	const struct clk_ops *ops;
 	struct clk_hw *hw;
@@ -600,8 +663,12 @@ at91_clk_register_master_div(struct regmap *regmap,
 					       characteristics, ops,
 					       lock, flags, -EINVAL);
 
-	if (!IS_ERR(hw))
+	if (!IS_ERR(hw) && safe_div) {
 		master_div = to_clk_master(hw);
+		master_div->safe_div = safe_div;
+		clk_notifier_register(hw->clk,
+				      &clk_master_div_notifier);
+	}
 
 	return hw;
 }
@@ -797,7 +864,7 @@ static int clk_sama7g5_master_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	if (div == 3)
 		div = MASTER_PRES_MAX;
-	else
+	else if (div)
 		div = ffs(div) - 1;
 
 	spin_lock_irqsave(master->lock, flags);

@@ -9,7 +9,6 @@
 #include <linux/clk/at91_pmc.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/of_platform.h>
 #include <linux/mfd/syscon.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -123,7 +122,7 @@ static int at91_pmc_suspend(void)
 	if (!at91_pmc_backup_suspend)
 		return 0;
 
-	backup = *(unsigned int *)at91_pmc_backup_suspend;
+	backup = readl_relaxed(at91_pmc_backup_suspend);
 	if (!backup)
 		return 0;
 
@@ -137,7 +136,7 @@ static void at91_pmc_resume(void)
 	if (!at91_pmc_backup_suspend)
 		return;
 
-	backup = *(unsigned int *)at91_pmc_backup_suspend;
+	backup = readl_relaxed(at91_pmc_backup_suspend);
 	if (!backup)
 		return;
 
@@ -149,19 +148,35 @@ static struct syscore_ops pmc_syscore_ops = {
 	.resume = at91_pmc_resume,
 };
 
+static const struct of_device_id pmc_dt_ids[] = {
+	{ .compatible = "atmel,sama5d2-pmc" },
+	{ .compatible = "microchip,sama7g5-pmc", },
+	{ /* sentinel */ }
+};
+
 static int __init pmc_register_ops(void)
 {
-	struct platform_device *pdev;
 	struct device_node *np;
+
+	np = of_find_matching_node(NULL, pmc_dt_ids);
+	if (!np)
+		return -ENODEV;
+
+	if (!of_device_is_available(np)) {
+		of_node_put(np);
+		return -ENODEV;
+	}
+	of_node_put(np);
 
 	np = of_find_compatible_node(NULL, NULL, "atmel,sama5d2-securam");
 	if (!np)
 		return -ENODEV;
 
-	pdev = of_find_device_by_node(np);
-	of_node_put(np);
-	if (!pdev)
+	if (!of_device_is_available(np)) {
+		of_node_put(np);
 		return -ENODEV;
+	}
+	of_node_put(np);
 
 	at91_pmc_backup_suspend = of_iomap(np, 0);
 	if (!at91_pmc_backup_suspend) {
@@ -173,6 +188,6 @@ static int __init pmc_register_ops(void)
 
 	return 0;
 }
-
-subsys_initcall(pmc_register_ops);
+/* This has to happen before arch_initcall because of the tcb_clksrc driver */
+postcore_initcall(pmc_register_ops);
 #endif
