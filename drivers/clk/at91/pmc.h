@@ -175,8 +175,7 @@ at91_clk_register_master_pres(struct regmap *regmap, const char *name,
 			      int num_parents, const char **parent_names,
 			      const struct clk_master_layout *layout,
 			      const struct clk_master_characteristics *characteristics,
-			      spinlock_t *lock, u32 flags, int chg_pid,
-			      bool notifier);
+			      spinlock_t *lock, u32 flags, int chg_pid);
 
 struct clk_hw * __init
 at91_clk_register_master_div(struct regmap *regmap, const char *name,
