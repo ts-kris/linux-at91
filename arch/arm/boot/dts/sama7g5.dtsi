@@ -506,6 +506,18 @@
 				reg = <0xe1624000 0x4000>;
 			};
 
+			eic: interrupt-controller@e1628000 {
+				compatible = "microchip,sama7g5-eic";
+				reg = <0xe1628000 0x100>;
+				interrupt-parent = <&gic>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pmc PMC_TYPE_PERIPHERAL 37>;
+				clock-names = "pclk";
+			};
+
 			pit64b0: timer@e1800000 {
 				compatible = "microchip,sam9x60-pit64b";
 				reg = <0xe1800000 0x4000>;
