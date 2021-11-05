@@ -11,7 +11,7 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Microchip SAMA5D27 WLSOM1 EK";
+	model = "Microchip SAMA5D27 WLSOM1 EK TEST2";
 	compatible = "microchip,sama5d27-wlsom1-ek", "microchip,sama5d27-wlsom1", "atmel,sama5d27", "atmel,sama5d2", "atmel,sama5";
 
 	aliases {
@@ -180,18 +180,47 @@
 		pinmux = <PIN_PA16__GPIO>;
 		bias-disable;
 	};
+
+	pinctrl_mk2_spi: mk2_default {
+		/* SPI */
+		pinmux = <PIN_PC1__SPI1_SPCK>,
+			 <PIN_PC3__SPI1_MISO>,
+			 <PIN_PC2__SPI1_MOSI>,
+			 <PIN_PC4__SPI1_NPCS0>,
+			 <PIN_PA31__GPIO>,
+			 <PIN_PC0__GPIO>,
+			 <PIN_PB3__GPIO>;
+		bias-enable;
+	};
 };
 
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm0_default>;
-	status = "okay";
+	status = "disabled";
 };
 
 &qspi1 {
 	status = "okay";
 
 	qspi1_flash: spi_flash@0 {
+		status = "okay";
+	};
+};
+
+&spi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mk2_spi>;
+	status = "okay";
+
+	wilc_spi@0 {
+		compatible = "microchip,wilc3000", "microchip,wilc1000";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		reset-gpios = <&pioA PIN_PC0 GPIO_ACTIVE_HIGH>;     /* RESET,  GPIO 106 */
+		chip_en-gpios = <&pioA PIN_PA31 GPIO_ACTIVE_HIGH>;   /* ENABLE, GPIO 122 */
+		interrupt-parent = <&pioA>;     /* IRQ,    GPIO 129 */
+		interrupts = <PIN_PB3 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
