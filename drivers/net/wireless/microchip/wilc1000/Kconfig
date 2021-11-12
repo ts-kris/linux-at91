@@ -12,7 +12,6 @@ config WILC1000_SDIO
 	tristate "Atmel WILC1000 SDIO (WiFi only)"
 	depends on CFG80211 && INET && MMC
 	select WILC1000
-	select PWRSEQ_WILC
 	help
 	  This module adds support for the SDIO interface of adapters using
 	  WILC1000 chipset. The Atmel WILC1000 SDIO is a full speed interface.
@@ -28,7 +27,6 @@ config WILC1000_SPI
 	depends on CFG80211 && INET && SPI
 	select WILC1000
 	select CRC7
-	select PWRSEQ_WILC
 	help
 	  This module adds support for the SPI interface of adapters using
 	  WILC1000 chipset. The Atmel WILC1000 has a Serial Peripheral
