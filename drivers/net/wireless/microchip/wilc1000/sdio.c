@@ -198,7 +198,6 @@ static int wilc_sdio_probe(struct sdio_func *func,
 			goto disable_rtc_clk;
 	}
 
-
 	if (!init_power) {
 		wilc_wlan_power(wilc, false);
 		init_power = 1;
