@@ -882,6 +882,12 @@ static int set_default_key(struct wiphy *wiphy, struct net_device *netdev,
 	return 0;
 }
 
+static int set_default_mgmt_key (struct wiphy *wiphy,struct net_device *netdev,
+				 u8 key_index)
+{
+    return 0;
+}
+
 #if KERNEL_VERSION(3, 16, 0) <= LINUX_VERSION_CODE
 static int get_station(struct wiphy *wiphy, struct net_device *dev,
 		       const u8 *mac, struct station_info *sinfo)
@@ -2252,6 +2258,7 @@ static const struct cfg80211_ops wilc_cfg80211_ops = {
 	.del_key = del_key,
 	.get_key = get_key,
 	.set_default_key = set_default_key,
+	.set_default_mgmt_key = set_default_mgmt_key,
 	.add_virtual_intf = add_virtual_intf,
 	.del_virtual_intf = del_virtual_intf,
 	.change_virtual_intf = change_virtual_intf,
