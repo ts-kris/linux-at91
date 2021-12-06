@@ -243,6 +243,8 @@ static int pwm_sifive_probe(struct platform_device *pdev)
 	chip = &ddata->chip;
 	chip->dev = dev;
 	chip->ops = &pwm_sifive_ops;
+	chip->of_xlate = of_pwm_xlate_with_flags;
+	chip->of_pwm_n_cells = 3;
 	chip->npwm = 4;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
