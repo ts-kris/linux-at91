@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 10
 SUBLEVEL = 80
-EXTRAVERSION = -linux4microchip-2021.10-rc2
+EXTRAVERSION = -linux4microchip-2021.10-rc3
 NAME = Dare mighty things
 
 # *DOCUMENTATION*
