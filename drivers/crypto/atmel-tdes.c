@@ -198,15 +198,13 @@ static void atmel_tdes_write_n(struct atmel_tdes_dev *dd, u32 offset,
 
 static struct atmel_tdes_dev *atmel_tdes_dev_alloc(void)
 {
-	struct atmel_tdes_dev *tmp, *tdes_dd = NULL;
+	struct atmel_tdes_dev *tdes_dd;
 
 	spin_lock_bh(&atmel_tdes.lock);
-	list_for_each_entry(tmp, &atmel_tdes.dev_list, list) {
-		tdes_dd = tmp;
-		break;
-	}
+	/* One TDES IP per SoC. */
+	tdes_dd = list_first_entry_or_null(&atmel_tdes.dev_list,
+					   struct atmel_tdes_dev, list);
 	spin_unlock_bh(&atmel_tdes.lock);
-
 	return tdes_dd;
 }
 

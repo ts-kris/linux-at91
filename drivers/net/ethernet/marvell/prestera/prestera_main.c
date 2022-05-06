@@ -50,12 +50,14 @@ int prestera_port_pvid_set(struct prestera_port *port, u16 vid)
 struct prestera_port *prestera_port_find_by_hwid(struct prestera_switch *sw,
 						 u32 dev_id, u32 hw_id)
 {
-	struct prestera_port *port = NULL;
+	struct prestera_port *port = NULL, *tmp;
 
 	read_lock(&sw->port_list_lock);
-	list_for_each_entry(port, &sw->port_list, list) {
-		if (port->dev_id == dev_id && port->hw_id == hw_id)
+	list_for_each_entry(tmp, &sw->port_list, list) {
+		if (tmp->dev_id == dev_id && tmp->hw_id == hw_id) {
+			port = tmp;
 			break;
+		}
 	}
 	read_unlock(&sw->port_list_lock);
 
@@ -64,12 +66,14 @@ struct prestera_port *prestera_port_find_by_hwid(struct prestera_switch *sw,
 
 struct prestera_port *prestera_find_port(struct prestera_switch *sw, u32 id)
 {
-	struct prestera_port *port = NULL;
+	struct prestera_port *port = NULL, *tmp;
 
 	read_lock(&sw->port_list_lock);
-	list_for_each_entry(port, &sw->port_list, list) {
-		if (port->id == id)
+	list_for_each_entry(tmp, &sw->port_list, list) {
+		if (tmp->id == id) {
+			port = tmp;
 			break;
+		}
 	}
 	read_unlock(&sw->port_list_lock);
 
@@ -462,20 +466,17 @@ static int prestera_switch_set_base_mac_addr(struct prestera_switch *sw)
 {
 	struct device_node *base_mac_np;
 	struct device_node *np;
-	const char *base_mac;
+	int ret;
 
 	np = of_find_compatible_node(NULL, NULL, "marvell,prestera");
 	base_mac_np = of_parse_phandle(np, "base-mac-provider", 0);
 
-	base_mac = of_get_mac_address(base_mac_np);
-	of_node_put(base_mac_np);
-	if (!IS_ERR(base_mac))
-		ether_addr_copy(sw->base_mac, base_mac);
-
-	if (!is_valid_ether_addr(sw->base_mac)) {
+	ret = of_get_mac_address(base_mac_np, sw->base_mac);
+	if (ret) {
 		eth_random_addr(sw->base_mac);
 		dev_info(prestera_dev(sw), "using random base mac address\n");
 	}
+	of_node_put(base_mac_np);
 
 	return prestera_hw_switch_mac_set(sw, sw->base_mac);
 }
